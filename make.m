@@ -43,4 +43,4 @@ eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_
 % 
 
 % build SE_Stokes specific mex stuff
-eval([mex_string ' -DVERBOSE -DBEENAKKER mex/fast_k_scaling.c'])
+eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])

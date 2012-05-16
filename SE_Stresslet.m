@@ -1,5 +1,7 @@
 function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 
+addpath('bin')
+
 verb = true;
 
 % parameters and constants
@@ -49,8 +51,8 @@ cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
 
 % Do scaling
 tic;
-[H{1:3}] = fast_k_scaling(G,xi,box,eta); % Mex
-% [H{1:3}] = k_scaling(G,xi,box,eta); % Matlab
+[H{1:3}] = stresslet_fast_k_scaling(G,xi,box,eta); % Mex
+% [H{1:3}] = stresslet_k_scaling(G,xi,box,eta); % Matlab
 stats.wtime_scale = toc();
 
 if static_fgg
