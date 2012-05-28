@@ -13,6 +13,11 @@ function [phi shellnorms] = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox,
 %   [x f] = generate_state(100,[1 1 1]);
 %   stresslet_direct_real(1, x, f, nvec, 2, [1 1 1], 10)
 
+VERBOSE = 0;
+if ~exist('TOL','var')
+    TOL=0;
+end
+
 p = -nbox:nbox; %boxes
 [p1 p2 p3] = ndgrid(p,p,p);
 p = [p1(:) p2(:) p3(:)];
@@ -25,7 +30,7 @@ p = p(I,:)*diag(L);
 
 shellnorms=[];
 
-fprintf('\tComputing real space sum. Periodic images: %d\n', Np);
+cprintf(VERBOSE,'\tComputing real space sum. Periodic images: %d\n', Np);
 noeval=length(idx);  
 phi=zeros(noeval,3); 
 for ii=1:noeval
@@ -48,17 +53,17 @@ for ii=1:noeval
     phi(ii,:) = phi(ii,:) + tmp;
     shellnorm = norm(tmp);
     shellnorms(end+1)=shellnorm;
-    fprintf('Shell %d: contrib=%g\n',shell_no,shellnorm);
+    cprintf(VERBOSE,'Shell %d: contrib=%g\n',shell_no,shellnorm);
     if shellnorm<TOL && shell_no>3
         converged=1;
         break
     end
   end
   if converged==1
-      fprintf('Direct sum converged TOL=%g at shell %g\n',TOL,shell_no);
+      cprintf(VERBOSE,'Direct sum converged TOL=%g at shell %g\n',TOL,shell_no);
   else
-      disp('Direct sum did not converge!')
+      cprintf(VERBOSE,'Direct sum did not converge!\n')
   end
 end
-fprintf('\n')
+cprintf(VERBOSE,'\n')
 end

@@ -1,7 +1,5 @@
 function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 
-addpath('bin')
-
 verb = true;
 
 % parameters and constants
@@ -23,7 +21,7 @@ elseif nargin == 7
 end
 
 % Grid
-G=zeros([9 M]);
+G=complex(zeros([9 M]));
 
 % Indices for outer product
 n_idx = [1 2 3 1 2 3 1 2 3];
@@ -48,6 +46,11 @@ stats.wtime_grid = toc();
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
+
+if isreal(G)
+    cprintf(verb,'Forcing G complex.\n');
+    G = complex(G);
+end
 
 % Do scaling
 tic;

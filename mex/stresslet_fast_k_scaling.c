@@ -67,6 +67,8 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     const double* restrict gr = mxGetPr(G);
 
     // imaginary part
+    if(mxIsComplex(G)==false)
+            mexErrMsgTxt("Input array must be complex!");
     const double* restrict gi = mxGetPi(G);
 
     // output arrays, complex
