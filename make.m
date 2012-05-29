@@ -11,7 +11,7 @@ switch cc
 %          coptimflags = '-O3 -static -xSSE4.1 -vec-report';
 %          ldoptimflags = '-O3 -static -xSSE4.1 -vec-report';
 
-       coptimflags = '-O3 -static -vec-report -opt-report'; % -opt-report
+       coptimflags = '-O3 -static -vec-report'; % -opt-report
        ldoptimflags = '-O3 -static -vec-report';
     case 'gcc'
         coptimflags = '-Wall -O3 -ffast-math';
@@ -26,10 +26,6 @@ DEBUGFLAGS = [' CDEBUGFLAGS=''' cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflags
 OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags ''''];
 
 mex_string = ['mex ' CC CFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
-
-eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
-
-return
 
 % build FGG code from ../SE_fast_gridding
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
@@ -48,3 +44,4 @@ eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_
 
 % build SE_Stresslet specific mex stuff
 eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
+eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])

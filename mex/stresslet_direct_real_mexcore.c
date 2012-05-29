@@ -64,9 +64,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double* restrict tmp = mxGetPr( TMP );
 
     double A[3][3];
+	double n[3];
 	double r[3];
 	double rm[3];
     int i1, i2, i3, m, k1, k2;
+
+	n[0] = nn[0];
+	n[1] = nn[1];
+	n[2] = nn[2];
 
     for(m=0; m<nidx; m++)                          // for all evaluation points
     {
@@ -87,7 +92,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				r[1] = rm[1]+box[1]*i2;
 				r[2] = rm[2]+box[2]*i3;
 
-				op_A(A,r,nn,xi);
+				op_A(A,r,n,xi);
 				for(k1=0; k1<=2; k1++) // source components
 					for(k2=0; k2<=2; k2++) // target components
 					{

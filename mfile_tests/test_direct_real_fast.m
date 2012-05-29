@@ -5,26 +5,30 @@ if matlabpool('size')==0
     matlabpool('open')
 end
 
+fprintf('\n\n')
+
 box = [1.1 1+pi/10 sqrt(2)/2];
 xi = 1;
 
-NOL = 3; % layers
-N = [400];
-timings = [];
-for i=1:length(N)
-    [x f nvec] = generate_state(N(i),box);
-    idx = 1:N(i);
-    tic;
-    uref = 0;
-%     uref = stresslet_direct_real(idx, x, f, nvec, xi,  box, NOL);
-    wref = toc;
-    tic
-    [ufst A] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL);
-    wfst = toc;
-    timings(end+1,1:2) = [wref wfst];
-end
+NOL = 2; % layers
+N = 15;
 
-timings
+[x f nvec] = generate_state(N,box);
+idx = 1:N;
+
+fprintf('Real space summation of %d points over %d layers.\n',N,NOL);
+
+tic;
+fprintf('MATLAB direct summation: \n\t')
+uref = stresslet_direct_real(idx, x, f, nvec, xi,  box, NOL);
+toc
+wref = toc;
+tic
+fprintf('MEX matrix assembly + matvec: \n\t')
+[ufst A] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL);
+toc
+wfst = toc;
+timings = [wref wfst]
 
 res1 = abs(ufst-stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, A));
 if max(res1(:))>1e-10
@@ -36,6 +40,7 @@ res2 = abs(uref-ufst);
 if max(res2(:))>1e-10
     error('EWALD FAST RS: FAILED')
 end
+fprintf('Max diff: %g\n', max(res2(:)));
 
 fprintf('\n********** EWALD FAST RS: OK **********\n\n')
 
