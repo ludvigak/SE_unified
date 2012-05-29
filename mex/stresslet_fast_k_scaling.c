@@ -48,7 +48,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 		 int nrhs, const mxArray *prhs[] )
 {
     if(VERBOSE)
-	mexPrintf("Stokes Ewald FFT k-scaling: %s\n", OP_TAG);
+	mexPrintf("Stresslet Ewald FFT k-scaling: %s\n", OP_TAG);
 
     const mwSize *dims;
     dims = mxGetDimensions(G); // 9 x N0 x N1 x N2
