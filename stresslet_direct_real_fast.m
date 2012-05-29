@@ -11,7 +11,7 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, var
 %        nbox --  periodic repications
 %
 
-VERBOSE = 1;
+VERBOSE = 0;
 
 nosrc=size(f,1);
 noeval=length(idx);  
@@ -34,22 +34,32 @@ else
 
     cprintf(VERBOSE, '\tComputing real space sum. Periodic images: %d\n', Np);
 
+    t1 = 0;
+    t2 = 0;
     [A1 A2 A3] = deal(zeros(noeval*3,nosrc));
+    idx = int32(idx);
     parfor n = 1:size(x,1) % particles
-        tmp = zeros(noeval*3,3);
-        for j = 1:Np % periodic images
-            for ii=1:noeval
-                m=idx(ii); 
-                if all(p(j,:)==0) && n==m % remove self interaction
-                  continue
-                end
-                a = stresslet_op_real( x(m,:) - x(n,:) + p(j,:), nvec(n,:), xi);      
-                k = ii+noeval*[0 1 2];
-                tmp(k,1:3) = tmp(k,1:3)+a;
-            end
-        end
-%       l = n+nosrc*[0 1 2];
-%       A(:,l) = A(:,l)+tmp;
+        
+        xn = x(n,:); % source points
+        nn = nvec(n,:);        
+        
+        % MEX inner loop
+        tmp = stresslet_direct_real_mexcore(x,idx,xn,nn,n,nbox,xi,L);
+        
+        % MATLAB inner loop
+%         tmp = zeros(noeval*3,3);
+%         for m=1:noeval
+%             xm = x(idx(m),:);
+%             for j = 1:Np % periodic images
+%                 if all(p(j,:)==0) && n==idx(m) % remove self interaction
+%                   continue
+%                 end
+%                 a = stresslet_op_real( xm - xn + p(j,:), nn, xi);      
+%                 k = m+noeval*[0 1 2];
+%                 tmp(k,1:3) = tmp(k,1:3)+a;
+%             end
+%         end
+        
         A1(:,n) = tmp(:,1);
         A2(:,n) = tmp(:,2);
         A3(:,n) = tmp(:,3);

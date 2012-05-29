@@ -1,5 +1,26 @@
 #define OP_TAG "BEENAKKER FD"
 
+void op_A(double A[3][3], double x[3], double n[3], double xi)
+{
+		double r2 = x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
+		double r = sqrt(r2);
+		double c = xi*xi*r2;
+		double xdotn = x[0]*n[0] + x[1]*n[1] + x[2]*n[2];
+
+		double C = -2.0/(r2*r2)*( 3.0/r*erfc(xi*r) + 2.0*xi/sqrt(PI)*(3.0+2.0*c-4.0*c*c)*exp(-c) );
+		double D = 8.0/sqrt(PI)*xi*xi*xi*(2.0-c)*exp(-c);
+
+		A[0][0]=C*x[0]*x[0]*xdotn + D*( x[0]*n[0] + x[0]*n[0] + xdotn);
+		A[1][0]=C*x[1]*x[0]*xdotn + D*( x[0]*n[1] + x[1]*n[0] );
+		A[2][0]=C*x[2]*x[0]*xdotn + D*( x[0]*n[2] + x[2]*n[0] );
+		A[0][1]=C*x[0]*x[1]*xdotn + D*( x[1]*n[0] + x[0]*n[1] );
+		A[1][1]=C*x[1]*x[1]*xdotn + D*( x[1]*n[1] + x[1]*n[1] + xdotn);
+		A[2][1]=C*x[2]*x[1]*xdotn + D*( x[1]*n[2] + x[2]*n[1] );
+		A[0][2]=C*x[0]*x[2]*xdotn + D*( x[2]*n[0] + x[0]*n[2] );
+		A[1][2]=C*x[1]*x[2]*xdotn + D*( x[2]*n[1] + x[1]*n[2] );
+		A[2][2]=C*x[2]*x[2]*xdotn + D*( x[2]*n[2] + x[2]*n[2] + xdotn);
+}
+
 void op_B(double Bi[3][3][3], double k[3], double xi)
 {
 		double k2 = k[0]*k[0] + k[1]*k[1] + k[2]*k[2];
