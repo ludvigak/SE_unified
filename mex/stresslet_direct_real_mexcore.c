@@ -92,12 +92,16 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				r[1] = rm[1]+box[1]*i2;
 				r[2] = rm[2]+box[2]*i3;
 
-				op_A(A,r,n,xi);
-				for(k1=0; k1<=2; k1++) // source components
-					for(k2=0; k2<=2; k2++) // target components
-					{
-						tmp[m+nidx*(k1+3*k2)] = tmp[m+nidx*(k1+3*k2)] + A[k1][k2];
-					}
+				op_A(A,r,n,xi); // Get A, but only use lower part
+                tmp[m+nidx*0] = tmp[m+nidx*0] + A[0][0];
+                tmp[m+nidx*3] = tmp[m+nidx*3] + A[0][1];
+                tmp[m+nidx*6] = tmp[m+nidx*6] + A[0][2];
+                tmp[m+nidx*1] = tmp[m+nidx*1] + A[0][1];
+                tmp[m+nidx*4] = tmp[m+nidx*4] + A[1][1];
+                tmp[m+nidx*7] = tmp[m+nidx*7] + A[1][2];
+                tmp[m+nidx*2] = tmp[m+nidx*2] + A[0][2];
+                tmp[m+nidx*5] = tmp[m+nidx*5] + A[1][2];
+                tmp[m+nidx*8] = tmp[m+nidx*8] + A[2][2];
 			}
     }
 }
