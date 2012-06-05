@@ -21,15 +21,16 @@ foreach $j (0..2) {
 $s .= $s2;
 
 $s.= "-----------------------------\n";
-foreach $k1 (0..2) {
-	foreach $k2 (0..2) {
+foreach $k2 (0..2) {
+	foreach $k1 (0..2) {
 		$j = $k1;
 		$m = $k2;
 		if ($m<=$j) {
 			$j = $k2;
 			$m = $k1;
-		}			
-		$s .= "tmp[m+nidx*".($k1+3*$k2)."] = tmp[m+nidx*".($k1+3*$k2)."] + A[$j][$m];\n";
+		}		
+		$idx = "m+nidx*".($k1+3*$k2);
+		$s .= "tmp[$idx] = tmp[$idx] + A[$j][$m];\n";
 	}
 }
 

@@ -54,7 +54,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	int tmpDims[2];
 	tmpDims[0] = 3*nidx;
 	tmpDims[1] = 3;
-	
+
 	// Checking
 	const mxClassID IDXclass =  mxGetClassID(IDX);
 	if(IDXclass != mxINT32_CLASS)
@@ -93,15 +93,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 				r[2] = rm[2]+box[2]*i3;
 
 				op_A(A,r,n,xi); // Get A, but only use lower part
-                tmp[m+nidx*0] = tmp[m+nidx*0] + A[0][0];
-                tmp[m+nidx*3] = tmp[m+nidx*3] + A[0][1];
-                tmp[m+nidx*6] = tmp[m+nidx*6] + A[0][2];
-                tmp[m+nidx*1] = tmp[m+nidx*1] + A[0][1];
-                tmp[m+nidx*4] = tmp[m+nidx*4] + A[1][1];
-                tmp[m+nidx*7] = tmp[m+nidx*7] + A[1][2];
-                tmp[m+nidx*2] = tmp[m+nidx*2] + A[0][2];
-                tmp[m+nidx*5] = tmp[m+nidx*5] + A[1][2];
-                tmp[m+nidx*8] = tmp[m+nidx*8] + A[2][2];
+
+				// Set tmp[m+k1*N][k2] = tmp[m+k1*N][k2] + A[k1][k2],
+				// {k1,k2}={0,1,2} over components of source and target
+				// tmp is 3Nx3, so tmp[m+k1*N][k2]=tmp[m+N(k1+3k2)]
+				tmp[m+nidx*0] = tmp[m+nidx*0] + A[0][0];
+				tmp[m+nidx*1] = tmp[m+nidx*1] + A[0][1];
+				tmp[m+nidx*2] = tmp[m+nidx*2] + A[0][2];
+				tmp[m+nidx*3] = tmp[m+nidx*3] + A[0][1];
+				tmp[m+nidx*4] = tmp[m+nidx*4] + A[1][1];
+				tmp[m+nidx*5] = tmp[m+nidx*5] + A[1][2];
+				tmp[m+nidx*6] = tmp[m+nidx*6] + A[0][2];
+				tmp[m+nidx*7] = tmp[m+nidx*7] + A[1][2];
+				tmp[m+nidx*8] = tmp[m+nidx*8] + A[2][2];
 			}
     }
 }
