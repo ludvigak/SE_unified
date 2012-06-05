@@ -1,4 +1,4 @@
-function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, varargin)
+function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, varargin)
 % Ewald summation for the stresslet -- Real space part.
 % Fast: saves interactions as matrix for subsequent iterations
 %
@@ -17,13 +17,19 @@ nosrc=size(f,1);
 noeval=length(idx);  
 
 tic
-if nargin==8
-    A = varargin{1};
+if nargin==10
+    A1 = varargin{1};
+    A2 = varargin{2};
+    A3 = varargin{3};
 else
-    A = [];
+    A1 = [];
+    A2 = [];
+    A3 = [];
 end
 
-if all( size(A)==[noeval*3 nosrc*3] )
+if all( size(A1)==[noeval*3 nosrc] ) && ...
+   all( size(A2)==[noeval*3 nosrc] ) && ...
+   all( size(A3)==[noeval*3 nosrc] )
     cprintf(VERBOSE, '\tComputing real space sum using precomputed matrix.\n');
 else
 
@@ -34,8 +40,8 @@ else
 
     cprintf(VERBOSE, '\tComputing real space sum. Periodic images: %d\n', Np);
 
-    t1 = 0;
-    t2 = 0;
+    % Keep interactions in three separate matrices, so that parfor can
+    % slice them
     [A1 A2 A3] = deal(zeros(noeval*3,nosrc));
     idx = int32(idx);
     parfor n = 1:size(x,1) % particles
@@ -64,13 +70,13 @@ else
         A2(:,n) = tmp(:,2);
         A3(:,n) = tmp(:,3);
     end
-    A = [A1 A2 A3];
 end
 
 if VERBOSE
     fprintf('\t');
     toc
 end
-phi = reshape(A*f(:), noeval, 3);
+
+phi = reshape(A1*f(:,1) + A2*f(:,2) + A3*f(:,3), noeval, 3);
 
 end

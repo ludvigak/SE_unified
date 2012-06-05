@@ -1,6 +1,8 @@
 function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 
-verb = true;
+ttic = tic;
+
+verb = false;
 
 % parameters and constants
 opt = parse_params(opt);
@@ -27,22 +29,35 @@ G=complex(zeros([9 M]));
 n_idx = [1 2 3 1 2 3 1 2 3];
 f_idx = [1 1 1 2 2 2 3 3 3];
 
-tic;
+% Save timings for gridding+FFT separately
+gftic = tic;
+[gtime ftime] = deal(zeros(9,1));
+
 parfor i=1:9
     % to grid, transform and shift
     i1 = n_idx(i);
     i2 = f_idx(i);
     S = n(:,i1).*f(:,i2);
+    gtic = tic;
     if static_fgg
-        G( i, :, :, :) = fftshift( fftn( ...
-                            SE_fg_grid_split_mex(x,S,opt, ...
-                              sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx ) ...
-                         ) );
+        F = SE_fg_grid_split_mex(x,S,opt, ...
+                                sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx );
     else
-        G( i, :, :, :) = fftshift( fftn( SE_fg_grid_mex(x,S,opt) ) );
+        F = SE_fg_grid_mex(x,S,opt);
     end
+    gtime(i) = toc(gtic);
+    ftic = tic;
+    G( i, :, :, :) = fftshift( fftn( F ) );
+    ftime(i) = toc(ftic);
 end
-stats.wtime_grid = toc();
+
+wgridfft = toc(gftic); % Total time spent in loop
+gtime = sum(gtime); % Total time spent on gridding (over all threads)
+ftime = sum(ftime); % Total time spent on FFT (over all threads)
+% Assume that all thread time was spent on gridding + FFT
+stats.wtime_grid = wgridfft*gtime/(gtime+ftime);
+stats.wtime_fft = wgridfft*ftime/(gtime+ftime);
+
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
@@ -66,25 +81,34 @@ else
 end
 
 % Back transform and gather
-tic;
+iftic = tic;
+[itime ftime] = deal(zeros(3,1));
+
 parfor i=1:3
+    ftic = tic;
+    F = real( ifftn( ifftshift( H{i} )));
+    ftime(i) = toc(ftic);
+    itic = tic;
     if static_fgg
-        u(:,i) = SE_fg_int_split_mex(x,...
-                                    real( ifftn( ifftshift( H{i} ))),opt,...
+        u(:,i) = SE_fg_int_split_mex(x,F,opt,...
                                     sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
     else
-        u(:,i) = SE_fg_int_mex(x(eval_idx,:), ...
-                                    real( ifftn( ifftshift( H{i} ))) ,opt);
+        u(:,i) = SE_fg_int_mex(x(eval_idx,:), F ,opt);
     end
+    itime(i) = toc(itic);
 end
-stats.wtime_int = toc();
+
+wintfft = toc(iftic);
+itime = sum(itime);
+ftime = sum(ftime);
+stats.wtime_int = wintfft*itime/(itime+ftime);
+stats.wtime_fft = wintfft*ftime/(itime+ftime) + stats.wtime_fft;
 
 if static_fgg
      u = u(sdat.iperm(eval_idx),:);
 end
 
-stats.wtime=[stats.wtime_grid stats.wtime_scale stats.wtime_int];
-stats.wtime_total = sum(stats.wtime);
+stats.wtime_total = toc(ttic);
 
 
 % ------------------------------------------------------------------------------

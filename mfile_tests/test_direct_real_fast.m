@@ -19,9 +19,9 @@ idx = 1:N;
 fprintf('Real space summation of %d points over %d layers.\n',N,NOL);
 
 tic;
-fprintf('MATLAB direct summation: \n\t')
-uref = stresslet_direct_real(idx, x, f, nvec, xi,  box, NOL);
-toc
+% fprintf('MATLAB direct summation: \n\t')
+% uref = stresslet_direct_real(idx, x, f, nvec, xi,  box, NOL);
+% toc
 wref = toc;
 tic
 fprintf('MEX matrix assembly + matvec: \n\t')
