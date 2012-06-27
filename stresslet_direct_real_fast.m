@@ -44,7 +44,7 @@ else
     % slice them
     [A1 A2 A3] = deal(zeros(noeval*3,nosrc));
     idx = int32(idx);
-    for n = 1:size(x,1) % particles
+    parfor n = 1:size(x,1) % particles
         
         xn = x(n,:); % source points
         nn = nvec(n,:);        
