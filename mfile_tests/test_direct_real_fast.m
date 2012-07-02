@@ -11,6 +11,7 @@ box = [1.1 1+pi/10 sqrt(2)/2];
 xi = 1;
 
 NOL = 2; % layers
+rc = sqrt(box*box')*(NOL+1);
 N = 15;
 
 [x f nvec] = generate_state(N,box);
@@ -25,12 +26,12 @@ toc
 wref = toc;
 tic
 fprintf('MEX matrix assembly + matvec: \n\t')
-[ufst A] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL);
+[ufst A1 A2 A3] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
 toc
 wfst = toc;
 timings = [wref wfst]
 
-res1 = abs(ufst-stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, A));
+res1 = abs(ufst-stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc, A1, A2, A3));
 if max(res1(:))>1e-10
     error('EWALD FAST RS: FAILED MATRIX')
 end
@@ -38,6 +39,7 @@ end
 
 res2 = abs(uref-ufst);
 if max(res2(:))>1e-10
+    maxres2 = max(res2(:))
     error('EWALD FAST RS: FAILED')
 end
 fprintf('Max diff: %g\n', max(res2(:)));

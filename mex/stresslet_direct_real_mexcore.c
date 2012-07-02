@@ -7,14 +7,14 @@
 #define NN   prhs[3] // Source point normal (1x3)
 #define IDXN prhs[4] // Source point index
 #define NBOX prhs[5] // Number of layers
-#define XI   prhs[6] // Ewald parameter
-#define BOX  prhs[7] // Ewald parameter
+#define RC   prhs[6] // Cutoff radius
+#define XI   prhs[7] // Ewald parameter
+#define BOX  prhs[8] // Ewald parameter
 
 #define TMP  plhs[0]  // Output (Mx3)
 
 #define PI 3.141592653589793
 
-// select k-space scaling tensor
 #ifdef BEENAKKER
 #include "beenakker_op_fd.h"
 #else
@@ -40,6 +40,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     // Get constants
     const int idxn = mxGetScalar(IDXN);
     const int nbox = mxGetScalar(NBOX);
+    const double rc = mxGetScalar(RC);
     const double xi = mxGetScalar(XI);
 
     // Get sizes
@@ -68,7 +69,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double n[3];
     double r[3];
     double rm[3];
+    double rsq,rcsq;
     int i1, i2, i3, m, k1, k2;
+
+    rcsq = rc*rc;
 
     // put normal vector in n
     n[0] = nn[0];
@@ -88,7 +92,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	    for(k2=0;k2<3;k2++)
 		AA[k1][k2]=0; // zero first
 	
-	// Sum over images
+	// Sum contrib from images
 	for(i1 = -nbox; i1<=nbox; i1++) { // image boxes
 	    for(i2 = -nbox; i2<=nbox; i2++) {
 		for(i3 = -nbox; i3<=nbox; i3++)
@@ -98,10 +102,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 		    r[0] = rm[0]+box[0]*i1;
 		    r[1] = rm[1]+box[1]*i2;
 		    r[2] = rm[2]+box[2]*i3;
-		    op_A(A,r,n,xi); // Not using symmetry of A...
-		    for(k1=0;k1<3;k1++)
-			for(k2=0;k2<3;k2++)
-			    AA[k1][k2]+=A[k1][k2];
+		    rsq  = r[0]*r[0] + r[1]*r[1] + r[2]*r[2];
+		    if(rsq <= rcsq)
+		    {
+			op_A(A,r,n,xi); // Not using symmetry of A...
+			for(k1=0;k1<3;k1++)
+			    for(k2=0;k2<3;k2++)
+				AA[k1][k2]+=A[k1][k2];
+		    }
 		}
 	    }
 	}

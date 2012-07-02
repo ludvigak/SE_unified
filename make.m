@@ -27,6 +27,9 @@ OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags
 
 mex_string = ['mex ' CC CFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
 
+eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c'])
+return
+
 % build FGG code from ../SE_fast_gridding
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])

@@ -1,4 +1,4 @@
-function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, varargin)
+function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, varargin)
 % Ewald summation for the stresslet -- Real space part.
 % Fast: saves interactions as matrix for subsequent iterations
 %
@@ -8,7 +8,8 @@ function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nb
 %        nvec --  normal vectors   N-by-3
 %        f    --  source strengths   N-by-3
 %        xi   --  Ewald parameter
-%        nbox --  periodic repications
+%        nbox --  periodic replications
+%        rc   --  cutoff radius
 %
 
 VERBOSE = 0;
@@ -17,7 +18,7 @@ nosrc=size(f,1);
 noeval=length(idx);  
 
 tic
-if nargin==10
+if nargin==11
     A1 = varargin{1};
     A2 = varargin{2};
     A3 = varargin{3};
@@ -50,7 +51,7 @@ else
         nn = nvec(n,:);        
         
         % MEX inner loop
-        tmp = stresslet_direct_real_mexcore(x,idx,xn,nn,n,nbox,xi,L);
+        tmp = stresslet_direct_real_mexcore(x,idx,xn,nn,n,nbox,rc,xi,L);
         
         % MATLAB inner loop
 %         tmp = zeros(noeval*3,3);
