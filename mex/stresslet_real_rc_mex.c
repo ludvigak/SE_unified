@@ -1,6 +1,5 @@
 #include "mex.h"
 #include "math.h"
-#include "matrix.h"
 #include "string.h"
 #include "time.h"
 
@@ -29,6 +28,7 @@
 #error "Must provide -D<method> to compiler"
 #endif
 
+// ==== STRUCT AND COMPARISON FUNCTION FOR SORTING
 typedef struct
 {
     int idx_in_array, row; 
@@ -46,6 +46,7 @@ static int compare_qsort_buck(const void* a, const void* b)
 	return 0;
 }
 
+// ==== MAIN MEX FUNCTION
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     // Setup variables
@@ -65,10 +66,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     int px[27] = {-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1};
     int py[27] = {-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1};
     int pz[27] = {-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    
-    if(VERBOSE)
-	mexPrintf("Stresslet real space rsrc: %s\n", OP_TAG);
-
+   
     // Get input arrays
     const double* restrict x = mxGetPr(X);
     const double* restrict nvec = mxGetPr(NVEC);
@@ -98,6 +96,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     for(i=0;i<3;i++)
 	ncell[i] = round( box[i]/rn );
     ncell_tot = ncell[0]*ncell[1]*ncell[2];
+
+    if(VERBOSE)
+    {
+	mexPrintf("[RSRC] %s, xi=%g\n", OP_TAG, xi);
+	mexPrintf("[RSRC] rc=%.3f, rn=%.3f\n", rc, rn);
+	mexPrintf("[RSRC] box=(%g,%g,%g), ncell=(%d,%d,%d)\n", 
+		  box[0],box[1],box[2],
+		  ncell[0],ncell[1],ncell[2]);
+    }
 
     // Prepare cell list
     ll = mxCalloc(N, sizeof(int));
@@ -249,8 +256,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     if(VERBOSE)
     {
-	mexPrintf("compnum=%d\nnumel=%d (%d)\n",compnum,numel,maxel);   
-	mexPrintf("Verlet list built in %.3f seconds.\n", time_spent);
+	mexPrintf("[RSRC] Triplets generated in %.3f seconds.\n", time_spent);
     }
 
     //============================================
@@ -298,6 +304,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
 
     mxFree(buck_count); // Free counter
+    if(nlhs==1)
+	mxFree(col); // Free column list if only returning matrix
  
     // Quicksort on buckets (rows indices for a column)
     // Allocate list of pairs to fit largest bucket
@@ -345,7 +353,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     end = clock();
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     if(VERBOSE)
-	mexPrintf("Triplets sorted in %.3f seconds.\n", time_spent);
+	mexPrintf("[RSRC] Triplets sorted in %.3f seconds.\n", time_spent);
 
 
     //===============================================
@@ -373,6 +381,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     }
 
     mxFree(buck_size); // Free final bucket list
+    if(nlhs==1)
+	mxFree(row); // Free row list if only returning matrix
 
     for(k1=0;k1<=2;k1++)
 	for(k2=k1;k2<=2;k2++)
@@ -411,16 +421,18 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     end = clock();
     time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
     if(VERBOSE)
-	mexPrintf("Matrices assembled in %.3f seconds.\n", time_spent);
+	mexPrintf("[RSRC] Matrices assembled in %.3f seconds.\n", time_spent);
       
     //====================================================
     // (optional) OUTPUT TRIPLETS AND PERMUTATION LIST
     //
     if(nlhs>1)
     {
+	begin = clock();
 
 	for(i=0;i<numel;i++)
 	{
+	    // Convert to MATLAB indexing
 	    col[i]++;
 	    row[i]++;
 	    idx_in_array[i]++;
@@ -455,6 +467,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	mxSetData(PER, idx_in_array);
 	mxSetN(PER,1);
 	mxSetM(PER,numel);
+
+	end = clock();
+	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+	if(VERBOSE)
+	    mexPrintf("[RSRC] Extra output prepared in %.3f seconds.\n", time_spent);
     }
 }
 

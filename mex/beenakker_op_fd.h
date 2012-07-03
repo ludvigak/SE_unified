@@ -25,6 +25,8 @@ void op_A(double A[3][3], double x[3], double n[3], double xi)
     A[2][1]=A[1][2];
 }
 
+// Use symmetries of real space interactions, where expensive
+// artihmetic can be reused.
 void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], double xi)
 {
     double r2 = x[0]*x[0] + x[1]*x[1] + x[2]*x[2];

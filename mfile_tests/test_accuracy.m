@@ -1,6 +1,6 @@
 % Stresslet Spectral Ewald, basic accuracy/convergence computation
 
-clear all,  close all
+clear all
 
 box = [1 1 1]; % domain
 N = 10;        % numbver of charged particles
@@ -57,6 +57,7 @@ end
 
 
 %%
+figure(3);
 sty = {'.-','*-','+-','r'}
 hold on
 for i = 1:size(err,1)
@@ -72,4 +73,3 @@ grid on
 axis([P(1) P(end) 1e-16 1e2])
 legend(leg,'Location','Best')
 fname = sprintf('output/SE_accuracy_xi%d_M%d',xi,SE_opt.M(1));
-% write_fig(1,fname);
