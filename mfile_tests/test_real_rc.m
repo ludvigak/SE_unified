@@ -61,6 +61,10 @@ toc(a)
 
 % TESTS
 
+% Check sparsity pattern
+assert( all( find(A1(1:N,1:N))==find(AMAT{1,1}) ), 'Sparsity pattern differs!');
+
+
 % Check permutations
 assert(all(perm==PER),'Permutations failed!')
 disp('Permutations OK')
@@ -72,7 +76,7 @@ Anew = ...
      Ac{1,2} Ac{2,2} Ac{2,3}
      Ac{1,3} Ac{2,3} Ac{3,3}];
 relerr = norm(Aref-Anew,inf)/norm(Aref,inf) ;
-assert(relerr<1e-14,'Explicit matrix differes from reference matrix!')
+assert(relerr<1e-14,'Explicit matrix differs from reference matrix!')
 
 Anew = ...
     [AMAT{1,1} AMAT{1,2} AMAT{1,3}

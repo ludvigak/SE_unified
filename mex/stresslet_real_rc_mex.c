@@ -201,7 +201,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 			nt[1] = nvec[idx_t+N  ];
 			nt[2] = nvec[idx_t+2*N];
 
-			op_A_symm(A1,A2,xr,ns,nt,xi);
+			op_A_symm(A1,A2,xr,ns,nt,xi,rsq);
 
 			/*
 			op_A(A1,xr,ns,xi);

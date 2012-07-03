@@ -27,9 +27,9 @@ void op_A(double A[3][3], double x[3], double n[3], double xi)
 
 // Use symmetries of real space interactions, where expensive
 // artihmetic can be reused.
-void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], double xi)
+void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
+	       double xi, double r2)
 {
-    double r2 = x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
     double r = sqrt(r2);
     double c = xi*xi*r2;
 
@@ -40,27 +40,13 @@ void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], doub
     double ec = exp(-c);
     double C = -2.0/(r2*r2)*( 3.0/r*erfc(xi*r) + 2.0*xi/sqrt(PI)*(3.0+2.0*c-4.0*c*c)*ec );
     double D = 8.0/sqrt(PI)*xi*xi*xi*(2.0-c)*ec;
-
-    A1[0][0]=C*x[0]*x[0]*x1dotn1 + D*( x[0]*n1[0] + x[0]*n1[0] + x1dotn1);
-    A1[0][1]=C*x[0]*x[1]*x1dotn1 + D*( x[1]*n1[0] + x[0]*n1[1] );
-    A1[0][2]=C*x[0]*x[2]*x1dotn1 + D*( x[2]*n1[0] + x[0]*n1[2] );
-    A1[1][1]=C*x[1]*x[1]*x1dotn1 + D*( x[1]*n1[1] + x[1]*n1[1] + x1dotn1);
-    A1[1][2]=C*x[1]*x[2]*x1dotn1 + D*( x[2]*n1[1] + x[1]*n1[2] );
-    A1[2][2]=C*x[2]*x[2]*x1dotn1 + D*( x[2]*n1[2] + x[2]*n1[2] + x1dotn1);
-    A1[1][0]=A1[0][1]; // Reuse symmetric pA1rt
-    A1[2][0]=A1[0][2];
-    A1[2][1]=A1[1][2];
-
-    A2[0][0]=C*x[0]*x[0]*x2dotn2 + D*( -x[0]*n2[0] - x[0]*n2[0] + x2dotn2);
-    A2[0][1]=C*x[0]*x[1]*x2dotn2 + D*( -x[1]*n2[0] - x[0]*n2[1] );
-    A2[0][2]=C*x[0]*x[2]*x2dotn2 + D*( -x[2]*n2[0] - x[0]*n2[2] );
-    A2[1][1]=C*x[1]*x[1]*x2dotn2 + D*( -x[1]*n2[1] - x[1]*n2[1] + x2dotn2);
-    A2[1][2]=C*x[1]*x[2]*x2dotn2 + D*( -x[2]*n2[1] - x[1]*n2[2] );
-    A2[2][2]=C*x[2]*x[2]*x2dotn2 + D*( -x[2]*n2[2] - x[2]*n2[2] + x2dotn2);
-    A2[1][0]=A2[0][1]; // Reuse symmetric pA2rt
-    A2[2][0]=A2[0][2];
-    A2[2][1]=A2[1][2];
-
+    
+    for(int i=0;i<3;i++)
+	for(int j=0;j<3;j++)
+	{
+	    A1[i][j] = C*x[i]*x[j]*x1dotn1 + D*( x[i]*n1[j] + x[j]*n1[i] + (i==j)*x1dotn1 );
+	    A2[i][j] = C*x[i]*x[j]*x2dotn2 + D*(-x[i]*n2[j] - x[j]*n2[i] + (i==j)*x2dotn2 );
+	}
 }
 
 void op_B(double Bi[3][3][3], double k[3], double xi)
