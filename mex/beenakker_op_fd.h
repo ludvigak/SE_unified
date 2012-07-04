@@ -25,21 +25,50 @@ void op_A(double A[3][3], double x[3], double n[3], double xi)
     A[2][1]=A[1][2];
 }
 
-// Use symmetries of real space interactions, where expensive
-// artihmetic can be reused.
+// Calculate constants C and D for a list of distances
+void op_A_CD(double* restrict C, double* restrict D, double* restrict r2l, int n, double xi)
+{
+    double r2,r,c;
+    int i;
+    for(i=0;i<n;i++)
+    {
+	r2 = r2l[i];
+	r = sqrt(r2);
+	c = xi*xi*r2;
+	C[i] = -2.0/(r2*r2)*( 3.0/r*erfc(xi*r) + 2.0*xi/sqrt(PI)*(3.0+2.0*c-4.0*c*c)*exp(-c) );
+	D[i] = 8.0/sqrt(PI)*xi*xi*xi*(2.0-c)*exp(-c);
+    }
+}
+
+// Calculate interactions between two points in both directions using stored C and D
+void op_A_symm_CD(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
+		  double xi, double C, double D)
+{
+    // x1=x, x2=-x
+    double x1dotn1 = x[0]*n1[0] + x[1]*n1[1] + x[2]*n1[2];
+    double x2dotn2 = -( x[0]*n2[0] + x[1]*n2[1] + x[2]*n2[2] );
+    
+    for(int i=0;i<3;i++)
+	for(int j=0;j<3;j++)
+	{
+	    A1[i][j] = C*x[i]*x[j]*x1dotn1 + D*( x[i]*n1[j] + x[j]*n1[i] + (i==j)*x1dotn1 );
+	    A2[i][j] = C*x[i]*x[j]*x2dotn2 + D*(-x[i]*n2[j] - x[j]*n2[i] + (i==j)*x2dotn2 );
+	}
+}
+
+// Calculate interactions between two points in both directions
 void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
 	       double xi, double r2)
 {
+
     double r = sqrt(r2);
     double c = xi*xi*r2;
+    double C = -2.0/(r2*r2)*( 3.0/r*erfc(xi*r) + 2.0*xi/sqrt(PI)*(3.0+2.0*c-4.0*c*c)*exp(-c) );
+    double D = 8.0/sqrt(PI)*xi*xi*xi*(2.0-c)*exp(-c);
 
     // x1=x, x2=-x
     double x1dotn1 = x[0]*n1[0] + x[1]*n1[1] + x[2]*n1[2];
     double x2dotn2 = -( x[0]*n2[0] + x[1]*n2[1] + x[2]*n2[2] );
-
-    double ec = exp(-c);
-    double C = -2.0/(r2*r2)*( 3.0/r*erfc(xi*r) + 2.0*xi/sqrt(PI)*(3.0+2.0*c-4.0*c*c)*ec );
-    double D = 8.0/sqrt(PI)*xi*xi*xi*(2.0-c)*ec;
     
     for(int i=0;i<3;i++)
 	for(int j=0;j<3;j++)
