@@ -6,23 +6,8 @@
 #error "Must provide -D<method> to compiler"
 #endif
 
-// ==== STRUCT AND COMPARISON FUNCTION FOR SORTING
-typedef struct
-{
-    int idx_in_array, row; 
-} idx_qsort_buck;
-
-static int compare_qsort_buck(const void* a, const void* b)
-{
-    int temp = ( * ((idx_qsort_buck*) a) ).row - 
-	( * ((idx_qsort_buck*) b) ).row;
-    if (temp > 0)
-	return 1;
-    else if (temp < 0)
-	return -1;
-    else
-	return 0;
-}
+#define SWAP(x,y) { tmp=x;x=y;y=tmp; }
+static void quicksort(int* restrict list, int* restrict slave, int m, int n);
 
 // ==== GENERATE TRIPLETS FOR ASSEMBLY
 void  get_rs_triplets (const double* restrict x, const double* restrict nvec, const int N,
@@ -387,7 +372,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     idx_in_array = __MALLOC(numel*sizeof(int));
     int* restrict buck_count = __MALLOC(N*sizeof(int));
     int* restrict buck_pos = __MALLOC(N*sizeof(int));
-    int buck_idx, buck_max;
+    int buck_idx;
 
     // Init lists
     for(i=0;i<N;i++)
@@ -406,103 +391,132 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     // Cumulative addition to get locations of each bucket after sort,
     // + save largest bucket size for later.
     buck_pos[0] = 0;
-    buck_max = 0;
     for(i=1;i<N;i++)
     {
 	buck_pos[i] = buck_pos[i-1]+buck_size[i-1];
-	if(buck_size[i-1]>buck_max)
-	    buck_max = buck_size[i-1];
     }
 
     // Assign each element to a bucket, store permutations in idx_in_array
+    int* restrict rowtmp = __MALLOC(numel*sizeof(int));
+    int new_idx;
     for(i=0;i<numel;i++)
     { 
 	buck_idx = col[i];
-	idx_in_array[ buck_pos[buck_idx] + buck_count[buck_idx] ] = i;
+	new_idx = buck_pos[buck_idx] + buck_count[buck_idx];
+	idx_in_array[ new_idx ] = i;
+	rowtmp[ new_idx ] = row[i];
 	buck_count[buck_idx]++;
     }
 
     __FREE(buck_count); // Free counter
+    __FREE(row);
+    row = rowtmp;
+
     if(nlhs==1)
+    {
 	__FREE(col); // Free column list if only returning matrix
+    }
+    else
+    {
+	// sort columns too
+	// could be done faster with bucket info, but not needed really anyway
+	int* restrict coltmp = __MALLOC(numel*sizeof(int));
+	for(i=0;i<numel;i++)
+	    coltmp[i] = col[ idx_in_array[i] ];
+	__FREE(col);
+	col = coltmp;
+    }
  
    gettimeofday(&toc,NULL);
    time_spent = DELTA(tic,toc);
    if(VERBOSE)
-       __PRINTF("[RSRC] Bucket sort finished in %.3f seconds.\n", time_spent);
+       __PRINTF("[RSRC] Bucket sort of cols finished in %.3f seconds.\n", time_spent);
+
    gettimeofday(&tic,NULL);
 
-
-   int doqsort = 1;
-   if(doqsort==1)
+   // Quicksort on buckets (rows indices for a column)
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) default(none) shared(buck_pos,buck_size,idx_in_array,row)
+#endif
+   for(buck_idx=0;buck_idx<N;buck_idx++)
    {
-       // Quicksort on buckets (rows indices for a column)
-       // Allocate list of pairs to fit largest bucket
-       idx_qsort_buck* restrict qlist = __MALLOC(buck_max*sizeof(idx_qsort_buck));
-       for(buck_idx=0;buck_idx<N;buck_idx++)
-       {
-	   int begin = buck_pos[buck_idx];
-	   int size = buck_size[buck_idx];	    
-	   // Put (idx,row) pairs in list to be qsorted.
-	   for(i=0; i<size; i++)
-	   {
-	       qlist[i].idx_in_array = idx_in_array[begin+i];
-	       qlist[i].row = row[ idx_in_array[begin+i] ];
-	   }
-	   qsort(qlist, size, sizeof(idx_qsort_buck), compare_qsort_buck);	    
-	   for(i=0; i<size; i++)
-	       idx_in_array[begin+i] = qlist[i].idx_in_array;
-       }       
-       __FREE(qlist); // Free temp list
-       __FREE(buck_pos); // Free bucket list
+       int begin = buck_pos[buck_idx];
+       int size = buck_size[buck_idx];	    
+       quicksort(row, idx_in_array, begin, begin+size-1)  ;
+   }   
+   __FREE(buck_pos); // Free bucket list    
 
-       gettimeofday(&toc,NULL);
-       time_spent = DELTA(tic,toc);
-       if(VERBOSE)
-	   __PRINTF("[RSRC] Quicksort finished in %.3f seconds, avg list size=%.0f.\n", time_spent,(double) numel/N);
-   }
-   else
-   {
-       // Quicksort on buckets (rows indices for a column)
-       // Allocate list of pairs to fit largest bucket
-       int* restrict idx_in_array2 = __MALLOC(numel*sizeof(int));
-#pragma omp parallel default(none) shared(buck_max,buck_pos,buck_size,idx_in_array,row,idx_in_array2) private(i)
-       {
-	   idx_qsort_buck* restrict qlist;
-#pragma omp critical
-	   qlist = __MALLOC(buck_max*sizeof(idx_qsort_buck));
+   gettimeofday(&toc,NULL);
+   time_spent = DELTA(tic,toc);
+   if(VERBOSE)
+       __PRINTF("[RSRC] Quicksort of rows finished in %.3f seconds.\n", time_spent);
 
-#pragma omp for schedule(dynamic)
-	   for(buck_idx=0;buck_idx<N;buck_idx++)
-	   {
-	       int begin = buck_pos[buck_idx];
-	       int size = buck_size[buck_idx];	    
-	       // Put (idx,row) pairs in list to be qsorted.
-	       for(i=0; i<size; i++)
-	       {
-		   qlist[i].idx_in_array = i;
-		   qlist[i].row = row[ idx_in_array[begin+i] ];
-	       }
-	       qsort(qlist, size, sizeof(idx_qsort_buck), compare_qsort_buck);	    
-	       for(i=0; i<size; i++)
-		   idx_in_array2[begin+i] = qlist[i].idx_in_array;
-	   }       
-#pragma omp critical
-	   __FREE(qlist); // Free temp list
-       }
-       __FREE(buck_pos); // Free bucket list
-
-       __FREE(idx_in_array2);
-
-       gettimeofday(&toc,NULL);
-       time_spent = DELTA(tic,toc);
-       if(VERBOSE)
-	   __PRINTF("[RSRC] Parallel quicksort finished in %.3f seconds.\n", time_spent);
-   }
     // Set return pointers
     *row_p = row;
     *col_p = col;
     *buck_size_p = buck_size;
     *idx_in_array_p = idx_in_array;
     *numel_p = numel;
+}
+
+//============ QUICKSORT ROUTINE
+static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
+    #define  MAX_LEVELS  64
+    int beg[MAX_LEVELS], end[MAX_LEVELS];
+    int key,i,j,k,s,tmp;
+    s=0;
+    beg[0]=m; 
+    end[0]=n;
+    while (s>=0) 
+    { // While work in stack	
+	m=beg[s];
+	n=end[s];
+	if (m<n)
+	{
+	    k = m+(n-m)/2; // Choose middle for pivot
+	    SWAP(list[m],list[k]);
+	    SWAP(slave[m],slave[k]);
+	    key = list[m];
+	    i = m+1;
+	    j = n;
+	    while(i <= j)
+	    {
+		while((i <= n) && (list[i] <= key))
+		    i++;
+		while((j >= m) && (list[j] > key))
+		    j--;
+		if( i < j)
+		{
+		    SWAP(list[i],list[j]);
+		    SWAP(slave[i],slave[j]);
+		}
+	    }
+	    // swap two elements
+	    SWAP(list[m],list[j]);
+	    SWAP(slave[m],slave[j]);
+
+	    if(s == MAX_LEVELS-1) 
+	    {
+		__PRINTF("ERROR. Quicksort reached MAX_LEVELS\n");
+		return;
+	    }
+
+	    // recursively sort the lesser list   
+	    beg[s] = m;
+	    end[s] = j-1;
+	    beg[s+1]=j+1;
+	    end[s+1]=n;
+	    s += 1;
+	    // Do shortest interval first (we keep a small stack)
+	    if (end[s]-beg[s]>end[s-1]-beg[s-1])
+	    {
+		tmp=beg[s]; beg[s]=beg[s-1]; beg[s-1]=tmp;
+		tmp=end[s]; end[s]=end[s-1]; end[s-1]=tmp;
+	    }
+	}
+	else 
+	{
+	    s--; 
+	}
+    }
 }
