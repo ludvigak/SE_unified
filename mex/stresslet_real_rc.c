@@ -38,24 +38,21 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     int* restrict buck_size;
 
     // Setup variables
-    int i,j,idx_s,idx_t,ip;
+    int i,j;
     int head_idx, ncell_tot;
     int ncell[3], icell[3], home_cell[3];
     int* restrict ll;
     int* restrict head;
-    double boxmin, rsq;
-    double pshift[3], xs[3], ns[3], nt[3], xr[3];
-    double A1[3][3], A2[3][3];
-
+    double boxmin;
     const double rcsq = rc*rc;
 
     int px[27] = {-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1};
     int py[27] = {-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1};
     int pz[27] = {-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
-    clock_t begin, end;
+    struct timeval tic, toc;
+    gettimeofday(&tic, NULL);
     double time_spent;
-    begin = clock();
 
     //==============================================================
     // BUILD CELL LIST
@@ -119,16 +116,47 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 	    val[i][j] = __MALLOC(maxel*sizeof(double));
 	}
 
-    // Allocate a bufffer of interactions to be retired later
-    const int buf_size = 128;
+#ifdef _OPENMP
+    int barrier_variable=0;
+    int barrier_passed=0;
+    int realloc_done=0;
+#pragma omp parallel private(i,j,home_cell,icell,head_idx) shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,barrier_variable,barrier_passed,realloc_done) default(none)
+#endif
+    { // Begin parallel section
+    int idx_s,idx_t,ip;
+    double rsq;
+    double pshift[3], xs[3], ns[3], nt[3], xr[3];
+    double A1[3][3], A2[3][3];
+
+    // Allocate a bufffer of interactions to be written
+    // into triplet list
+    const int buf_size = 256;
     int buf_cnt = 0;
     int idx_buf, next_idx_t;
-    int* restrict buf_idx_t = __MALLOC(buf_size*sizeof(int));
-    double* restrict buf_xr  = __MALLOC(3*buf_size*sizeof(double));
-    double* restrict buf_rsq = __MALLOC(buf_size*sizeof(double));
-    double* restrict C = __MALLOC(buf_size*sizeof(double));
-    double* restrict D = __MALLOC(buf_size*sizeof(double));
+    int* restrict buf_idx_t;
+    double* restrict buf_xr;
+    double* restrict buf_rsq;
+    double* restrict C;
+    double* restrict D;
 
+    int tnum = 0;
+#ifdef _OPENMP
+    tnum = omp_get_thread_num();
+    // Seems mxMalloc/mxFree are not thread safe
+#pragma omp critical
+    {
+#endif
+    buf_idx_t = __MALLOC(buf_size*sizeof(int));
+    buf_xr  = __MALLOC(3*buf_size*sizeof(double));
+    buf_rsq = __MALLOC(buf_size*sizeof(double));
+    C = __MALLOC(buf_size*sizeof(double));
+    D = __MALLOC(buf_size*sizeof(double));
+
+#ifdef _OPENMP
+    }
+#pragma omp for schedule(dynamic) nowait
+#endif
+    // Loop over all points
     for(idx_s=0;idx_s<N;idx_s++)
     {
 	// Source point
@@ -198,8 +226,83 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		// or buffer full
 		if ( (ip==26 && next_idx_t==-1) || buf_cnt==buf_size)
 		{
-		    // Empty buffer by doing delayed calculations
+		    // Check if we have enough space to hold buffer contents
+		    int idx_write, can_write;
+#ifdef _OPENMP
+#pragma omp critical
+#endif
+		    {
+			// Check if buffer holds writing space for me
+			if(maxel-numel <= 2*buf_cnt)
+			    can_write = 0;
+			else
+			    can_write = 1;
+			// Reserve writing space anyway
+			idx_write = numel;
+			numel += 2*buf_cnt;
+		    }
+		    if(can_write==0)
+		    {
+			int alloc_add = buf_size; // How much to add to allocation
+#ifdef _OPENMP
+			// Barrier
+			// Everybody has to wait here before reallocation
+			int num_procs = omp_get_num_threads();
+			// Allocate more than a fuller buffer for every thread
+			alloc_add = num_procs*buf_size; 
+			//#pragma omp critical
+			//__PRINTF("[%d] Reached barrier (%d,%d) \n",tnum,barrier_variable,num_procs);
+#pragma omp critical
+			{
+			realloc_done = 0; // Everybody agrees reallocation has not been done
+			barrier_variable++; // Announce you arrived at barrier
+			}
+			while(barrier_variable != num_procs) {
+#pragma omp flush (barrier_variable) // Spin
+			};
+#pragma omp atomic
+			barrier_passed++; // Anounce you passed barrier
+			//#pragma omp critical
+			//__PRINTF("[%d] Passed barrier (%d,%d) \n",tnum,barrier_variable,num_procs);
+#pragma omp critical			
+			{ // Critical section
+			if(realloc_done==0) 
+			{
+			realloc_done=1;
+#endif
+			// Allocate for full buffer(s) + 20% more
+			int new_maxel = ceil(1.2*(maxel+alloc_add));
+			__PRINTF("[%d] Reallocating triplet vectors %d -> %d\n",tnum,maxel,new_maxel);
+			maxel = new_maxel;
+			row = __REALLOC(row, maxel*sizeof(int));
+			col = __REALLOC(col, maxel*sizeof(int));
+			for(i=0;i<=2;i++)
+			    for(j=i;j<=2;j++)
+				val[i][j] = __REALLOC(val[i][j], maxel*sizeof(double));
+#ifdef _OPENMP
+			//__PRINTF("[%d] Done \n",tnum);
+			}
+			else
+			{
+			    //__PRINTF("[%d] Someone else reallocated \n",tnum);
+			}
+			if(barrier_passed==num_procs)
+			{
+			    //__PRINTF("[%d] Everybody passed! \n",tnum);
+			    barrier_passed=0;
+			    barrier_variable=0;
+			}			
+			} // End critical section
+#endif
+		    } // End can_write==0
+
+		    // Do delayed calculations
 		    op_A_CD(C,D,buf_rsq,buf_cnt,xi);
+
+		    //#pragma omp critical
+		    //__PRINTF("[%d] Begin write \n",tnum);
+
+		    // Write triplets
 		    for(idx_buf=0;idx_buf<buf_cnt;idx_buf++)
 		    {
 			idx_t = buf_idx_t[idx_buf];
@@ -214,38 +317,29 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 			// Calculate interactions t->s and s<-t
 			op_A_symm_CD(A1,A2,xr,ns,nt,xi,C[idx_buf],D[idx_buf]);
 
-			// Check if we still have allocated space
-			if(numel>=maxel-1)
-			{
-			    __PRINTF("Reallocating...\n");
-			    // Else, allocate 20% more
-			    maxel = ceil(1.2*maxel);
-
-			    row = __REALLOC(row, maxel*sizeof(int));
-			    col = __REALLOC(col, maxel*sizeof(int));
-			    for(i=0;i<=2;i++)
-				for(j=i;j<=2;j++)
-				    val[i][j] = __REALLOC(val[i][j], maxel*sizeof(double));
-			}
-
-			row[numel] = idx_t;
-			col[numel] = idx_s;			
+			// Append results to row,col,val vectors
+			row[idx_write] = idx_t;
+			col[idx_write] = idx_s;			
 			for(i=0; i<=2; i++)
 			    for(j=i; j<=2; j++)
 			    {
-				val[i][j][numel] = A1[i][j];
+				val[i][j][idx_write] = A1[i][j];
 			    }
-			numel++;
+			idx_write++;
 
-			row[numel] = idx_s;
-			col[numel] = idx_t;			
+			row[idx_write] = idx_s;
+			col[idx_write] = idx_t;			
 			for(i=0; i<=2; i++)
 			    for(j=i; j<=2; j++)
 			    {
-				val[i][j][numel] = A2[i][j];
+				val[i][j][idx_write] = A2[i][j];
 			    }
-			numel++;
+			idx_write++;
 		    } // endfor buffer
+
+		    //#pragma omp critical
+		    //__PRINTF("[%d] End write \n",tnum);
+
 		    buf_cnt = 0;
 		} // endif chainend or buffull
 		idx_t = next_idx_t;
@@ -253,11 +347,32 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 	} // End of cells
     } // End of particles
 
+    //#pragma omp critical
+    //__PRINTF("[%d] Exit loop \n",tnum);
+
+#ifdef _OPENMP
+#pragma omp atomic
+    // If anyone is stuck in barrier, let them know we made it out
+    barrier_variable++;
+#pragma omp atomic
+    barrier_passed++;
+#pragma omp critical
+#endif
+    {
+    __FREE(buf_idx_t);
+    __FREE(buf_xr);
+    __FREE(buf_rsq);
+    __FREE(C);
+    __FREE(D);
+    }
+    } // End parallel section
+
     __FREE(head);
     __FREE(ll);
 
-    end = clock();
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+    gettimeofday(&toc, NULL);
+    time_spent = DELTA(tic,toc);
+
     if(VERBOSE)
     {
 	__PRINTF("[RSRC] Triplets generated in %.3f seconds.\n", time_spent);
@@ -267,7 +382,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     // SORT RESULTS WITH BUCKET + QUICK SORT
     // Bucket sort on columns, then quicksort on rows
     // in each column
-    begin = clock();
+    gettimeofday(&tic, NULL);
     buck_size = __MALLOC(N*sizeof(int));
     idx_in_array = __MALLOC(numel*sizeof(int));
     int* restrict buck_count = __MALLOC(N*sizeof(int));
@@ -311,32 +426,79 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     if(nlhs==1)
 	__FREE(col); // Free column list if only returning matrix
  
-    // Quicksort on buckets (rows indices for a column)
-    // Allocate list of pairs to fit largest bucket
-    idx_qsort_buck* restrict qlist = __MALLOC(buck_max*sizeof(idx_qsort_buck));
-    for(buck_idx=0;buck_idx<N;buck_idx++)
-    {
-	int begin = buck_pos[buck_idx];
-	int size = buck_size[buck_idx];	    
-	// Put (idx,row) pairs in list to be qsorted.
-	for(i=0; i<size; i++)
-	{
-	    qlist[i].idx_in_array = idx_in_array[begin+i];
-	    qlist[i].row = row[ idx_in_array[begin+i] ];
-	}
-	qsort(qlist, size, sizeof(idx_qsort_buck), compare_qsort_buck);	    
-	for(i=0; i<size; i++)
-	    idx_in_array[begin+i] = qlist[i].idx_in_array;
-    }       
+   gettimeofday(&toc,NULL);
+   time_spent = DELTA(tic,toc);
+   if(VERBOSE)
+       __PRINTF("[RSRC] Bucket sort finished in %.3f seconds.\n", time_spent);
+   gettimeofday(&tic,NULL);
 
-    __FREE(qlist); // Free temp list
-    __FREE(buck_pos); // Free bucket list
 
-    end = clock();
-    time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    if(VERBOSE)
-	__PRINTF("[RSRC] Triplets sorted in %.3f seconds.\n", time_spent);
+   int doqsort = 1;
+   if(doqsort==1)
+   {
+       // Quicksort on buckets (rows indices for a column)
+       // Allocate list of pairs to fit largest bucket
+       idx_qsort_buck* restrict qlist = __MALLOC(buck_max*sizeof(idx_qsort_buck));
+       for(buck_idx=0;buck_idx<N;buck_idx++)
+       {
+	   int begin = buck_pos[buck_idx];
+	   int size = buck_size[buck_idx];	    
+	   // Put (idx,row) pairs in list to be qsorted.
+	   for(i=0; i<size; i++)
+	   {
+	       qlist[i].idx_in_array = idx_in_array[begin+i];
+	       qlist[i].row = row[ idx_in_array[begin+i] ];
+	   }
+	   qsort(qlist, size, sizeof(idx_qsort_buck), compare_qsort_buck);	    
+	   for(i=0; i<size; i++)
+	       idx_in_array[begin+i] = qlist[i].idx_in_array;
+       }       
+       __FREE(qlist); // Free temp list
+       __FREE(buck_pos); // Free bucket list
 
+       gettimeofday(&toc,NULL);
+       time_spent = DELTA(tic,toc);
+       if(VERBOSE)
+	   __PRINTF("[RSRC] Quicksort finished in %.3f seconds, avg list size=%.0f.\n", time_spent,(double) numel/N);
+   }
+   else
+   {
+       // Quicksort on buckets (rows indices for a column)
+       // Allocate list of pairs to fit largest bucket
+       int* restrict idx_in_array2 = __MALLOC(numel*sizeof(int));
+#pragma omp parallel default(none) shared(buck_max,buck_pos,buck_size,idx_in_array,row,idx_in_array2) private(i)
+       {
+	   idx_qsort_buck* restrict qlist;
+#pragma omp critical
+	   qlist = __MALLOC(buck_max*sizeof(idx_qsort_buck));
+
+#pragma omp for schedule(dynamic)
+	   for(buck_idx=0;buck_idx<N;buck_idx++)
+	   {
+	       int begin = buck_pos[buck_idx];
+	       int size = buck_size[buck_idx];	    
+	       // Put (idx,row) pairs in list to be qsorted.
+	       for(i=0; i<size; i++)
+	       {
+		   qlist[i].idx_in_array = i;
+		   qlist[i].row = row[ idx_in_array[begin+i] ];
+	       }
+	       qsort(qlist, size, sizeof(idx_qsort_buck), compare_qsort_buck);	    
+	       for(i=0; i<size; i++)
+		   idx_in_array2[begin+i] = qlist[i].idx_in_array;
+	   }       
+#pragma omp critical
+	   __FREE(qlist); // Free temp list
+       }
+       __FREE(buck_pos); // Free bucket list
+
+       __FREE(idx_in_array2);
+
+       gettimeofday(&toc,NULL);
+       time_spent = DELTA(tic,toc);
+       if(VERBOSE)
+	   __PRINTF("[RSRC] Parallel quicksort finished in %.3f seconds.\n", time_spent);
+   }
     // Set return pointers
     *row_p = row;
     *col_p = col;

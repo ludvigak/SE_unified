@@ -1,6 +1,8 @@
 #include "math.h"
 #include "string.h"
 #include "time.h"
+#include "sys/time.h"
+#include "unistd.h"
 
 #ifdef MATLAB_MEX_FILE
 #include "mex.h"
@@ -16,6 +18,13 @@
 #define __FREE free
 #define __PRINTF printf
 #endif
+
+#ifdef _OPENMP
+#include "omp.h"
+#endif
+
+
+#define DELTA(tic,toc) ((toc.tv_sec  - tic.tv_sec) * 1000000u + toc.tv_usec - tic.tv_usec) / 1.e6
 
 #define PI 3.141592653589793
 
