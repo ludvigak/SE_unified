@@ -1,6 +1,8 @@
 % cc = 'gcc';
 cc = 'icc';
 
+openmp = true;
+
 cflags = '-std=c99 -fPIC -msse2';
 
 switch cc
@@ -11,11 +13,19 @@ switch cc
 %          coptimflags = '-O3 -static -xSSE4.1 -vec-report';
 %          ldoptimflags = '-O3 -static -xSSE4.1 -vec-report';
 
-       coptimflags = '-O3 -static -vec-report '; % -opt-report
-       ldoptimflags = '-O3 -static -vec-report ';
+       coptimflags = '-O3 -static -vec-report'; % -opt-report
+       ldoptimflags = '-O3 -static -vec-report';
+       if openmp
+            coptimflags = [coptimflags ' -openmp'];
+            ldoptimflags = [ldoptimflags ' -openmp'];
+       end
     case 'gcc'
         coptimflags = '-Wall -O3 -ffast-math';
         ldoptimflags = '-O3';
+        if openmp
+            coptimflags = [coptimflags ' -fopenmp '];
+            ldoptimflags = [ldoptimflags '-fopenmp '];
+        end
 end
 cdebugflags='';
 lddebugflags='';
@@ -44,4 +54,5 @@ eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stok
 % build SE_Stresslet specific mex stuff
 eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
 eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
-eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc_mex.c'])
+eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/stresslet_real_rc_mex.c -o stresslet_real_rc_mex'])
+

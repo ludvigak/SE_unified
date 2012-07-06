@@ -1,32 +1,22 @@
 % Test completely MEXed real space rc based on cell lists
 
+
 disp('==== test_real_rc ====')
 
 addpath('~/workspace/stresslet_ewald/matlab')
 
-N = 3000;
-box = [3 2 1.5];
+N = 1500;
+box = [3 2 1];
 xi = 1;
 rc = 0.4;
 NOL = 1;
+ic = 1;
+
+rc = 0.4;
+
 
 [x f nvec] = generate_state(N,box);
 idx = 1:N;
-
-fprintf('* Direct rsrc\n\t')
-a=tic;
-[ufst A1 A2 A3] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
-toc(a)
-
-ic = 1;
-j = find(A1(1:N,ic));
-
-figure(10)
-drawBox(box,[0 0 0]), hold on
-plot3(x(ic,1),x(ic,2),x(ic,3),'or');
-plot3(x(j,1),x(j,2),x(j,3),'og');
-drawnow
-
 
 disp('* Real rc')
 a=tic;
@@ -34,40 +24,53 @@ a=tic;
 fprintf('\t')
 toc(a)
 
-j = find(AMAT{1,1}(ic,:));
-plot3(x(j,1),x(j,2),x(j,3),'.b');
-plot3(x(ic,1),x(ic,2),x(ic,3),'.b');
+sfigure(9); clf
+plot3(x(:,1),x(:,2),x(:,3),'.b'), hold on
+plot3(x(ic,1),x(ic,2),x(ic,3),'or');
+drawBox(box,[0 0 0]), hold on
 drawnow
 
+sfigure(10); clf
+j = find(AMAT{1,1}(ic,:));
+plot3(x(j,1),x(j,2),x(j,3),'.b'), hold on
+plot3(x(ic,1),x(ic,2),x(ic,3),'.b');
+drawBox(box,[0 0 0]), hold on
+view(3)
+drawnow
 
-fprintf('Matlab quicksort\n\t')
-R = double(R);
-C = double(C);
-a=tic;
-[~, perm] = sortrows([R C],[2 1]);
-toc(a)
+j1 = j;
 
-R = R(PER);
-C = C(PER);
 Ac = cell(3,3);
 fprintf('Matlab assembly\n\t')
 a=tic;
+R = double(R);
+C = double(C);
 for i=1:3
     for j=i:3
-        Ac{i,j} = sparse(R,C,V{i,j}(PER));
+        Ac{i,j} = sparse(R,C,V{i,j}(PER),N,N);
     end
 end
 toc(a)
+
+fprintf('* Direct rsrc\n\t')
+a=tic;
+[ufst A1 A2 A3] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
+toc(a)
+
+A1N = sparse(A1(1:N,1:N));
+
+j = find(A1(1:N,ic));
+j2 = j;
+
+drawBox(box,[0 0 0]), hold on
+plot3(x(ic,1),x(ic,2),x(ic,3),'or');
+plot3(x(j,1),x(j,2),x(j,3),'og');
+drawnow
 
 % TESTS
 
 % Check sparsity pattern
 assert( all( find(A1(1:N,1:N))==find(AMAT{1,1}) ), 'Sparsity pattern differs!');
-
-
-% Check permutations
-assert(all(perm==PER),'Permutations failed!')
-disp('Permutations OK')
 
 % Check matrices equal
 Aref = sparse([A1 A2 A3]);

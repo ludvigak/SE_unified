@@ -5,6 +5,8 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT);
     % [res AMAT R C V PER] = stresslet_real_rc( x, f, nvec, xi, box, rc);
     
+    VERBOSE = 1;
+    
     check_inputs(box,rc);
     N = size(x,1);
 
@@ -21,12 +23,17 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
         end
     end
 
+    a = tic;
     res = zeros(N,3);    
     res(:,1) = A{1,1}*q(:,1) + A{1,2}*q(:,2) + A{1,3}*q(:,3);
     res(:,2) = A{1,2}*q(:,1) + A{2,2}*q(:,2) + A{2,3}*q(:,3);
     res(:,3) = A{1,3}*q(:,1) + A{2,3}*q(:,2) + A{3,3}*q(:,3);
     
+    cprintf(VERBOSE,'[RSRC] matvec time %.3f seconds.\n',toc(a));
+    
     function check_inputs(box,rc)
+        % Same algorithm as in C code, but with checks, to make sure boxing
+        % is OK
         ncell = floor( min(box)/rc ); % number of cells in smallest direction
         rn = min(box) / ncell; % cell size
         ncell = box/rn; % number of cells

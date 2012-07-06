@@ -184,7 +184,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		icell[2]*ncell[1]*ncell[0];	    
 	    // Go through cell list
 	    idx_t = head[head_idx];
-	    while( idx_t != -1)
+	    while(1)
 	    {
 		if(idx_t > idx_s)
 		{
@@ -293,7 +293,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 			idx_t = buf_idx_t[idx_buf];
 			for(i=0;i<3;i++)
 			    xr[i] = buf_xr[3*idx_buf+i];
-			
+		
 			// Source point normal vector
 			nt[0] = nvec[idx_t    ];
 			nt[1] = nvec[idx_t+N  ];
@@ -328,6 +328,8 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		    buf_cnt = 0;
 		} // endif chainend or buffull
 		idx_t = next_idx_t;
+		if(idx_t == -1)
+		    break; // Chain ended
 	    } // End of neighbours in this cell
 	} // End of cells
     } // End of particles
@@ -364,15 +366,17 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     }
 
     //============================================
-    // SORT RESULTS WITH BUCKET + QUICK SORT
-    // Bucket sort on columns, then quicksort on rows
+    // SORT RESULTS WITH COUNTING + QUICK SORT
+    // Counting sort on columns, then quicksort on rows
     // in each column
+    // (Turns out this is counting sort rather than bucket sort,
+    // which I initially thought, hence the buck_* naming.)
     gettimeofday(&tic, NULL);
     buck_size = __MALLOC(N*sizeof(int));
     idx_in_array = __MALLOC(numel*sizeof(int));
     int* restrict buck_count = __MALLOC(N*sizeof(int));
     int* restrict buck_pos = __MALLOC(N*sizeof(int));
-    int buck_idx;
+    int buck_idx,new_idx;
 
     // Init lists
     for(i=0;i<N;i++)
@@ -398,28 +402,35 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 
     // Assign each element to a bucket, store permutations in idx_in_array
     int* restrict rowtmp = __MALLOC(numel*sizeof(int));
-    int new_idx;
     for(i=0;i<numel;i++)
     { 
 	buck_idx = col[i];
 	new_idx = buck_pos[buck_idx] + buck_count[buck_idx];
 	idx_in_array[ new_idx ] = i;
-	rowtmp[ new_idx ] = row[i];
 	buck_count[buck_idx]++;
     }
 
     __FREE(buck_count); // Free counter
+
+    // Sort rows using permutations
+    // (work-shared)
+#ifdef _OPENMP
+#pragma omp parallel for default(shared)
+#endif
+    for(i=0;i<numel;i++)
+	rowtmp[i] = row[ idx_in_array[i] ];
     __FREE(row);
     row = rowtmp;
 
     if(nlhs==1)
     {
-	__FREE(col); // Free column list if only returning matrix
+	__FREE(col); // Free column list if only returning matrix,
     }
     else
     {
-	// sort columns too
-	// could be done faster with bucket info, but not needed really anyway
+	// else sort columns too.
+	// Could be done faster with bucket info, but sorted columns are 
+	// not needed for real application.
 	int* restrict coltmp = __MALLOC(numel*sizeof(int));
 	for(i=0;i<numel;i++)
 	    coltmp[i] = col[ idx_in_array[i] ];
@@ -430,7 +441,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
    gettimeofday(&toc,NULL);
    time_spent = DELTA(tic,toc);
    if(VERBOSE)
-       __PRINTF("[RSRC] Bucket sort of cols finished in %.3f seconds.\n", time_spent);
+       __PRINTF("[RSRC] Counting sort of cols finished in %.3f seconds.\n", time_spent);
 
    gettimeofday(&tic,NULL);
 
@@ -460,6 +471,9 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 }
 
 //============ QUICKSORT ROUTINE
+// Applies quicksort on an interval (m,n) of *list, 
+// performs the same permutations on *slave.
+// Uses a private stack instead of make recursive calls.
 static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
     #define  MAX_LEVELS  64
     int beg[MAX_LEVELS], end[MAX_LEVELS];
