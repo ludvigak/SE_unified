@@ -445,7 +445,8 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 
    gettimeofday(&tic,NULL);
 
-   // Quicksort on buckets (rows indices for a column)
+   // Quicksort on buckets
+   // Each bucket contains a compressed column.
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic) default(none) shared(buck_pos,buck_size,idx_in_array,row)
 #endif
@@ -473,23 +474,24 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 //============ QUICKSORT ROUTINE
 // Applies quicksort on an interval (m,n) of *list, 
 // performs the same permutations on *slave.
-// Uses a private stack instead of make recursive calls.
+// Uses a private stack instead of making recursive calls.
 static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
     #define  MAX_LEVELS  64
-    int beg[MAX_LEVELS], end[MAX_LEVELS];
+    int beg[MAX_LEVELS], end[MAX_LEVELS]; // Stack
     int key,i,j,k,s,tmp;
     s=0;
     beg[0]=m; 
     end[0]=n;
     while (s>=0) 
-    { // While work in stack	
+    { // While work in stack, pop
 	m=beg[s];
 	n=end[s];
 	if (m<n)
 	{
 	    k = m+(n-m)/2; // Choose middle for pivot
-	    SWAP(list[m],list[k]);
+	    SWAP(list[m],list[k]); // Swap out pivot
 	    SWAP(slave[m],slave[k]);
+	    // Do quicksort
 	    key = list[m];
 	    i = m+1;
 	    j = n;
@@ -505,27 +507,27 @@ static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
 		    SWAP(slave[i],slave[j]);
 		}
 	    }
-	    // swap two elements
+	    // Swap in pivot at right place
 	    SWAP(list[m],list[j]);
 	    SWAP(slave[m],slave[j]);
 
-	    if(s == MAX_LEVELS-1) 
+	    if(s == MAX_LEVELS-1) // Stack full
 	    {
 		__PRINTF("ERROR. Quicksort reached MAX_LEVELS\n");
 		return;
 	    }
 
-	    // recursively sort the lesser list   
+	    // Recursively sort the lesser list
 	    beg[s] = m;
 	    end[s] = j-1;
 	    beg[s+1]=j+1;
 	    end[s+1]=n;
 	    s += 1;
-	    // Do shortest interval first (we keep a small stack)
+	    // Do shortest interval first to limit stack use
 	    if (end[s]-beg[s]>end[s-1]-beg[s-1])
 	    {
-		tmp=beg[s]; beg[s]=beg[s-1]; beg[s-1]=tmp;
-		tmp=end[s]; end[s]=end[s-1]; end[s-1]=tmp;
+		SWAP(beg[s],beg[s-1]);
+		SWAP(end[s],end[s-1]);
 	    }
 	}
 	else 
