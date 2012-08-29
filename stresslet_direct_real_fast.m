@@ -10,18 +10,23 @@ function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nb
 %        xi   --  Ewald parameter
 %        nbox --  periodic replications
 %        rc   --  cutoff radius
-%
+%        [A1 A2 A3 sing_sub]
 
 VERBOSE = 0;
 
 nosrc=size(f,1);
 noeval=length(idx);  
 
+sing_sub = 0;
+
 tic
-if nargin==11
+if nargin>=11
     A1 = varargin{1};
     A2 = varargin{2};
     A3 = varargin{3};
+    if nargin==12
+        sing_sub = varargin{4};
+    end
 else
     A1 = [];
     A2 = [];
@@ -70,6 +75,18 @@ else
         A1(:,n) = tmp(:,1);
         A2(:,n) = tmp(:,2);
         A3(:,n) = tmp(:,3);
+    end
+    
+    if sing_sub
+        cprintf(VERBOSE, 'Adding singularity subtraction to RS matrix\n');
+        for j=0:2
+            for i=1:noeval
+                rowno = i+noeval*j;
+                A1(rowno,i) = A1(rowno,i)-sum(A1(rowno,:));
+                A2(rowno,i) = A2(rowno,i)-sum(A2(rowno,:));
+                A3(rowno,i) = A3(rowno,i)-sum(A3(rowno,:));
+            end
+        end
     end
 end
 

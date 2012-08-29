@@ -13,7 +13,7 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     if nargin>6
         A = varargin{1};
     else
-        if nargout==2
+        if nargout==1 || nargout==2
             A = stresslet_real_rc_mex(x,nvec,box,rc,xi);
         elseif nargout==6
             [A R C V PER] = stresslet_real_rc_mex(x,nvec,box,rc,xi);
@@ -31,6 +31,10 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     
     cprintf(VERBOSE,'[RSRC] matvec time %.3f seconds.\n',toc(a));
     
+    if nargout==1
+        A = [];
+    end
+    
     function check_inputs(box,rc)
         % Same algorithm as in C code, but with checks, to make sure boxing
         % is OK
@@ -38,7 +42,9 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
         rn = min(box) / ncell; % cell size
         ncell = box/rn; % number of cells
         % Make assertions
-        assert( all(ncell>1), 'Must be minimum 2 boxes in each direction');
-        assert( all(mod(ncell,1)==0 ), 'Box not divisible by cell size' );
+        errstr = sprintf(' (rc=%g, box=(%d,%d,%d), ncell=(%d,%d,%d))',...
+                    rc, box(1),box(2),box(3),ncell(1),ncell(2),ncell(3));
+        assert( all(ncell>1), ['Must be minimum 2 boxes in each direction' errstr]);
+        assert( all(mod(ncell,1)==0 ), ['Box not divisible by cell size' errstr]);
     end
 end

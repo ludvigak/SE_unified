@@ -1,6 +1,6 @@
 #!/bin/sh
-icc  -Wall -std=c99 -O3 -DBEENAKKER -DVERBOSE -msse2 -static ../mex/stresslet_real_rc.c test_real_rc.c -o test_real_rc -vec-report -g -pg -openmp
-#gcc  -Wall -std=c99 -O3 -DBEENAKKER -DVERBOSE -msse4.1 -static ../mex/stresslet_real_rc.c test_real_rc.c -o test_real_rc -g -pg -lm -ffast-math
+icc  -Wall -std=c99 -O3 -DBEENAKKER -DVERBOSE -msse4.1 -static ../mex/stresslet_real_rc.c test_real_rc.c -o test_real_rc -vec-report -g -pg -openmp
+#gcc  -Wall -std=c99 -O3 -DBEENAKKER -DVERBOSE -msse4.1 -static ../mex/stresslet_real_rc.c test_real_rc.c -o test_real_rc -g -pg -lm -ffast-math -fopenmp
 
 # -g for using valgrind
 # -pg for profiling

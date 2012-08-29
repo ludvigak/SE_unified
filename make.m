@@ -4,6 +4,7 @@ cc = 'icc';
 openmp = true;
 
 cflags = '-std=c99 -fPIC -msse2';
+ldflags = '';
 
 switch cc
     case 'icc'
@@ -16,26 +17,27 @@ switch cc
        coptimflags = '-O3 -static -vec-report'; % -opt-report
        ldoptimflags = '-O3 -static -vec-report';
        if openmp
-            coptimflags = [coptimflags ' -openmp'];
-            ldoptimflags = [ldoptimflags ' -openmp'];
+            ldflags = [ldflags ' -openmp '];
+            cflags = [cflags ' -openmp '];
        end
     case 'gcc'
         coptimflags = '-Wall -O3 -ffast-math';
         ldoptimflags = '-O3';
         if openmp
-            coptimflags = [coptimflags ' -fopenmp '];
-            ldoptimflags = [ldoptimflags '-fopenmp '];
+            ldflags = [ldflags ' -fopenmp '];
+            cflags = [cflags ' -fopenmp '];
         end
 end
 cdebugflags='';
 lddebugflags='';
 
-CC = ['CC=''' cc ''''];
-CFLAGS = [' CFLAGS=''' cflags ''''];
-DEBUGFLAGS = [' CDEBUGFLAGS=''' cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflags ''''];
+CC = ['CC="' cc '"'];
+CFLAGS = [' CFLAGS="' cflags '"'];
+LDFLAGS = [' LDFLAGS="\$LDFLAGS ' ldflags '" '];
+DEBUGFLAGS = [' CDEBUGFLAGS='''  cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflags ''''];
 OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags ''''];
 
-mex_string = ['mex ' CC CFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
+mex_string = ['mex ' CC CFLAGS LDFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
 
 % build FGG code from ../SE_fast_gridding
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
