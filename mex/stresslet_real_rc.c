@@ -205,7 +205,10 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		    
 		}
 		// Save location of next point in cell chain
-		next_idx_t = ll[idx_t];
+		if(idx_t == -1) 
+		    next_idx_t = -1;
+		else
+		    next_idx_t = ll[idx_t];
 
 		// Empty buffer if last point of last neighbour,
 		// or buffer full
