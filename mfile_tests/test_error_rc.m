@@ -1,12 +1,11 @@
 clear
 
 xilist = [5 7 10 15];
-N = 1000;
-% N = 5000;
 
+% N = 1000;
+
+N = 5000;
 rc = 0.1:0.02:1;
-
-% rc = 0.1:0.1:1;
 
 box = [2 2 2];
 
@@ -40,6 +39,7 @@ end
 
 figure(1),clf,publication_fig
 figure(2),clf,publication_fig
+figure(3),clf,publication_fig
 
 kvot = [];
 
@@ -81,7 +81,7 @@ for xi=xilist
 %     est = 8*sqrt(7*Q/V/3*rc.^7)*xi^4.*exp(-xi^2*rc.^2);
           
     sfigure(1);
-    semilogy(rc, err,'.-', rc, est, '--r')  
+    semilogy(rc, err,'.-b', rc, est, '--r')  
     hold on
     ylim([1e-14 inf]);
     
@@ -92,12 +92,19 @@ for xi=xilist
     hold all
     
     kvot = [kvot; thiskvot];
+    
+    sfigure(3);
+    plot(rc*xi, thiskvot,'.-')
+    hold all    
 end
 
+%%
+sfigure(2)
 plot(rc, rc.^0, '--k')
 
+
 %%
-figure(1), publication_fig
+figure(1)
 title(['Truncation error of real space part (RMS), \xi = '...
         sprintf('%g,',xilist)]);
 xlabel('r_c')
@@ -105,8 +112,9 @@ ylabel('E_{RMS}')
 xlim([min(rc) max(rc)])
 ylim([1e-14 inf]);
 grid on
+publication_fig
 
-figure(2), publication_fig
+figure(2)
 leglist={};
 for xi=xilist
     leglist{end+1} = sprintf('\\xi=%g',xi);
@@ -117,6 +125,21 @@ ylim([0.9 1.1])
 ylabel('Estimate / Measured (RMS)')
 xlabel('r_c')
 title('Accuracy of real space truncation error estimate')
+publication_fig
+
+figure(3)
+leglist={};
+for xi=xilist
+    leglist{end+1} = sprintf('\\xi=%g',xi);
+end
+legend(leglist)
+ylim([0.9 1.1])
+xlim([0 8])
+ylabel('Estimate / Measured (RMS)')
+xlabel('\xi r_c')
+title('Accuracy of real space truncation error estimate')
+plot([0 10],[1 1],'--k')
+publication_fig
 
 N=size(f,1)
 box
@@ -126,4 +149,5 @@ box
 if false
 write_fig(1,'output/e_rms_rc')
 write_fig(2,'output/e_rms_rc_acc')
+write_fig(3,'output/e_rms_rc_acc_rcxi')
 end
