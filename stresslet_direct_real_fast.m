@@ -43,7 +43,7 @@ else
     % Keep interactions in three separate matrices, one for each source
     % component
     idx = int32(idx);
-    [A1 A2 A3] = stresslet_direct_real_mexcore_2(x,nvec,idx,nbox,rc,xi,L);
+    [A1 A2 A3] = stresslet_direct_real_mexcore(x,nvec,idx,nbox,rc,xi,L);
     
     if sing_sub
         cprintf(VERBOSE, 'Adding singularity subtraction to RS matrix\n');

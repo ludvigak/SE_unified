@@ -1,10 +1,6 @@
 format long e
 rand('state',1)
 
-if matlabpool('size')==0
-    matlabpool('open')
-end
-
 fprintf('\n\n')
 
 box = [1.1 1+pi/10 sqrt(2)/2];
