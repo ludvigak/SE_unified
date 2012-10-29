@@ -33,6 +33,15 @@ if max(res1(:))>1e-10
 end
 
 
+ufst2 = zeros(N,3);
+for i=idx
+    ufst2(i,:) = stresslet_direct_real_fast(i, x, f, nvec, xi,  box, NOL, rc);
+end
+res3 = ufst(:)-ufst2(:);
+if norm(res3,inf) ~= 0
+    error('EWALD FAST RS: PARTIAL SOURCES')
+end
+
 res2 = abs(uref-ufst);
 if max(res2(:))>1e-10
     maxres2 = max(res2(:))

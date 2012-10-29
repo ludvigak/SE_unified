@@ -79,7 +79,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     double r[3];
     double rm[3];
     double rsq,rcsq;
-    int idxn;
+    int idxm,idxn;
     int m,n;
     int i1, i2, i3, k1, k2;
 
@@ -91,7 +91,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 #endif
     for(n=0; n<N; n++)
     {
-        idxn = idx[n];
+	idxn = n+1;
         // Put source vector in xs
         xn[0] = xvec[idxn    -1];
         xn[1] = xvec[idxn+N  -1];
@@ -106,9 +106,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
         for(m=0; m<nidx; m++)               
         {
             // rm = xm - xn
-            rm[0] = xvec[idx[m]    -1]-xn[0];  // indirect indexing OK in outer loop
-            rm[1] = xvec[idx[m]+N  -1]-xn[1];
-            rm[2] = xvec[idx[m]+2*N-1]-xn[2];
+	    idxm = idx[m];
+            rm[0] = xvec[idxm    -1]-xn[0];  // indirect indexing OK in outer loop
+            rm[1] = xvec[idxm+N  -1]-xn[1];
+            rm[2] = xvec[idxm+2*N-1]-xn[2];
             
             // AA=0
             for(k1=0;k1<3;k1++)
@@ -120,7 +121,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 for(i2 = -nbox; i2<=nbox; i2++) {
                     for(i3 = -nbox; i3<=nbox; i3++)
                     {
-                        if(i1==0 && i2==0 && i3==0 && idx[m]==idxn) // skip self
+                        if(i1==0 && i2==0 && i3==0 && idxm==idxn) // skip self
                             continue;
                         r[0] = rm[0]+box[0]*i1;
                         r[1] = rm[1]+box[1]*i2;
