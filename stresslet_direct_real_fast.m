@@ -47,12 +47,15 @@ else
     
     if sing_sub
         cprintf(VERBOSE, 'Adding singularity subtraction to RS matrix\n');
+        A1sum = sum(A1,2);
+        A2sum = sum(A2,2);
+        A3sum = sum(A3,2);
         for j=0:2
             for i=1:noeval
                 rowno = i+noeval*j;
-                A1(rowno,i) = A1(rowno,i)-sum(A1(rowno,:));
-                A2(rowno,i) = A2(rowno,i)-sum(A2(rowno,:));
-                A3(rowno,i) = A3(rowno,i)-sum(A3(rowno,:));
+                A1(rowno,i) = A1(rowno,i)-A1sum(rowno);
+                A2(rowno,i) = A2(rowno,i)-A2sum(rowno);
+                A3(rowno,i) = A3(rowno,i)-A3sum(rowno);
             end
         end
     end
