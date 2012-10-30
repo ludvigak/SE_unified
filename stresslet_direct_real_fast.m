@@ -1,4 +1,4 @@
-function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, varargin)
+function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, varargin)
 % Ewald summation for the stresslet -- Real space part.
 % Fast: saves interactions as matrix for subsequent iterations
 %
@@ -10,7 +10,7 @@ function [phi A1 A2 A3] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nb
 %        xi   --  Ewald parameter
 %        nbox --  periodic replications
 %        rc   --  cutoff radius
-%        [A1 A2 A3 sing_sub]
+%        [A sing_sub]
 
 VERBOSE = 0;
 
@@ -19,23 +19,18 @@ noeval=length(idx);
 
 sing_sub = 0;
 
-tic
-if nargin>=11
-    A1 = varargin{1};
-    A2 = varargin{2};
-    A3 = varargin{3};
-    if nargin==12
-        sing_sub = varargin{4};
+mytic=tic;
+if nargin>=9
+    A = varargin{1};
+    if nargin==10
+        sing_sub = varargin{2};
     end
 else
-    A1 = [];
-    A2 = [];
-    A3 = [];
+    A = {[]};
 end
 
-if all( size(A1)==[noeval*3 nosrc] ) && ...
-   all( size(A2)==[noeval*3 nosrc] ) && ...
-   all( size(A3)==[noeval*3 nosrc] )
+% Just check size of one matrix
+if all( size(A{1,1})==[noeval nosrc] )
     cprintf(VERBOSE, '\tComputing real space sum using precomputed matrix.\n');
 else
     cprintf(VERBOSE, '\tComputing real space sum matrix.\n');
@@ -43,29 +38,30 @@ else
     % Keep interactions in three separate matrices, one for each source
     % component
     idx = int32(idx);
-    [A1 A2 A3] = stresslet_direct_real_mexcore(x,nvec,idx,nbox,rc,xi,L);
+    A = stresslet_direct_real_mexcore(x,nvec,idx,nbox,rc,xi,L);
     
     if sing_sub
         cprintf(VERBOSE, 'Adding singularity subtraction to RS matrix\n');
-        A1sum = sum(A1,2);
-        A2sum = sum(A2,2);
-        A3sum = sum(A3,2);
-        for j=0:2
-            for i=1:noeval
-                rowno = i+noeval*j;
-                A1(rowno,i) = A1(rowno,i)-A1sum(rowno);
-                A2(rowno,i) = A2(rowno,i)-A2sum(rowno);
-                A3(rowno,i) = A3(rowno,i)-A3sum(rowno);
+        for k1=1:3
+            for k2=k1:3
+                Asum = sum(A{k1,k2},2);
+                for i=1:noeval
+                    A{k1,k2}(i,i) = A{k1,k2}(i,i) - Asum(i);
+                end
             end
         end
+        
     end
 end
 
 if VERBOSE
     fprintf('\t');
-    toc
+    toc(mytic)
 end
 
-phi = reshape(A1*f(:,1) + A2*f(:,2) + A3*f(:,3), noeval, 3);
+phi = zeros(noeval,3);    
+phi(:,1) = A{1,1}*f(:,1) + A{1,2}*f(:,2) + A{1,3}*f(:,3);
+phi(:,2) = A{1,2}*f(:,1) + A{2,2}*f(:,2) + A{2,3}*f(:,3);
+phi(:,3) = A{1,3}*f(:,1) + A{2,3}*f(:,2) + A{3,3}*f(:,3);
 
 end

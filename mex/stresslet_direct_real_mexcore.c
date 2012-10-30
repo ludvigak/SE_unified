@@ -12,9 +12,7 @@
 #define XI   prhs[5] // Ewald parameter
 #define BOX  prhs[6] // Ewald parameter
 
-#define A1_LHS  plhs[0]  // Output (MxN)
-#define A2_LHS  plhs[1]  // Output (MxN)
-#define A3_LHS  plhs[2]  // Output (MxN)
+#define AMAT  plhs[0]  // Output (3x3 cell array of MxN matrices)
 
 #define PI 3.141592653589793
 
@@ -53,22 +51,25 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
     // Output matrices
     int outDims[2];
-    outDims[0] = 3*nidx;
+    outDims[0] = nidx;
     outDims[1] = N;
+    AMAT = mxCreateCellMatrix(3,3);
+    double* restrict amat[3][3];
+    for(int i=0; i<3; i++)
+	for(int j=i; j<3; j++)
+	{
+	    mxArray *matPt = mxCreateNumericArray(2,outDims,mxDOUBLE_CLASS,mxREAL);
+	    amat[i][j] = mxGetPr( matPt );
+	    mxSetCell(AMAT, i+3*j, matPt);
+	}
 
     // Checking
     const mxClassID IDXclass =  mxGetClassID(IDX);
     if(IDXclass != mxINT32_CLASS)
 	mexErrMsgTxt("Vector idx must be of type int32.");
 
-    A1_LHS = mxCreateNumericArray(2,outDims,mxDOUBLE_CLASS,mxREAL);
-    A2_LHS = mxCreateNumericArray(2,outDims,mxDOUBLE_CLASS,mxREAL);
-    A3_LHS = mxCreateNumericArray(2,outDims,mxDOUBLE_CLASS,mxREAL);
-    double* restrict a1 = mxGetPr( A1_LHS );
-    double* restrict a2 = mxGetPr( A2_LHS );
-    double* restrict a3 = mxGetPr( A3_LHS );
 #ifdef _OPENMP
-#pragma omp parallel
+#pragma omp parallel shared(amat,nvec,xvec,idx,box,xi,nidx,N) default(none)
 #endif
 {
     
@@ -138,16 +139,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
                 }
             }
             
-            // Set A_k2[m+k1*nidx][n] += AA[k1][k2]
-            // {k1,k2}={0,1,2} over components of source and target
-            // A_k2 is (3*nidx)x(N)
+	    // Set A{k1}{k2}[m][n] += AA[k1][k2]
+            // {k1,k2}={0,1,2} over components of source and target, k1<=k2
+            // A{}{} is nidx x N
+	    // No risk of racing between threads here
             for(int k1=0; k1<=2; k1++)
-            {
-                a1[m+k1*nidx+3*nidx*n] += AA[k1][0];
-                a2[m+k1*nidx+3*nidx*n] += AA[k1][1];
-                a3[m+k1*nidx+3*nidx*n] += AA[k1][2];
-            }
-        }
+		for(int k2=k1; k2<=2; k2++)
+		    amat[k1][k2][m+nidx*n] += AA[k1][k2];
+	}
     }
-}
+ }
 }

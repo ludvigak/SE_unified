@@ -22,12 +22,12 @@ toc
 wref = toc;
 tic
 fprintf('MEX matrix assembly + matvec: \n\t')
-[ufst A1 A2 A3] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
+[ufst A] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
 toc
 wfst = toc;
 timings = [wref wfst]
 
-res1 = abs(ufst-stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc, A1, A2, A3));
+res1 = abs(ufst-stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc, A));
 if max(res1(:))>1e-10
     error('EWALD FAST RS: FAILED MATRIX')
 end
@@ -38,7 +38,7 @@ for i=idx
     ufst2(i,:) = stresslet_direct_real_fast(i, x, f, nvec, xi,  box, NOL, rc);
 end
 res3 = ufst(:)-ufst2(:);
-if norm(res3,inf) ~= 0
+if norm(res3,inf) > 1e-13
     error('EWALD FAST RS: PARTIAL SOURCES')
 end
 

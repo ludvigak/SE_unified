@@ -54,12 +54,12 @@ toc(a)
 
 fprintf('* Direct rsrc\n\t')
 a=tic;
-[ufst A1 A2 A3] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
+[ufst A] = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc);
 toc(a)
 
-A1N = sparse(A1(1:N,1:N));
+A1N = sparse(A{1,1});
 
-j = find(A1(1:N,ic));
+j = find(A{1,1}(:,ic));
 j2 = j;
 
 drawBox(box,[0 0 0]), hold on
@@ -70,10 +70,13 @@ drawnow
 % TESTS
 
 % Check sparsity pattern
-assert( all( find(A1(1:N,1:N))==find(AMAT{1,1}) ), 'Sparsity pattern differs!');
+assert( all( find(A{1,1})==find(AMAT{1,1}) ), 'Sparsity pattern differs!');
 
 % Check matrices equal
-Aref = sparse([A1 A2 A3]);
+Aref = sparse(...
+    [A{1,1} A{1,2} A{1,3}
+     A{1,2} A{2,2} A{2,3}
+     A{1,3} A{2,3} A{3,3}]);
 Anew = ...
     [Ac{1,1} Ac{1,2} Ac{1,3}
      Ac{1,2} Ac{2,2} Ac{2,3}
@@ -91,7 +94,7 @@ assert(relerr2<1e-14,'Returned matrix differs from reference matrix!')
 disp('Matrices OK')
 
 % Check results equal
-uref = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc,A1,A2,A3);
+uref = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL, rc, A);
 u = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT);
 udiff = norm(u-uref,inf)/norm(uref,inf);
 assert(udiff<1e-14,'Results from RS methods differ!')
