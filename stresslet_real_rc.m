@@ -1,6 +1,7 @@
 function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargin)
     % Stresslet real space summation with truncation radius rc
     % Usage: 
+    % [res]      = stresslet_real_rc( x, f, nvec, xi, box, rc);
     % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc);
     % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT);
     % [res AMAT R C V PER] = stresslet_real_rc( x, f, nvec, xi, box, rc);
@@ -13,7 +14,11 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     if nargin>6
         A = varargin{1};
     else
-        if nargout==1 || nargout==2
+        if nargout==1
+            % Compute reults matrix-free
+            res = stresslet_real_rc_nomatrix_mex( x, nvec, q, box, rc, xi);
+            return
+        elseif nargout==2
             A = stresslet_real_rc_mex(x,nvec,box,rc,xi);
         elseif nargout==6
             [A R C V PER] = stresslet_real_rc_mex(x,nvec,box,rc,xi);
@@ -22,7 +27,8 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
             error('Invalid usage');
         end
     end
-
+    
+    % Compute result using sparse matrices
     a = tic;
     res = zeros(N,3);    
     res(:,1) = A{1,1}*q(:,1) + A{1,2}*q(:,2) + A{1,3}*q(:,3);

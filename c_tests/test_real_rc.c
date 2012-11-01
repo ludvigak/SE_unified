@@ -3,18 +3,20 @@
 static double randnum(double, double);
 
 int main() {
-     int N = 50000;
-     double rc = 0.13;
+     int N = 20000;
+     double rc = 0.22;
      double xi = 5.0;
 
     // Setup system
     double* restrict x = malloc(3*N*sizeof(double));
     double* restrict nvec = malloc(3*N*sizeof(double));
+    double* restrict fvec = malloc(3*N*sizeof(double));
 
     for(int i=0;i<3*N;i++)
     {
 	x[i] = randnum(0,1);
 	nvec[i] = randnum(0,1);
+	fvec[i] = randnum(0,1);
     }
 
     double* restrict box = malloc(3*sizeof(int));
@@ -34,6 +36,11 @@ int main() {
 		       box, xi, rc, 1,
 		       &row, &col, val, &buck_size, &idx_in_array, &numel
 		       );
+
+    // Compute matrix free
+    double* restrict phi; 
+    compute_rsrc_direct (x, nvec, fvec, N, box, xi, rc, &phi);
+
     return 0;
 }
 

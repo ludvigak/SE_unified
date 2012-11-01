@@ -8,8 +8,21 @@
 
 #define SWAP(x,y) { tmp=x;x=y;y=tmp; }
 static void quicksort(int* restrict list, int* restrict slave, int m, int n);
+static void build_cell_list(
+			    // Input
+			    const double* restrict x, 
+			    const int N,
+			    const double* restrict box,
+			    const double rc,
+			    // Output
+			    double* rn_p,
+			    int ncell[3],
+			    int* restrict *ll_p,
+			    int* restrict *head_p
+			    );
 
-// ==== GENERATE TRIPLETS FOR ASSEMBLY
+
+// ==== GENERATE TRIPLETS FOR MATRIX ASSEMBLY
 void  get_rs_triplets (const double* restrict x, const double* restrict nvec, const int N,
 		       const double* restrict box, const double xi, const double rc, const int nlhs,
 		       int* restrict *row_p, int* restrict *col_p, double* restrict val[3][3],
@@ -24,12 +37,11 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 
     // Setup variables
     int i,j;
-    int head_idx, ncell_tot;
-    int ncell[3], icell[3], home_cell[3];
+    int ncell[3];
     int* restrict ll;
     int* restrict head;
-    double boxmin;
-    const double rcsq = rc*rc;
+    double rn;
+
 
     int px[27] = {-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1};
     int py[27] = {-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1};
@@ -39,49 +51,17 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     gettimeofday(&tic, NULL);
     double time_spent;
 
-    //==============================================================
-    // BUILD CELL LIST
-    //
-    // TODO: Add some assertions to make sure rc not too big,
-    // and that box can be divided into square cells.
-
-    // Setup cell partitioning
-    boxmin = box[0];
-    if(box[1]<boxmin)
-	boxmin = box[1];
-    if (box[2]<boxmin)
-	boxmin = box[2];
-    const double rn = boxmin / floor(boxmin/rc);
-    for(i=0;i<3;i++)
-	ncell[i] = round( box[i]/rn );
-    ncell_tot = ncell[0]*ncell[1]*ncell[2];
+    // Build cell list
+    build_cell_list(x, N, box, rc, &rn, ncell, &ll, &head);
 
     if(VERBOSE)
     {
-	__PRINTF("[RSRC] SPLIT CODE\n");
+	__PRINTF("[RSRC] SPARSE MATRIX\n");
 	__PRINTF("[RSRC] %s, xi=%g\n", OP_TAG, xi);
 	__PRINTF("[RSRC] rc=%.3f, rn=%.3f\n", rc, rn);
 	__PRINTF("[RSRC] box=(%g,%g,%g), ncell=(%d,%d,%d)\n", 
 		  box[0],box[1],box[2],
 		  ncell[0],ncell[1],ncell[2]);
-    }
-
-    // Prepare cell list
-    ll = __MALLOC(N*sizeof(int));
-    head = __MALLOC(ncell_tot*sizeof(int));
-    for(i=0; i<ncell_tot; i++)
-    	head[i] = -1;
-    // Do cell partitioning 
-    for(i=0; i<N; i++)
-    {
-	for(j=0; j<3; j++)
-	    icell[j] = floor( x[i+N*j]/rn );
-	head_idx = 
-	    icell[0] +
-	    icell[1]*ncell[0] + 
-	    icell[2]*ncell[1]*ncell[0];
-	ll[i] = head[head_idx];
-	head[head_idx] = i;
     }
 
     //============================================================
@@ -105,13 +85,18 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     int barrier_variable=0;
     int barrier_passed=0;
     int realloc_done=0;
-#pragma omp parallel private(i,j,home_cell,icell,head_idx) shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,barrier_variable,barrier_passed,realloc_done) default(none)
+#pragma omp parallel private(i,j) shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,rn,barrier_variable,barrier_passed,realloc_done) default(none)
 #endif
     { // Begin parallel section
+    int head_idx,ncell_tot;
+    int icell[3], home_cell[3];
+
     int idx_s,idx_t,ip;
     double rsq;
     double pshift[3], xs[3], ns[3], nt[3], xr[3];
     double A1[3][3], A2[3][3];
+
+    const double rcsq = rc*rc;
 
     // Allocate a bufffer of interactions to be written
     // into triplet list
@@ -474,6 +459,64 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     *numel_p = numel;
 }
 
+// ==== BUILD CELL LIST
+//
+// TODO: Add some assertions to make sure rc not too big,
+// and that box can be divided into square cells.
+static void build_cell_list(
+			    // Input
+			    const double* restrict x, 
+			    const int N,
+			    const double* restrict box,
+			    const double rc,
+			    // Output
+			    double* rn_p,
+			    int ncell[3],
+			    int* restrict *ll_p,
+			    int* restrict *head_p
+			    )
+{
+    int i,j;
+    int head_idx, ncell_tot;
+    int icell[3], home_cell[3];
+    int* restrict ll;
+    int* restrict head;
+    double boxmin, rn;
+
+    // Setup cell partitioning
+    boxmin = box[0];
+    if(box[1]<boxmin)
+	boxmin = box[1];
+    if (box[2]<boxmin)
+	boxmin = box[2];
+    rn = boxmin / floor(boxmin/rc);
+    for(i=0;i<3;i++)
+	ncell[i] = round( box[i]/rn );
+    ncell_tot = ncell[0]*ncell[1]*ncell[2];
+
+    // Prepare cell list
+    ll = __MALLOC(N*sizeof(int));
+    head = __MALLOC(ncell_tot*sizeof(int));
+    for(i=0; i<ncell_tot; i++)
+    	head[i] = -1;
+    // Do cell partitioning 
+    for(i=0; i<N; i++)
+    {
+	for(j=0; j<3; j++)
+	    icell[j] = floor( x[i+N*j]/rn );
+	head_idx = 
+	    icell[0] +
+	    icell[1]*ncell[0] + 
+	    icell[2]*ncell[1]*ncell[0];
+	ll[i] = head[head_idx];
+	head[head_idx] = i;
+    }
+
+    *rn_p = rn;
+    *ll_p = ll;
+    *head_p = head;
+}
+
 //============ QUICKSORT ROUTINE
 // Applies quicksort on an interval (m,n) of *list, 
 // performs the same permutations on *slave.
@@ -538,4 +581,254 @@ static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
 	    s--; 
 	}
     }
+}
+
+// ==== Compute result directly
+// Do not build sparse matrix
+void  compute_rsrc_direct (const double* restrict x, 
+			   const double* restrict nvec, 
+			   const double* restrict fvec, 
+			   const int N,
+			   const double* restrict box, 
+			   const double xi, 
+			   const double rc, 
+			   double* restrict *phi_p
+			   )
+{
+    // Setup output
+    double* restrict phi_out = __MALLOC(3*N*sizeof(double));
+    for(int i=0;i<3*N;i++)
+	phi_out[i] = 0.0;
+
+    // Setup variables
+    int ncell[3];
+    int* restrict ll;
+    int* restrict head;
+    double rn;
+
+    int px[27] = {-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1,-1, 0, 1};
+    int py[27] = {-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1,-1,-1,-1, 0, 0, 0, 1, 1, 1};
+    int pz[27] = {-1,-1,-1,-1,-1,-1,-1,-1,-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+    struct timeval tic, toc;
+    gettimeofday(&tic, NULL);
+    double time_spent;
+
+    // Build cell list
+    build_cell_list(x, N, box, rc, &rn, ncell, &ll, &head);
+
+    gettimeofday(&toc, NULL);
+    time_spent = DELTA(tic,toc);
+    if(VERBOSE)
+    {
+	__PRINTF("[RSRC] Cell list built in %.3f seconds.\n", time_spent);
+    }
+
+    if(VERBOSE)
+    {
+	__PRINTF("[RSRC] MATRIX-FREE\n");
+	__PRINTF("[RSRC] %s, xi=%g\n", OP_TAG, xi);
+	__PRINTF("[RSRC] rc=%.3f, rn=%.3f\n", rc, rn);
+	__PRINTF("[RSRC] box=(%g,%g,%g), ncell=(%d,%d,%d)\n", 
+		  box[0],box[1],box[2],
+		  ncell[0],ncell[1],ncell[2]);
+    }
+
+    gettimeofday(&tic, NULL);
+#ifdef _OPENMP
+#pragma omp parallel shared(phi_out,box,x,nvec,fvec,head,ll,px,py,pz,ncell,rn) default(none)
+#endif
+    { // Begin parallel section
+    // Setup local output
+    double* restrict phi = __MALLOC(3*N*sizeof(double));
+    for(int i=0;i<3*N;i++)
+	phi[i] = 0.0;
+
+    int i,j;
+    int head_idx,ncell_tot;
+    int icell[3], home_cell[3];
+
+    int idx_s,idx_t,ip;
+    double rsq;
+    double pshift[3], xs[3], ns[3], fs[3], nt[3], ft[3], xr[3];
+    double A1[3][3], A2[3][3];
+
+    const double rcsq = rc*rc;
+
+ 
+
+    // Allocate a bufffer of interactions to be written
+    // into triplet list
+    const int buf_size = 256;
+    int buf_cnt = 0;
+    int idx_buf, next_idx_t;
+    int buf_idx_t[buf_size];
+    double buf_xr[3*buf_size];
+    double buf_rsq[buf_size];
+    double C[buf_size];
+    double D[buf_size];
+
+    int tnum = 0;
+    int num_procs = 1;
+#ifdef _OPENMP
+    tnum = omp_get_thread_num();
+    num_procs = omp_get_num_threads();
+#pragma omp for schedule(dynamic) nowait
+#endif
+    // Loop over all points
+    for(idx_s=0;idx_s<N;idx_s++)
+    {
+	double phi_idx_s[3] = {0.0, 0.0, 0.0};
+	// Source point
+	xs[0] = x[idx_s    ];
+	xs[1] = x[idx_s+N  ];
+	xs[2] = x[idx_s+2*N];
+	// Source point normal vector
+	ns[0] = nvec[idx_s    ];
+	ns[1] = nvec[idx_s+N  ];
+	ns[2] = nvec[idx_s+2*N];
+	// Source point distribution density
+	fs[0] = fvec[idx_s    ];
+	fs[1] = fvec[idx_s+N  ];
+	fs[2] = fvec[idx_s+2*N];
+	// Determine home cell
+	for(j=0; j<3; j++)
+	    home_cell[j] = floor( xs[j]/rn );	
+	// Iterate through near cells (including home cell)
+	for(ip=0; ip<27; ip++) 
+	{
+	    // Get neigh cell
+	    icell[0] = home_cell[0] + px[ip];
+	    icell[1] = home_cell[1] + py[ip];
+	    icell[2] = home_cell[2] + pz[ip];
+	    // Periodic wrap
+	    for(j=0; j<3; j++)
+	    {
+		// (Could do this with mod)
+		pshift[j] = 0;
+		if(icell[j] >= ncell[j])
+		{
+		    icell[j] = 0;
+		    pshift[j] = box[j];
+		}
+		else if(icell[j]<0)
+		{
+		    icell[j] = ncell[j]-1;
+		    pshift[j] = -box[j];
+		}
+	    }
+	    head_idx = 
+		icell[0] +
+		icell[1]*ncell[0] + 
+		icell[2]*ncell[1]*ncell[0];	    
+	    // Go through cell list
+	    idx_t = head[head_idx];
+	    while(1)
+	    {
+		if(idx_t > idx_s)
+		{
+		    // r points from s to t
+		    for(j=0; j<3; j++)
+			xr[j] = x[idx_t+j*N] + pshift[j] - xs[j];
+		    // Check if we are within truncation radius
+		    rsq = xr[0]*xr[0] + xr[1]*xr[1] + xr[2]*xr[2];
+		    if(rsq <= rcsq)
+		    {		
+			// Yes, so put interaction in buffer
+			buf_idx_t[buf_cnt] = idx_t;
+			buf_rsq[buf_cnt] = rsq;
+			for(i=0;i<3;i++)
+			    buf_xr[3*buf_cnt+i] = xr[i];
+			buf_cnt++;
+		    }
+		    
+		}
+		// Save location of next point in cell chain
+		if(idx_t == -1) 
+		    next_idx_t = -1;
+		else
+		    next_idx_t = ll[idx_t];
+
+		// Empty buffer if last point of last neighbour,
+		// or buffer full
+		if ( (ip==26 && next_idx_t==-1) || buf_cnt==buf_size)
+		{
+		    // Do delayed calculations
+		    op_A_CD(C,D,buf_rsq,buf_cnt,xi);
+
+		    // Save interactions
+		    for(idx_buf=0;idx_buf<buf_cnt;idx_buf++)
+		    {
+			idx_t = buf_idx_t[idx_buf];
+			for(i=0;i<3;i++)
+			    xr[i] = buf_xr[3*idx_buf+i];
+		
+			// Target point normal vector
+			nt[0] = nvec[idx_t    ];
+			nt[1] = nvec[idx_t+N  ];
+			nt[2] = nvec[idx_t+2*N];
+
+			// Target point distribution density
+			ft[0] = fvec[idx_t    ];
+			ft[1] = fvec[idx_t+N  ];
+			ft[2] = fvec[idx_t+2*N];
+
+			// Calculate interactions t->s and s<-t
+
+			op_A_symm_CD(A1,A2,xr,ns,nt,xi,C[idx_buf],D[idx_buf]);
+
+			// Add results to phi
+			for(i=0; i<=2; i++)
+			{
+			    double phi_idx_t = 0.0;
+			    for(j=0; j<=2; j++)
+			    {
+				phi_idx_t    += A1[i][j]*fs[j];
+				phi_idx_s[i] += A2[i][j]*ft[j];
+			    }
+			    phi[idx_t+N*i] += phi_idx_t;
+			}
+		    } // endfor buffer
+
+		    buf_cnt = 0;
+		} // endif chainend or buffull
+		idx_t = next_idx_t;
+		if(idx_t == -1)
+		    break; // Chain ended
+	    } // End of neighbours in this cell
+	} // End of cells
+	// Save additions to point s
+	phi[idx_s    ] += phi_idx_s[0];
+	phi[idx_s+N  ] += phi_idx_s[1];
+	phi[idx_s+2*N] += phi_idx_s[2];
+    } // End of particles
+
+    // Yes, this reduction is probably crap HPC-wise, 
+    // but it works well on my quad core right now.
+    for(i=0; i<3*N; i++)
+    {
+#ifdef _OPENMP
+#pragma omp atomic
+#endif
+    	phi_out[i] += phi[i];
+    }
+
+#ifdef _OPENMP
+    // free/malloc not thread safe under MEX
+#pragma omp critical
+#endif
+    {
+    __FREE(phi);
+    }
+
+    } // End parallel section
+
+    gettimeofday(&toc, NULL);
+    time_spent = DELTA(tic,toc);
+    if(VERBOSE)
+    {
+	__PRINTF("[RSRC] phi computed in %.3f seconds.\n", time_spent);
+    }
+
+    *phi_p = phi_out;
 }

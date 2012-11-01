@@ -37,3 +37,14 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, in
 		       int* restrict *row_p, int* restrict *col_p, double* restrict val[3][3],
 		       int* restrict *buck_size_p, int* restrict *idx_in_array_p, int* numel_p
 		       );
+
+void  compute_rsrc_direct (const double* restrict x, 
+			   const double* restrict nvec, 
+			   const double* restrict qvec, 
+			   int N,
+			   const double* restrict box, 
+			   double xi, 
+			   double rc, 
+			   double* restrict *phi_p
+			   );
+

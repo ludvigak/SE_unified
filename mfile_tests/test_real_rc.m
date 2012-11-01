@@ -24,6 +24,14 @@ a=tic;
 fprintf('\t')
 toc(a)
 
+disp('* Real rc, matrix-free')
+a=tic;
+[res_mf] = stresslet_real_rc( x, f, nvec, xi, box, rc);
+fprintf('\t')
+toc(a)
+diff_mf = norm(res_mf-res,inf)/norm(res,inf);
+assert(diff_mf<1e-14,'Results from matrix-free RS differs!')
+
 sfigure(9); clf
 plot3(x(:,1),x(:,2),x(:,3),'.b'), hold on
 plot3(x(ic,1),x(ic,2),x(ic,3),'or');

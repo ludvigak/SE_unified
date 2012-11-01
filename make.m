@@ -57,4 +57,6 @@ eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stok
 eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
 eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
 eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/stresslet_real_rc_mex.c -o stresslet_real_rc_mex'])
+eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/stresslet_real_rc_nomatrix_mex.c -o stresslet_real_rc_nomatrix_mex'])
+
 
