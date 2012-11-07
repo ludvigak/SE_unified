@@ -44,8 +44,14 @@
 #endif
 
 // display debug messages in the SSE dispatcher
+// only master thread prints when threaded
 #ifdef VERBOSE
+#ifdef _OPENMP
+#define __DISPATCHER_MSG(s) _Pragma("omp master") \
+    __PRINTF(s)
+#else
 #define __DISPATCHER_MSG(s) __PRINTF(s)
+#endif
 #else
 #define __DISPATCHER_MSG(s) {}
 #endif
