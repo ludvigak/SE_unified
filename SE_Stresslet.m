@@ -33,6 +33,8 @@ f_idx = [1 1 1 2 2 2 3 3 3];
 gftic = tic;
 [gtime ftime] = deal(zeros(9,1));
 
+% Parfor speeds up split gridding code a little bit,
+% but actually slows down regular gridding
 parfor i=1:9
     % to grid, transform and shift
     i1 = n_idx(i);
@@ -84,7 +86,8 @@ end
 iftic = tic;
 [itime ftime] = deal(zeros(3,1));
 
-parfor i=1:3
+% Integration code parallelized using OpenMP in MEX
+for i=1:3
     ftic = tic;
     F = real( ifftn( ifftshift( H{i} )));
     ftime(i) = toc(ftic);
