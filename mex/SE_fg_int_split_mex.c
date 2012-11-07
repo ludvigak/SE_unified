@@ -46,17 +46,21 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     if(VERBOSE)
 	mexPrintf("[SE%s FG(i)] N=%d, P=%d\n",PER_STR,N,params.P);
 
-    // now do the work
+#ifdef _OPENMP
+#pragma omp parallel default(shared)
+#endif
+    {
+	// now do the work
 #ifdef THREE_PERIODIC
-    SE_FGG_extend_fcn(&work, H_per, &params);
+	SE_FGG_extend_fcn(&work, H_per, &params);
 #endif
-
+	
 #ifdef TWO_PERIODIC
-    SE2P_FGG_extend_fcn(&work, H_per, &params);
+	SE2P_FGG_extend_fcn(&work, H_per, &params);
 #endif
-
-    SE_FGG_int_split_SSE_dispatch(phi, &work, &params);
-
+	
+	SE_FGG_int_split_SSE_dispatch(phi, &work, &params);
+    }
     // done
     SE_FGG_free_workspace(&work);
 }

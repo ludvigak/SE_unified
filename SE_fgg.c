@@ -758,6 +758,9 @@ void SE_FGG_int_split_SSE(double* restrict phi,
     const int incrj = params->npdims[2]-p;
     const int incri = params->npdims[2]*(params->npdims[1]-p);
 
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
     for(int m=0; m<N; m++)
     {
 	idx = work->idx[m];	
@@ -846,6 +849,9 @@ void SE_FGG_int_split_SSE_P8(double* restrict phi,
     const int incrj = params->npdims[2]-8;
     const int incri = params->npdims[2]*(params->npdims[1]-8);
 
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
     for(int m=0; m<N; m++)
     {
 	idx = work->idx[m];
@@ -948,6 +954,9 @@ void SE_FGG_int_split_SSE_P16(double* restrict phi,
     const int incrj = params->npdims[2]-16;
     const int incri = params->npdims[2]*(params->npdims[1]-16);
 
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
     for(int m=0; m<N; m++)
     {
 	idx = work->idx[m];
@@ -1108,6 +1117,9 @@ void SE_FGG_int_split_SSE_u8(double* restrict phi,
     const int incrj = params->npdims[2]-p;
     const int incri = params->npdims[2]*(params->npdims[1]-p);
 
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
     for(int m=0; m<N; m++)
     {
 	idx = work->idx[m];

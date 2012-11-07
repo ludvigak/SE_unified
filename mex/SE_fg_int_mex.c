@@ -37,18 +37,23 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     if(VERBOSE)
 	mexPrintf("[SE%s FG(I)] N=%d, P=%d\n",PER_STR,N,params.P);
 
-    // now do the work
-    SE_FGG_base_gaussian(&work, &params);
-
+#ifdef _OPENMP
+#pragma omp parallel default(shared)
+#endif
+    {
+	// now do the work
+	SE_FGG_base_gaussian(&work, &params);
+	
 #ifdef THREE_PERIODIC
-    SE_FGG_extend_fcn(&work, H_per, &params);
+	SE_FGG_extend_fcn(&work, H_per, &params);
 #endif
-
+	
 #ifdef TWO_PERIODIC
-    SE2P_FGG_extend_fcn(&work, H_per, &params);
+	SE2P_FGG_extend_fcn(&work, H_per, &params);
 #endif
-
-    SE_FGG_int(phi, &work, &st, &params);
+	
+	SE_FGG_int(phi, &work, &st, &params);
+    }
 
     // done
     SE_FGG_free_workspace(&work);
