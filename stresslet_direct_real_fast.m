@@ -1,6 +1,7 @@
 function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, varargin)
 % Ewald summation for the stresslet -- Real space part.
 % Fast: saves interactions as matrix for subsequent iterations
+% Sums over layers
 %
 % phi = stokes_ewald_direct_real( m, x, f, xi, op_A, nbox)
 %        Evaluate potential, phi, at points x(idx). 
@@ -19,14 +20,16 @@ noeval=length(idx);
 
 sing_sub = 0;
 
+A = {[]};
+
 mytic=tic;
 if nargin>=9
-    A = varargin{1};
+    if numel(varargin{1})
+        A = varargin{1};
+    end
     if nargin==10
         sing_sub = varargin{2};
     end
-else
-    A = {[]};
 end
 
 % Just check size of one matrix
@@ -41,16 +44,18 @@ else
     A = stresslet_direct_real_mexcore(x,nvec,idx,nbox,rc,xi,L);
     
     if sing_sub
-        cprintf(VERBOSE, 'Adding singularity subtraction to RS matrix\n');
+        stic=tic;
         for k1=1:3
             for k2=k1:3
                 Asum = sum(A{k1,k2},2);
                 for i=1:noeval
-                    A{k1,k2}(i,i) = A{k1,k2}(i,i) - Asum(i);
+                    A{k1,k2}(i,idx(i)) = A{k1,k2}(i,idx(i)) - Asum(i);
                 end
             end
         end
-        
+            cprintf(VERBOSE, ...
+                'Added singularity subtraction in %.3f seconds.\n',...
+                toc(stic));
     end
 end
 

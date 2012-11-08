@@ -2,20 +2,37 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     % Stresslet real space summation with truncation radius rc
     % Usage: 
     % [res]      = stresslet_real_rc( x, f, nvec, xi, box, rc);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT);
+    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, [], sing_sub);
+    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT, sing_sub);
     % [res AMAT R C V PER] = stresslet_real_rc( x, f, nvec, xi, box, rc);
+    %
+    % sing_sub = singularity subtraction, default 0. Only for matrix comp.
+    % rc = cutoff radius, must be <= min(box)/2
     
     VERBOSE = 1;
     
     check_inputs(box,rc);
     N = size(x,1);
 
-    if nargin>6
+    nvarargin = numel(varargin);
+    if nvarargin>0
         A = varargin{1};
-    else
+        if numel(A)==0 || numel(A{1})==0
+            clear A;
+        end
+    end
+    
+    sing_sub = 0;
+    if nvarargin>1
+        sing_sub = varargin{2};
+    end
+
+    if ~exist('A','var')
         if nargout==1
             % Compute reults matrix-free
+            if sing_sub
+                error('Singularity subtraction not available for matrix-free call.')
+            end
             res = stresslet_real_rc_nomatrix_mex( x, nvec, q, box, rc, xi);
             return
         elseif nargout==2
@@ -25,6 +42,19 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
             [varargout{1:4}] = deal(R,C,V,PER);
         else
             error('Invalid usage');
+        end
+        
+        if sing_sub
+            stic=tic;
+            for k1=1:3
+                for k2=k1:3
+                    Asum = full(sum(A{k1,k2},2));
+                    A{k1,k2} = A{k1,k2} - spdiags(Asum,0,N,N);
+                end
+            end
+            cprintf(VERBOSE, ...
+                '[RSRC] Added singularity subtraction in %.3f seconds.\n',...
+                toc(stic));
         end
     end
     

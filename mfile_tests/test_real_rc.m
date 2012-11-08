@@ -3,8 +3,6 @@
 
 disp('==== test_real_rc ====')
 
-addpath('~/workspace/stresslet_ewald/matlab')
-
 N = 1500;
 box = [3 2 1];
 xi = 1;
