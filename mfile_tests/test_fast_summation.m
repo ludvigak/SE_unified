@@ -1,4 +1,4 @@
-clear
+function status = test_fast_summation()
 rand('state',1)
 
 box = [1 0.5 0.1]; % domain
@@ -25,6 +25,8 @@ res = max(abs(u_fast-u_dir))
 
 if res<1e-10
     fprintf('\n********** FAST SUMMATION: OK **********\n\n')
+    status = 1;
 else
-    error('FAST SUMMATION: FAILED')
+    warning('FAST SUMMATION: FAILED')
+    status = 0;
 end

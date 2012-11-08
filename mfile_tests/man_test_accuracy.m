@@ -1,3 +1,4 @@
+
 % Stresslet Spectral Ewald, basic accuracy/convergence computation
 
 clear all
@@ -73,3 +74,5 @@ grid on
 axis([P(1) P(end) 1e-16 1e2])
 legend(leg,'Location','Best')
 fname = sprintf('output/SE_accuracy_xi%d_M%d',xi,SE_opt.M(1));
+
+status = 1;

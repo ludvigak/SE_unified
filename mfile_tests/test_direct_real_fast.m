@@ -1,3 +1,5 @@
+function status=test_direct_real_fast()
+
 format long e
 rand('state',1)
 
@@ -43,11 +45,14 @@ if norm(res3,inf) > 1e-13
 end
 
 res2 = abs(uref-ufst);
-if max(res2(:))>1e-10
-    maxres2 = max(res2(:))
-    error('EWALD FAST RS: FAILED')
-end
 fprintf('Max diff: %g\n', max(res2(:)));
 
-fprintf('\n********** EWALD FAST RS: OK **********\n\n')
+if max(res2(:))>1e-10
+    maxres2 = max(res2(:))
+    warning('EWALD FAST RS: FAILED')
+    status = 0;
+else
+    status = 1;
+    fprintf('\n********** EWALD FAST RS: OK **********\n\n')
+end
 

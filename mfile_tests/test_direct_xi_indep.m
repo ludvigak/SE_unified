@@ -1,3 +1,5 @@
+function status = test_direct_xi_indep()
+
 format long e
 rand('state',1)
 
@@ -52,8 +54,10 @@ box
 res=abs(diff(utot))
 
 if max(res(:))<1e-10
+    status = 1;
     fprintf('\n********** EWALD XI INDEPENDENCE: OK **********\n\n')
 else
-    error('EWALD XI INDEPENDENCE: FAILED')
+    status = 0;
+    warning('EWALD XI INDEPENDENCE: FAILED')
 end
 

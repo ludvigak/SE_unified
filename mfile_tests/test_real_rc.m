@@ -1,3 +1,7 @@
+function status = test_real_rc()
+
+status = 0;
+
 % Test completely MEXed real space rc based on cell lists
 
 
@@ -111,3 +115,4 @@ clear Aref Anew Ac AMAT A1 A2 A3 R C V PER
 
 disp('======================')
 disp('********** EWALD RS RC: OK **********')
+status = 1;

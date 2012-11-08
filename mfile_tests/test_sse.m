@@ -1,4 +1,5 @@
-clear
+function status = test_sse()
+
 format short
 
 % test SSE gridding / integration
@@ -41,6 +42,8 @@ end
 fprintf('max error = %.2e\n\n',maxe);
 if maxe<1e-10
     fprintf('\n********** SSE CODE: OK **********\n\n')
+    status = 1;
 else
-    error('SSE CODE: FAILED')
+    warning('SSE CODE: FAILED')
+    status = 0;
 end
