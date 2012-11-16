@@ -75,7 +75,9 @@ tic;
 % [H{1:3}] = stresslet_k_scaling(G,xi,box,eta); % Matlab
 stats.wtime_scale = toc();
 
-if static_fgg
+if opt.eval_external
+    u = zeros(size(opt.eval_x));
+elseif static_fgg
     u = zeros(size(x));
     x = x(sdat.iperm,:);
 else
@@ -92,7 +94,9 @@ for i=1:3
     F = real( ifftn( ifftshift( H{i} )));
     ftime(i) = toc(ftic);
     itic = tic;
-    if static_fgg
+    if opt.eval_external
+        u(:,i) = SE_fg_int_mex(opt.eval_x, F ,opt);
+    elseif static_fgg
         u(:,i) = SE_fg_int_split_mex(x,F,opt,...
                                     sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
     else
@@ -107,7 +111,7 @@ ftime = sum(ftime);
 stats.wtime_int = wintfft*itime/(itime+ftime);
 stats.wtime_fft = wintfft*ftime/(itime+ftime) + stats.wtime_fft;
 
-if static_fgg
+if static_fgg && opt.eval_external==0
      u = u(sdat.iperm(eval_idx),:);
 end
 

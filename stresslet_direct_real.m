@@ -1,13 +1,15 @@
-function [phi shellnorms] = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL)
+function [phi shellnorms] = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL,varargin)
 % Ewald summation for the stresslet -- Real space part.
 %
-% phi = stokes_ewald_direct_real( m, x, f, xi, op_A, nbox)
-%        Evaluate potential, phi, at points x(idx). 
+% phi = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL, [eval_x])
+%        Evaluate potential, phi, at points x(idx) or eval_x. 
 %        x    --  positions          N-by-3
 %        nvec --  normal vectors   N-by-3
 %        f    --  source strengths   N-by-3
 %        xi   --  Ewald parameter
 %        nbox --  periodic repications
+%        TOL  -- desired tolerance
+%        eval_x -- evaluate at points eval_x
 %
 % Example:
 %   [x f] = generate_state(100,[1 1 1]);
@@ -27,32 +29,39 @@ pshell = max(abs(p'));
 [pshell, I] = sort(pshell);
 pshell = pshell';
 p = p(I,:)*diag(L);
-
-shellnorms=[];
-
 cprintf(VERBOSE,'\tComputing real space sum. Periodic images: %d\n', Np);
-noeval=length(idx);  
+if numel(varargin)>0
+    eval_x = varargin{1};
+    noeval = size(eval_x,1);
+    idx = 1:noeval;
+else
+    noeval = length(idx);  
+    eval_x = x;
+end
 phi=zeros(noeval,3); 
-for ii=1:noeval
+shellnorms=zeros(nbox+1,noeval);
+parfor ii=1:noeval
   m=idx(ii); 
   converged=0;
-  for shell_no=0:nbox    
+  shell_no=0;
+  for jj=1:nbox+1    
+    shell_no = jj-1;
     tmp = [0 0 0];
     shell_indices = find(pshell==shell_no);
-    parfor j = shell_indices'
+    for j = shell_indices'
 %     for j = 1:Np
       for n = 1:size(x,1) % particles
         if all(p(j,:)==0) && n==m % remove self interaction
           continue
         end
-        r=x(m,:)-x(n,:);
+        r=eval_x(m,:)-x(n,:);
         tmp = tmp + (stresslet_op_real( r + p(j,:), nvec(n,:), xi)*f(n,:)')';
       end
     %    cprintf(mod(j,1000)==0,'\t%3d \t %5.2f%% \r',j, 100*j/Np);
     end
     phi(ii,:) = phi(ii,:) + tmp;
     shellnorm = norm(tmp);
-    shellnorms(end+1)=shellnorm;
+    shellnorms(jj,ii)=shellnorm;
     cprintf(VERBOSE,'Shell %d: contrib=%g\n',shell_no,shellnorm);
     if shellnorm<TOL && shell_no>3
         converged=1;
