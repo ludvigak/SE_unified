@@ -30,7 +30,7 @@ void op_A_CD(double* restrict C, double* restrict D, double* restrict r2l, int n
 {
     double r2,r,c;
     int i;
-    for(i=0;i<n;i++) // This vectorizes
+    for(i=0;i<n;i++) // This vectorizes when using icc
     {
 	r2 = r2l[i];
 	r = sqrt(r2);

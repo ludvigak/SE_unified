@@ -4,7 +4,7 @@ static double randnum(double, double);
 
 int main() {
      int N = 20000;
-     double rc = 0.22;
+     double rc = 0.25;
      double xi = 5.0;
 
     // Setup system

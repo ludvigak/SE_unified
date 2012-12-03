@@ -88,7 +88,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 #pragma omp parallel private(i,j) shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,rn,barrier_variable,barrier_passed,realloc_done) default(none)
 #endif
     { // Begin parallel section
-    int head_idx,ncell_tot;
+    int head_idx;
     int icell[3], home_cell[3];
 
     int idx_s,idx_t,ip;
@@ -478,7 +478,7 @@ static void build_cell_list(
 {
     int i,j;
     int head_idx, ncell_tot;
-    int icell[3], home_cell[3];
+    int icell[3];
     int* restrict ll;
     int* restrict head;
     double boxmin, rn;
@@ -645,7 +645,7 @@ void  compute_rsrc_direct (const double* restrict x,
 	phi[i] = 0.0;
 
     int i,j;
-    int head_idx,ncell_tot;
+    int head_idx;
     int icell[3], home_cell[3];
 
     int idx_s,idx_t,ip;
@@ -668,11 +668,14 @@ void  compute_rsrc_direct (const double* restrict x,
     double C[buf_size];
     double D[buf_size];
 
-    int tnum = 0;
     int num_procs = 1;
 #ifdef _OPENMP
-    tnum = omp_get_thread_num();
     num_procs = omp_get_num_threads();
+    if(VERBOSE)
+    {
+#pragma omp master	
+	__PRINTF("[RSRC] Running on %d threads.\n",num_procs);
+    }
 #pragma omp for schedule(dynamic) nowait
 #endif
     // Loop over all points
