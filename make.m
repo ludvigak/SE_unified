@@ -4,24 +4,22 @@ cc = 'icc';
 openmp = true;
 
 cflags = '-std=c99 -fPIC -msse2';
-ldflags = '';
+ldflags = ' -lm ';
 
 switch cc
     case 'icc'
-%         coptimflags = '-O3 -static -xHOST -vec-report';
-%         ldoptimflags = '-O3 -static -xHOST -vec-report';
-
-%          coptimflags = '-O3 -static -xSSE4.1 -vec-report';
-%          ldoptimflags = '-O3 -static -xSSE4.1 -vec-report';
+%        coptimflags = '-O3 -static -vec-report -xHOST'; % -opt-report
+%        ldoptimflags = '-O3 -static -vec-report -xHOST';
 
        coptimflags = '-O3 -static -vec-report'; % -opt-report
        ldoptimflags = '-O3 -static -vec-report';
+
        if openmp
             ldflags = [ldflags ' -openmp '];
             cflags = [cflags ' -openmp '];
        end
     case 'gcc'
-        coptimflags = '-Wall -O3 -ffast-math';
+        coptimflags = '-Wall -O3 -ffast-math';        
         ldoptimflags = '-O3';
         if openmp
             ldflags = [ldflags ' -fopenmp '];
