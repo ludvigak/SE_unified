@@ -3,7 +3,7 @@
 // Probably excessive unrolling here, but it was fun!
 // Quick benching says that 75% of op_A is spent on erfc
 
-void op_A(double A[3][3], double x[3], double n[3], double xi)
+void inline op_A(double A[3][3], double x[3], double n[3], double xi)
 {
     double r2 = x[0]*x[0] + x[1]*x[1] + x[2]*x[2];
     double r = sqrt(r2);
@@ -26,7 +26,7 @@ void op_A(double A[3][3], double x[3], double n[3], double xi)
 }
 
 // Calculate constants C and D for a list of distances
-void op_A_CD(double* restrict C, double* restrict D, double* restrict r2l, int n, double xi)
+void inline op_A_CD(double* restrict C, double* restrict D, double* restrict r2l, int n, double xi)
 {
     double r2,r,c;
     int i;
@@ -41,7 +41,7 @@ void op_A_CD(double* restrict C, double* restrict D, double* restrict r2l, int n
 }
 
 // Calculate interactions between two points in both directions using stored C and D
-void op_A_symm_CD(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
+void inline op_A_symm_CD(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
 		  double xi, double C, double D)
 {
     // x1=x, x2=-x
@@ -56,8 +56,29 @@ void op_A_symm_CD(double A1[3][3], double A2[3][3], double x[3], double n1[3], d
 	}
 }
 
+// Calculate interactions directly, without creating matrix
+void inline op_A_comp_symm_CD(double x[3], double phi1[3], double phi2[3], double n1[3], double n2[3],
+		       double f1[3], double f2[3], double xi, double C, double D)
+{
+
+    double x1dotn1 =    x[0]*n1[0] + x[1]*n1[1] + x[2]*n1[2];
+    double x2dotn2 = -(x[0]*n2[0] + x[1]*n2[1] + x[2]*n2[2]);
+    
+    double x1dotf1 =   x[0]*f1[0] + x[1]*f1[1] + x[2]*f1[2];
+    double x2dotf2 = -(x[0]*f2[0] + x[1]*f2[1] + x[2]*f2[2]);
+
+    double n1dotf1 = n1[0]*f1[0] + n1[1]*f1[1] + n1[2]*f1[2];
+    double n2dotf2 = n2[0]*f2[0] + n2[1]*f2[1] + n2[2]*f2[2];
+
+    for(int i=0; i<3; i++)                                                          
+    {
+	phi1[i] += -x[i]*(C*x2dotf2*x2dotn2 + D*n2dotf2) + D*(f2[i]*x2dotn2 + n2[i]*x2dotf2);  
+	phi2[i] +=  x[i]*(C*x1dotf1*x1dotn1 + D*n1dotf1) + D*(f1[i]*x1dotn1 + n1[i]*x1dotf1);  
+    }
+}
+
 // Calculate interactions between two points in both directions
-void op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
+void inline op_A_symm(double A1[3][3], double A2[3][3], double x[3], double n1[3], double n2[3], 
 	       double xi, double r2)
 {
 

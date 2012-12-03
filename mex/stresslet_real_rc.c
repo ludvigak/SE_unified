@@ -777,20 +777,11 @@ void  compute_rsrc_direct (const double* restrict x,
 			ft[2] = fvec[idx_t+2*N];
 
 			// Calculate interactions t->s and s<-t
+			double phi_idx_t[3] = {0.0,0.0,0.0};
+			op_A_comp_symm_CD(xr,phi_idx_s,phi_idx_t,ns,nt,fs,ft,xi,C[idx_buf],D[idx_buf]);
+			for(i=0; i<3; i++)
+			    phi[idx_t+N*i] += phi_idx_t[i];
 
-			op_A_symm_CD(A1,A2,xr,ns,nt,xi,C[idx_buf],D[idx_buf]);
-
-			// Add results to phi
-			for(i=0; i<=2; i++)
-			{
-			    double phi_idx_t = 0.0;
-			    for(j=0; j<=2; j++)
-			    {
-				phi_idx_t    += A1[i][j]*fs[j];
-				phi_idx_s[i] += A2[i][j]*ft[j];
-			    }
-			    phi[idx_t+N*i] += phi_idx_t;
-			}
 		    } // endfor buffer
 
 		    buf_cnt = 0;

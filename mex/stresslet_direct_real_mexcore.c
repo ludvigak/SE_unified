@@ -69,7 +69,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 	mexErrMsgTxt("Vector idx must be of type int32.");
 
 #ifdef _OPENMP
-#pragma omp parallel shared(amat,nvec,xvec,idx,box,xi,nidx,N) default(none)
+#pragma omp parallel shared(amat,nvec,xvec,idx,box) default(none)
 #endif
 {
     
