@@ -840,23 +840,36 @@ void  compute_rsrc_direct (const double* restrict x,
 	phi[idx_s+2*N] += phi_idx_s[2];
     } // End of particles
 
+#ifdef _OPENMP
     // Yes, this reduction is probably crap HPC-wise, 
     // but it works well on my quad core right now.
+
+    struct timeval tic_red, toc_red;
+#pragma omp master
+    gettimeofday(&tic_red, NULL);    
+
     for(i=0; i<3*N; i++)
     {
-#ifdef _OPENMP
 #pragma omp atomic
-#endif
     	phi_out[i] += phi[i];
     }
 
-#ifdef _OPENMP
+#pragma omp master
+    {
+	gettimeofday(&toc_red, NULL);    
+
+	double time_spent = DELTA(tic_red,toc_red);
+	if(VERBOSE)
+	    __PRINTF("[RSRC] Reduction took %.3f seconds.\n", time_spent);
+    }
+
     // free/malloc not thread safe under MEX
 #pragma omp critical
-#endif
-    {
     __FREE(phi);
-    }
+#else
+    __FREE(phi_out);
+    phi_out = phi;    
+#endif
 
     } // End parallel section
 
