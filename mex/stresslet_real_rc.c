@@ -20,6 +20,7 @@ static void build_cell_list(
 			    int* restrict *ll_p,
 			    int* restrict *head_p
 			    );
+static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs);
 
 
 // ==== GENERATE TRIPLETS FOR MATRIX ASSEMBLY
@@ -82,10 +83,13 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 	}
 
 #ifdef _OPENMP
-    int barrier_variable=0;
-    int barrier_passed=0;
+    int barrier_in[2]  = {0,0};
+    int barrier_out[2] = {0,0};
     int realloc_done=0;
-#pragma omp parallel private(i,j) shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,rn,barrier_variable,barrier_passed,realloc_done) default(none)
+    int num_procs;
+#pragma omp parallel private(i,j) \
+    shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,rn,barrier_in,barrier_out,realloc_done,num_procs) \
+    default(none)
 #endif
     { // Begin parallel section
     int head_idx;
@@ -97,6 +101,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     double A1[3][3], A2[3][3];
 
     const double rcsq = rc*rc;
+
 
     // Allocate a bufffer of interactions to be written
     // into triplet list
@@ -112,6 +117,14 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     int tnum = 0;
 #ifdef _OPENMP
     tnum = omp_get_thread_num();
+#pragma omp single
+    num_procs = omp_get_num_threads();
+    if(VERBOSE)
+    {
+#pragma omp master	
+	__PRINTF("[RSRC] Running on %d threads.\n",num_procs);
+    }
+
     // Seems mxMalloc/mxFree are not thread safe
 #pragma omp critical
     {
@@ -204,70 +217,60 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 #ifdef _OPENMP
 #pragma omp critical
 #endif
-		    {
+		    { /* begin critical section */
 			// Check if buffer holds writing space for me
-			if(maxel-numel <= 2*buf_cnt)
+			if(maxel-numel <= 2*buf_cnt) {			 
 			    can_write = 0;
+			    //__PRINTF("[%d] Can't write, reallocation needed! \n",tnum);
+			}
 			else
 			    can_write = 1;
-			// Reserve writing space anyway
+			// Reserve writing in either case
 			idx_write = numel;
 			numel += 2*buf_cnt;
-		    }
+		    } /* end critical section */
+
+		    /* Begin can_write==0 */
 		    if(can_write==0)
 		    {
-			int alloc_add = buf_size; // How much to add to allocation
+			int alloc_add = buf_size; // How much to add to allocation (single thread)
 #ifdef _OPENMP
-			// Barrier
 			// Everybody has to wait here before reallocation
-			int num_procs = omp_get_num_threads();
 			// Allocate more than a fuller buffer for every thread
 			alloc_add = num_procs*buf_size; 
-			//#pragma omp critical
-			//__PRINTF("[%d] Reached barrier (%d,%d) \n",tnum,barrier_variable,num_procs);
 #pragma omp critical
-			{
 			realloc_done = 0; // Everybody agrees reallocation has not been done
-			barrier_variable++; // Announce you arrived at barrier
-			}
-			while(barrier_variable != num_procs) {
-#pragma omp flush (barrier_variable) // Spin
-			};
-#pragma omp atomic
-			barrier_passed++; // Anounce you passed barrier
-			//#pragma omp critical
-			//__PRINTF("[%d] Passed barrier (%d,%d) \n",tnum,barrier_variable,num_procs);
+			barrier(0, barrier_in, barrier_out, &num_procs);
+
 #pragma omp critical			
-			{ // Critical section
-			if(realloc_done==0) 
-			{
-			realloc_done=1;
+			{ // Critical section			 
+			    if(realloc_done==0) 
+			    {
+				realloc_done=1;
 #endif
-			// Allocate for full buffer(s) + 20% more
-			int new_maxel = ceil(1.2*(maxel+alloc_add));
-			__PRINTF("[%d] Reallocating triplet vectors %d -> %d\n",tnum,maxel,new_maxel);
-			maxel = new_maxel;
-			row = __REALLOC(row, maxel*sizeof(int));
-			col = __REALLOC(col, maxel*sizeof(int));
-			for(i=0;i<=2;i++)
-			    for(j=i;j<=2;j++)
-				val[i][j] = __REALLOC(val[i][j], maxel*sizeof(double));
+				// Allocate for full buffer(s) + 20% more
+				int new_maxel = ceil(1.2*(maxel+alloc_add));
+				if (VERBOSE)
+				    __PRINTF("[RSRC][%d] Reallocating triplet vectors %d -> %d\n",tnum,maxel,new_maxel);
+				maxel = new_maxel;
+				row = __REALLOC(row, maxel*sizeof(int));
+				col = __REALLOC(col, maxel*sizeof(int));
+				for(i=0;i<=2;i++)
+				    for(j=i;j<=2;j++)
+					val[i][j] = __REALLOC(val[i][j], maxel*sizeof(double));
 #ifdef _OPENMP
 			//__PRINTF("[%d] Done \n",tnum);
+			    }
+			    else
+			    {
+				//__PRINTF("[%d] Someone else reallocated \n",tnum);
+			    }
 			}
-			else
-			{
-			    //__PRINTF("[%d] Someone else reallocated \n",tnum);
-			}
-			if(barrier_passed==num_procs)
-			{
-			    //__PRINTF("[%d] Everybody passed! \n",tnum);
-			    barrier_passed=0;
-			    barrier_variable=0;
-			}			
-			} // End critical section
+
+			barrier(1, barrier_in, barrier_out, &num_procs);
 #endif
-		    } // End can_write==0
+		    } 
+		    /* End can_write==0 */
 
 		    // Do delayed calculations
 		    op_A_CD(C,D,buf_rsq,buf_cnt,xi);
@@ -322,15 +325,17 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 	} // End of cells
     } // End of particles
 
-    //#pragma omp critical
-    //__PRINTF("[%d] Exit loop \n",tnum);
+
 
 #ifdef _OPENMP
+#pragma omp critical
+    {
+	//__PRINTF("[%d] Exit loop , barrier_in={%d,%d}\n",tnum, barrier_in[0], barrier_in[1]);
 #pragma omp atomic
-    // If anyone is stuck in barrier, let them know we made it out
-    barrier_variable++;
-#pragma omp atomic
-    barrier_passed++;
+    // One less thread going around in loop
+    num_procs--;
+    }
+
 #pragma omp critical
 #endif
     {
@@ -583,6 +588,44 @@ static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
     }
 }
 
+
+//============ Home-brewed barrier
+static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs)
+{
+#ifdef _OPENMP
+    int tnum = omp_get_thread_num();
+    // Barrrier arrive
+#pragma omp critical
+    {
+	barrier_in[bar_num]++; // Announce you arrived at barrier
+	//__PRINTF("[%d] Reached barrier %d (%d,%d) \n", tnum, bar_num, barrier_in[bar_num], *num_procs);
+    }
+    // Barrier spin
+    while(barrier_in[bar_num] < *num_procs) {
+#pragma omp flush
+    };
+    // Barrier depart
+#pragma omp critical			
+    {
+	barrier_out[bar_num]++; // Anounce you passed barrier
+	//__PRINTF("[%d] Passed barrier %d (%d,%d) \n", tnum, bar_num, barrier_out[bar_num], *num_procs);
+    }			
+    // Barrier reset
+#pragma omp critical
+    {
+	if (barrier_out[bar_num] >= *num_procs)
+	{
+	    //__PRINTF("[%d] Everybody passed barrier %d. \n",tnum, bar_num);
+	    barrier_in[bar_num] = 0;
+	    barrier_out[bar_num] = 0;
+	}
+    }
+#endif
+}
+
+
+// ******************************** compute_rsrc_direct ******************
+// ***********************************************************************
 // ==== Compute result directly
 // Do not build sparse matrix
 void  compute_rsrc_direct (const double* restrict x, 
