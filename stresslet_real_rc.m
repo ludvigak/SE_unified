@@ -9,7 +9,7 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     % sing_sub = singularity subtraction, default 0. Only for matrix comp.
     % rc = cutoff radius, must be <= min(box)/2
     
-    VERBOSE = 1;
+    VERBOSE = 0;
     
     check_inputs(box,rc);
     N = size(x,1);

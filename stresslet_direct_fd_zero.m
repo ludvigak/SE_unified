@@ -43,14 +43,26 @@ A = nf + nf' + sum(ndotf)*eye(3);
 % x_j nf_ji  = x_j sum n_j f_i
 % x_j nf'_ji = x_j sum f_j n_i
 % x_j d_ji sum n_k f_k = x_i f_j n_j
+
 % For stresslet distribution on closed surface,
 % it turns out that A=0 (numerically)
+% UPDATE: THIS IS WRONG!
+
+% OK, so we say we are only interested in the periodic part,
+% so skipping A
+if true
+%     warning('A=0');
+    A=A*0;
+end
 
 phi = xvec(idx,:)*A;
 phi = bsxfun(@minus, phi, tmpxs);
 V = prod(L);
 phi = -8*pi/(5*V)*phi;
 
+if numel(idx)>1 && ~(all(all(diff(phi)==0)))
+    error('k=0 component not constant')
+end
 % --------------------------------------------------
 % Non-vectorized code (readable, but N^2 slow)
 cmp_old = 0;

@@ -3,7 +3,7 @@ cc = 'icc';
 
 openmp = true;
 
-cflags = '-std=c99 -fPIC -msse2';
+cflags = '-std=c99 -fPIC -msse3';
 ldflags = ' -lm ';
 
 switch cc
@@ -30,8 +30,8 @@ cdebugflags='';
 lddebugflags='';
 
 CC = ['CC="' cc '"'];
-CFLAGS = [' CFLAGS="' cflags '"'];
-LDFLAGS = [' LDFLAGS="\$LDFLAGS ' ldflags '" '];
+CFLAGS = [' CFLAGS="' cflags inc  '"'];
+LDFLAGS = [' LDFLAGS="\$LDFLAGS ' ldflags inc '" '];
 DEBUGFLAGS = [' CDEBUGFLAGS='''  cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflags ''''];
 OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags ''''];
 

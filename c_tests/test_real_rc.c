@@ -3,10 +3,10 @@
 static double randnum(double, double);
 
 int main() {
-     int N = 20000;
-     double rc = 0.25;
+     int N = 100000;
+     double rc = 0.1;
      double xi = 5.0;
-
+     double L = 1;
     // Setup system
     double* restrict x = malloc(3*N*sizeof(double));
     double* restrict nvec = malloc(3*N*sizeof(double));
@@ -14,15 +14,16 @@ int main() {
 
     for(int i=0;i<3*N;i++)
     {
-	x[i] = randnum(0,1);
+	// Cluster particels
+	x[i] = L*randnum(0,1);
 	nvec[i] = randnum(0,1);
 	fvec[i] = randnum(0,1);
     }
 
     double* restrict box = malloc(3*sizeof(int));
-    box[0] = 1;
-    box[1] = 1;
-    box[2] = 1;
+    box[0] = L;
+    box[1] = L;
+    box[2] = L;
 
     int numel;
     int* restrict row;
