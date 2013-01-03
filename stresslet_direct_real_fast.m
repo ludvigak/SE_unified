@@ -17,12 +17,19 @@ VERBOSE = 0;
 
 nosrc=size(f,1);
 noeval=length(idx);  
+% Recenter points in mother box
+for dim_idx=1:3
+    x(:,dim_idx) = mod( x(:,dim_idx), L(dim_idx) );
+end
 
 sing_sub = 0;
 
 A = {[]};
 
-mytic=tic;
+if VERBOSE
+    mytic=tic;
+end
+
 if nargin>=9
     if numel(varargin{1})
         A = varargin{1};

@@ -11,6 +11,11 @@ box = opt.box;
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
 
+% Recenter points in mother box
+for dim_idx=1:3
+    x(:,dim_idx) = mod( x(:,dim_idx), box(dim_idx) );
+end
+
 if nargin == 6
     static_fgg=false;
     sdat = [];
