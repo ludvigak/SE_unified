@@ -30,8 +30,8 @@ cdebugflags='';
 lddebugflags='';
 
 CC = ['CC="' cc '"'];
-CFLAGS = [' CFLAGS="' cflags inc  '"'];
-LDFLAGS = [' LDFLAGS="\$LDFLAGS ' ldflags inc '" '];
+CFLAGS = [' CFLAGS="' cflags '"'];
+LDFLAGS = [' LDFLAGS="\$LDFLAGS ' ldflags  '" '];
 DEBUGFLAGS = [' CDEBUGFLAGS='''  cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflags ''''];
 OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags ''''];
 

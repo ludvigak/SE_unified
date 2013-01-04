@@ -23,11 +23,21 @@ fdotxs = sum(fvec.*xvec,2); % f_j xs_j
 ndotxs = sum(nvec.*xvec,2); % n_j xs_j
 ndotf = sum(nvec.*fvec,2);  % n_j f_j
 
+V = prod(L);
+
+% TEST
+% Check if we can get it to work using a different k=0, based on mean flow
+tmp = sum( bsxfun(@times,xvec,ndotf),1); % xs_i n_j  f_j
+phi = (8*pi/V)*repmat( tmp, numel(idx), 1 );
+
+return
+% END TEST
+
 % Constant term
 tmpxs = sum( ...
     bsxfun(@times,nvec,fdotxs) + ... n_i f_j xs_j
     bsxfun(@times,fvec,ndotxs) + ... f_i n_j xs_j
-    bsxfun(@times,xvec,ndotf) ...   xs_i f_j xs_j
+    bsxfun(@times,xvec,ndotf) ...   xs_i n_j  f_j
     ,1);
 
 % Sums for point-dependent term, create matrix A
@@ -57,7 +67,6 @@ end
 
 phi = xvec(idx,:)*A;
 phi = bsxfun(@minus, phi, tmpxs);
-V = prod(L);
 phi = -8*pi/(5*V)*phi;
 
 if numel(idx)>1 && ~(all(all(diff(phi)==0)))
