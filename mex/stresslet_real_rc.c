@@ -33,15 +33,31 @@ static void build_cell_list_new(
 			    int* restrict *cell_idx_p
 			    );
 static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs);
-
+static void transpose(const double* restrict in, double* restrict out, const int N);
 
 // ==== GENERATE TRIPLETS FOR MATRIX ASSEMBLY
-void  get_rs_triplets (const double* restrict x, const double* restrict nvec, const int N,
-		       const double* restrict box, const double xi, const double rc, const int nlhs,
-		       int* restrict *row_p, int* restrict *col_p, double* restrict val[3][3],
-		       int* restrict *buck_size_p, int* restrict *idx_in_array_p, int* numel_p
+void  get_rs_triplets (
+		       const double* restrict x_in, 
+		       const double* restrict nvec_in, 
+		       const int N,
+		       const double* restrict box, 
+		       const double xi, 
+		       const double rc, 
+		       const int nlhs,
+		       int* restrict *row_p, 
+		       int* restrict *col_p, 
+		       double* restrict val[3][3],
+		       int* restrict *buck_size_p, 
+		       int* restrict *idx_in_array_p, 
+		       int* numel_p
 		       )
 {
+    // Fix input (legacy format gives bad memory access)
+    double* restrict x = __MALLOC(3*N*sizeof(double));
+    double* restrict nvec = __MALLOC(3*N*sizeof(double));
+    transpose(x_in, x, N);    
+    transpose(nvec_in, nvec, N);    
+
     // Setup output variables
     int* restrict row;
     int* restrict col;
@@ -154,17 +170,16 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
     // Loop over all points
     for(idx_s=0;idx_s<N;idx_s++)
     {
-	// Source point
-	xs[0] = x[idx_s    ];
-	xs[1] = x[idx_s+N  ];
-	xs[2] = x[idx_s+2*N];
-	// Source point normal vector
-	ns[0] = nvec[idx_s    ];
-	ns[1] = nvec[idx_s+N  ];
-	ns[2] = nvec[idx_s+2*N];
-	// Determine home cell
 	for(j=0; j<3; j++)
-	    home_cell[j] = floor( xs[j]/rn );	
+	{
+	    // Source point
+	    xs[j] = x[idx_s*3+j];
+	    // Determine home cell
+	    home_cell[j] = xs[j]/rn;	
+	    // Source point normal vector
+	    ns[j] = nvec[idx_s*3+j];
+	}
+
 	// Iterate through near cells (including home cell)
 	for(ip=0; ip<27; ip++) 
 	{
@@ -200,7 +215,7 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		{
 		    // r points from s to t
 		    for(j=0; j<3; j++)
-			xr[j] = x[idx_t+j*N] + pshift[j] - xs[j];
+			xr[j] = x[idx_t*3+j] + pshift[j] - xs[j];
 		    // Check if we are within truncation radius
 		    rsq = xr[0]*xr[0] + xr[1]*xr[1] + xr[2]*xr[2];
 		    if(rsq <= rcsq)
@@ -295,12 +310,11 @@ void  get_rs_triplets (const double* restrict x, const double* restrict nvec, co
 		    {
 			idx_t = buf_idx_t[idx_buf];
 			for(i=0;i<3;i++)
+			{
 			    xr[i] = buf_xr[3*idx_buf+i];
-		
-			// Source point normal vector
-			nt[0] = nvec[idx_t    ];
-			nt[1] = nvec[idx_t+N  ];
-			nt[2] = nvec[idx_t+2*N];
+			    // Source point normal vector
+			    nt[i] = nvec[idx_t*3+i];
+			}
 
 			// Calculate interactions t->s and s<-t
 			op_A_symm_CD(A1,A2,xr,ns,nt,xi,C[idx_buf],D[idx_buf]);
@@ -520,7 +534,7 @@ static void build_cell_list(
     for(i=0; i<N; i++)
     {
 	for(j=0; j<3; j++)
-	    icell[j] = floor( x[i+N*j]/rn );
+	    icell[j] = floor( x[i*3+j]/rn );
 	head_idx = 
 	    icell[0] +
 	    icell[1]*ncell[0] + 
