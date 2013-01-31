@@ -17,6 +17,18 @@ static void build_cell_list(
 			    // Output
 			    double* rn_p,
 			    int ncell[3],
+			    int* restrict *ll_p,
+			    int* restrict *head_p
+			    );
+static void build_cell_list_new(
+			    // Input
+			    const double* restrict x, 
+			    const int N,
+			    const double* restrict box,
+			    const double rc,
+			    // Output
+			    double* rn_p,
+			    int ncell[3],
 			    int* restrict *cell_list_p,
 			    int* restrict *cell_idx_p
 			    );
@@ -55,8 +67,8 @@ void  get_rs_triplets (
     // Setup variables
     int i,j;
     int ncell[3];
-    int* restrict cell_list;
-    int* restrict cell_idx;
+    int* restrict ll;
+    int* restrict head;
     double rn;
 
 
@@ -69,7 +81,7 @@ void  get_rs_triplets (
     double time_spent;
 
     // Build cell list
-    build_cell_list(x, N, box, rc, &rn, ncell, &cell_list, &cell_idx);
+    build_cell_list(x, N, box, rc, &rn, ncell, &ll, &head);
 
     if(VERBOSE)
     {
@@ -104,12 +116,11 @@ void  get_rs_triplets (
     int realloc_done=0;
     int num_procs;
 #pragma omp parallel private(i,j) \
-    shared(numel,maxel,row,col,val,box,x,nvec,cell_list,cell_idx,px,py,pz, \
-	   ncell,rn,barrier_in,barrier_out,realloc_done,num_procs) \
+    shared(numel,maxel,row,col,val,box,x,nvec,head,ll,px,py,pz,ncell,rn,barrier_in,barrier_out,realloc_done,num_procs) \
     default(none)
 #endif
     { // Begin parallel section
-    int icell_idx;
+    int head_idx;
     int icell[3], home_cell[3];
 
     int idx_s,idx_t,ip;
@@ -124,7 +135,7 @@ void  get_rs_triplets (
     // into triplet list
     const int buf_size = 256;
     int buf_cnt = 0;
-    int idx_buf;
+    int idx_buf, next_idx_t;
     int* restrict buf_idx_t;
     double* restrict buf_xr;
     double* restrict buf_rsq;
@@ -192,16 +203,14 @@ void  get_rs_triplets (
 		    pshift[j] = -box[j];
 		}
 	    }
-	    icell_idx = 
+	    head_idx = 
 		icell[0] +
 		icell[1]*ncell[0] + 
 		icell[2]*ncell[1]*ncell[0];	    
 	    // Go through cell list
-	    int cell_a = cell_idx[icell_idx];
-	    int cell_b = cell_idx[icell_idx+1];
-	    for(int point_idx=cell_a; point_idx<cell_b; point_idx++)
+	    idx_t = head[head_idx];
+	    while(1)
 	    {
-		idx_t = cell_list[point_idx];
 		if(idx_t > idx_s)
 		{
 		    // r points from s to t
@@ -220,10 +229,15 @@ void  get_rs_triplets (
 		    }
 		    
 		}
+		// Save location of next point in cell chain
+		if(idx_t == -1) 
+		    next_idx_t = -1;
+		else
+		    next_idx_t = ll[idx_t];
 
 		// Empty buffer if last point of last neighbour,
 		// or buffer full
-		if ( (ip==26 && point_idx==(cell_b-1)) || buf_cnt==buf_size)
+		if ( (ip==26 && next_idx_t==-1) || buf_cnt==buf_size)
 		{
 		    // Check if we have enough space to hold buffer contents
 		    int idx_write, can_write;
@@ -330,6 +344,9 @@ void  get_rs_triplets (
 
 		    buf_cnt = 0;
 		} // endif chainend or buffull
+		idx_t = next_idx_t;
+		if(idx_t == -1)
+		    break; // Chain ended
 	    } // End of neighbours in this cell
 	} // End of cells
     } // End of particles
@@ -356,9 +373,9 @@ void  get_rs_triplets (
     }
     } // End parallel section
 
-    // Free all that we have allocated
-    __FREE(cell_idx);
-    __FREE(cell_list);
+    // Free allocations
+    __FREE(head);
+    __FREE(ll);
     __FREE(x);
     __FREE(nvec);
 
@@ -489,26 +506,19 @@ static void build_cell_list(
 			    // Output
 			    double* rn_p,
 			    int ncell[3],
-			    int* restrict *cell_list_p,
-			    int* restrict *cell_idx_p
+			    int* restrict *ll_p,
+			    int* restrict *head_p
 			    )
 {
     int i,j;
-    int ncell_tot;
+    int head_idx, ncell_tot;
     int icell[3];
+    int* restrict ll;
+    int* restrict head;
     double boxmin, rn;
-    // Outputs
-    int* restrict cell_list;
-    int* restrict cell_idx;
-    // Intermediates (could do this with fewer vars, but this is clear)
-    int* restrict cell_count;
-    int* restrict points_in_cell;
-    int* restrict point_cell_map;
-
 
     // Setup cell partitioning
     boxmin = box[0];
-
     if(box[1]<boxmin)
 	boxmin = box[1];
     if (box[2]<boxmin)
@@ -518,49 +528,27 @@ static void build_cell_list(
 	ncell[i] = round( box[i]/rn );
     ncell_tot = ncell[0]*ncell[1]*ncell[2];
 
-    // Prepare arrays
-    cell_list  = __MALLOC(N*sizeof(int));
-    cell_idx   = __MALLOC((ncell_tot+1)*sizeof(int));
-    point_cell_map = __MALLOC(N*sizeof(int));
-    points_in_cell = __MALLOC(ncell_tot*sizeof(int));
-
+    // Prepare cell list
+    ll = __MALLOC(N*sizeof(int));
+    head = __MALLOC(ncell_tot*sizeof(int));
     for(i=0; i<ncell_tot; i++)
-	points_in_cell[i] = 0;
-
-    // Build list in two sweeps 
+    	head[i] = -1;
+    // Do cell partitioning 
     for(i=0; i<N; i++)
     {
 	for(j=0; j<3; j++)
-	    icell[j] = x[i*3+j]/rn;
-	int icell_idx = 
+	    icell[j] = floor( x[i*3+j]/rn );
+	head_idx = 
 	    icell[0] +
 	    icell[1]*ncell[0] + 
 	    icell[2]*ncell[1]*ncell[0];
-	points_in_cell[icell_idx]++;
-	point_cell_map[i] = icell_idx;
+	ll[i] = head[head_idx];
+	head[head_idx] = i;
     }
-    // Generate adressing
-    cell_idx[0]=0;
-    for (int i=0; i<ncell_tot; i++)
-	cell_idx[i+1] = cell_idx[i]+points_in_cell[i];
-    // Setup new vector
-    __FREE(points_in_cell);
-    cell_count = __MALLOC(ncell_tot*sizeof(int));
-    for(i=0; i<ncell_tot; i++)
-	cell_count[i] = 0;
-    // Finally build list
-    for(i=0; i<N; i++)
-    {
-	int icell_idx = point_cell_map[i]; 
-	int adr = cell_idx[icell_idx] + cell_count[icell_idx];
-	cell_list[adr] = i;
-	cell_count[icell_idx]++;
-    }
-    __FREE(cell_count);
-    __FREE(point_cell_map);
+
     *rn_p = rn;
-    *cell_list_p = cell_list;
-    *cell_idx_p = cell_idx;
+    *ll_p = ll;
+    *head_p = head;
 }
 
 //============ QUICKSORT ROUTINE
@@ -664,7 +652,96 @@ static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_pro
 #endif
 }
 
-// ============= Transpose vector
+
+// ******************************** compute_rsrc_direct ******************
+// ***********************************************************************
+// ==== BUILD CELL LIST (NEW)
+//
+// TODO: Add some assertions to make sure rc not too big,
+// and that box can be divided into square cells.
+static void build_cell_list_new(
+			    // Input
+			    const double* restrict x, 
+			    const int N,
+			    const double* restrict box,
+			    const double rc,
+			    // Output
+			    double* rn_p,
+			    int ncell[3],
+			    int* restrict *cell_list_p,
+			    int* restrict *cell_idx_p
+			    )
+{
+    int i,j;
+    int head_idx, ncell_tot;
+    int icell[3];
+    double boxmin, rn;
+    // Outputs
+    int* restrict cell_list;
+    int* restrict cell_idx;
+    // Intermediates (could do this with fewer vars, but this is clear)
+    int* restrict cell_count;
+    int* restrict points_in_cell;
+    int* restrict point_cell_map;
+
+
+    // Setup cell partitioning
+    boxmin = box[0];
+
+    if(box[1]<boxmin)
+	boxmin = box[1];
+    if (box[2]<boxmin)
+	boxmin = box[2];
+    rn = boxmin / floor(boxmin/rc);
+    for(i=0;i<3;i++)
+	ncell[i] = round( box[i]/rn );
+    ncell_tot = ncell[0]*ncell[1]*ncell[2];
+
+    // Prepare arrays
+    cell_list  = __MALLOC(N*sizeof(int));
+    cell_idx   = __MALLOC((ncell_tot+1)*sizeof(int));
+    point_cell_map = __MALLOC(N*sizeof(int));
+    points_in_cell = __MALLOC(ncell_tot*sizeof(int));
+
+    for(i=0; i<ncell_tot; i++)
+	points_in_cell[i] = 0;
+
+    // Build list in two sweeps 
+    for(i=0; i<N; i++)
+    {
+	for(j=0; j<3; j++)
+	    icell[j] = x[i*3+j]/rn;
+	int icell_idx = 
+	    icell[0] +
+	    icell[1]*ncell[0] + 
+	    icell[2]*ncell[1]*ncell[0];
+	points_in_cell[icell_idx]++;
+	point_cell_map[i] = icell_idx;
+    }
+    // Generate adressing
+    cell_idx[0]=0;
+    for (int i=0; i<ncell_tot; i++)
+	cell_idx[i+1] = cell_idx[i]+points_in_cell[i];
+    // Setup new vector
+    __FREE(points_in_cell);
+    cell_count = __MALLOC(ncell_tot*sizeof(int));
+    for(i=0; i<ncell_tot; i++)
+	cell_count[i] = 0;
+    // Finally build list
+    for(i=0; i<N; i++)
+    {
+	int icell_idx = point_cell_map[i]; 
+	int adr = cell_idx[icell_idx] + cell_count[icell_idx];
+	cell_list[adr] = i;
+	cell_count[icell_idx]++;
+    }
+    __FREE(cell_count);
+    __FREE(point_cell_map);
+    *rn_p = rn;
+    *cell_list_p = cell_list;
+    *cell_idx_p = cell_idx;
+}
+// Transpose vector
 void transpose(const double* restrict in, double* restrict out, const int N)
 {
     for(int i=0; i<N; i++)
@@ -676,9 +753,47 @@ void transpose(const double* restrict in, double* restrict out, const int N)
     }    
 }
 
+// Empty buffer used in direct computation
+static void compute_buffer_direct(
+			   double* restrict C,
+			   double* restrict D,
+			   double* restrict buf_rsq,
+			   const int buf_cnt,
+			   const double xi,
+			   const int* restrict buf_idx_t,
+			   const double* restrict buf_xr,
+			   const double* restrict nvec,
+			   const double* restrict fvec,
+			   double* restrict ns,
+			   double* restrict fs,
+			   double* restrict phi,
+			   double* restrict phi_idx_s)
+{
+    int idx_t;
+    double xr[3],nt[3],ft[3];
+    // Do delayed calculations
+    op_A_CD(C,D,buf_rsq,buf_cnt,xi);
 
-// ******************************** compute_rsrc_direct ******************
-// ***********************************************************************
+    // Save interactions
+    for(int idx_buf=0;idx_buf<buf_cnt;idx_buf++)
+    {
+	idx_t = buf_idx_t[idx_buf];
+	for(int i=0;i<3;i++)
+	{
+	    xr[i] = buf_xr[3*idx_buf+i];
+	    // Target point normal vector
+	    nt[i] = nvec[idx_t*3+i];
+	    // Target point distribution density
+	    ft[i] = fvec[idx_t*3+i];
+	}
+	// Calculate interactions t->s and s<-t
+	double phi_idx_t[3] = {0.0,0.0,0.0};
+	op_A_comp_symm_CD(xr,phi_idx_s,phi_idx_t,ns,nt,fs,ft,xi,C[idx_buf],D[idx_buf]);
+	for(int i=0; i<3; i++)
+	    phi[idx_t*3+i] += phi_idx_t[i];
+    }
+}
+
 // ==== Compute result directly
 // Do not build sparse matrix
 void  compute_rsrc_direct     (const double* restrict x_in, 
@@ -723,7 +838,7 @@ void  compute_rsrc_direct     (const double* restrict x_in,
 
     // Build cell list
     gettimeofday(&tic, NULL);
-    build_cell_list(x, N, box, rc, &rn, ncell, &cell_list, &cell_idx);
+    build_cell_list_new(x, N, box, rc, &rn, ncell, &cell_list, &cell_idx);
     gettimeofday(&toc, NULL);
     time_spent = DELTA(tic,toc);
     if(VERBOSE)
@@ -847,40 +962,18 @@ void  compute_rsrc_direct     (const double* restrict x_in,
 			    buf_xr[3*buf_cnt+i] = xr[i];
 			buf_cnt++;
 		    }
-		    
 		}
-
-		// Empty buffer if last point of last neighbour,
-		// or buffer full
-		if ( (ip==26 && point_idx==(cell_b-1)) || buf_cnt==buf_size)
+		// Empty buffer if full
+		if (buf_cnt==buf_size)
 		{
-		    // Do delayed calculations
-		    op_A_CD(C,D,buf_rsq,buf_cnt,xi);
-
-		    // Save interactions
-		    for(idx_buf=0;idx_buf<buf_cnt;idx_buf++)
-		    {
-			idx_t = buf_idx_t[idx_buf];
-			for(i=0;i<3;i++)
-			{
-			    xr[i] = buf_xr[3*idx_buf+i];
-			    // Target point normal vector
-			    nt[i] = nvec[idx_t*3+i];
-			    // Target point distribution density
-			    ft[i] = fvec[idx_t*3+i];
-			}
-			// Calculate interactions t->s and s<-t
-			double phi_idx_t[3] = {0.0,0.0,0.0};
-			op_A_comp_symm_CD(xr,phi_idx_s,phi_idx_t,ns,nt,fs,ft,xi,C[idx_buf],D[idx_buf]);
-			for(i=0; i<3; i++)
-			    phi[idx_t*3+i] += phi_idx_t[i];
-
-		    } // endfor buffer
-
+		    compute_buffer_direct(C,D,buf_rsq,buf_cnt,xi,buf_idx_t,buf_xr,nvec,fvec,ns,fs,phi,phi_idx_s);		   
 		    buf_cnt = 0;
-		} // endif chainend or buffull
+		}
 	    } // End of neighbours in this cell
 	} // End of cells
+	// Empty buffer before writing phi_s
+	compute_buffer_direct(C,D,buf_rsq,buf_cnt,xi,buf_idx_t,buf_xr,nvec,fvec,ns,fs,phi,phi_idx_s);		   
+	buf_cnt = 0;
 	// Save additions to point s
 	for(int i=0; i<3; i++)
 	    phi[idx_s*3+i] += phi_idx_s[i];

@@ -7,7 +7,7 @@ status = 0;
 
 disp('==== test_real_rc ====')
 
-N = 1500;
+for N = [15 1500]
 box = [3 2 1];
 xi = 1;
 rc = 0.4;
@@ -112,6 +112,7 @@ assert(udiff<1e-14,'Results from RS methods differ!')
 disp('Output OK');
 
 clear Aref Anew Ac AMAT A1 A2 A3 R C V PER
+end
 
 disp('======================')
 disp('********** EWALD RS RC: OK **********')
