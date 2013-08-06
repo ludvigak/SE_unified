@@ -3,15 +3,18 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc,
 % Fast: saves interactions as matrix for subsequent iterations
 % Sums over layers
 %
-% phi = stokes_ewald_direct_real( m, x, f, xi, op_A, nbox)
+% [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, 
+%                                       [A, [sing_sub]])
 %        Evaluate potential, phi, at points x(idx). 
 %        x    --  positions          N-by-3
-%        nvec --  normal vectors   N-by-3
 %        f    --  source strengths   N-by-3
+%        nvec --  normal vectors   N-by-3
 %        xi   --  Ewald parameter
-%        nbox --  periodic replications
+%        L    --  Box size [3]
+%        nbox --  periodic replications 
 %        rc   --  cutoff radius
-%        [A sing_sub]
+%        A    --  Precomputed matrix
+%        sing_sub -- Use singularity subtraction
 
 VERBOSE = 0;
 

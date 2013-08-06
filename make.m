@@ -1,5 +1,5 @@
-% cc = 'gcc';
-cc = 'icc';
+cc = 'gcc';
+% cc = 'icc';
 
 openmp = true;
 
