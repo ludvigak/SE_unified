@@ -1,4 +1,5 @@
 #include "stresslet_real_rc.h"
+#include "cell_list.h"
 
 #ifdef BEENAKKER
 #include "beenakker_op_fd.h"
@@ -8,30 +9,6 @@
 
 #define SWAP(x,y) { tmp=x;x=y;y=tmp; }
 static void quicksort(int* restrict list, int* restrict slave, int m, int n);
-static void build_cell_list(
-			    // Input
-			    const double* restrict x, 
-			    const int N,
-			    const double* restrict box,
-			    const double rc,
-			    // Output
-			    double* rn_p,
-			    int ncell[3],
-			    int* restrict *ll_p,
-			    int* restrict *head_p
-			    );
-static void build_cell_list_new(
-			    // Input
-			    const double* restrict x, 
-			    const int N,
-			    const double* restrict box,
-			    const double rc,
-			    // Output
-			    double* rn_p,
-			    int ncell[3],
-			    int* restrict *cell_list_p,
-			    int* restrict *cell_idx_p
-			    );
 static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs);
 static void transpose(const double* restrict in, double* restrict out, const int N);
 
@@ -81,7 +58,7 @@ void  get_rs_triplets (
     double time_spent;
 
     // Build cell list
-    build_cell_list(x, N, box, rc, &rn, ncell, &ll, &head);
+    build_linked_cell_list(x, N, box, rc, &rn, ncell, &ll, &head);
 
     if(VERBOSE)
     {
@@ -493,64 +470,6 @@ void  get_rs_triplets (
     *numel_p = numel;
 }
 
-// ==== BUILD CELL LIST
-//
-// TODO: Add some assertions to make sure rc not too big,
-// and that box can be divided into square cells.
-static void build_cell_list(
-			    // Input
-			    const double* restrict x, 
-			    const int N,
-			    const double* restrict box,
-			    const double rc,
-			    // Output
-			    double* rn_p,
-			    int ncell[3],
-			    int* restrict *ll_p,
-			    int* restrict *head_p
-			    )
-{
-    int i,j;
-    int head_idx, ncell_tot;
-    int icell[3];
-    int* restrict ll;
-    int* restrict head;
-    double boxmin, rn;
-
-    // Setup cell partitioning
-    boxmin = box[0];
-    if(box[1]<boxmin)
-	boxmin = box[1];
-    if (box[2]<boxmin)
-	boxmin = box[2];
-    rn = boxmin / floor(boxmin/rc);
-    for(i=0;i<3;i++)
-	ncell[i] = round( box[i]/rn );
-    ncell_tot = ncell[0]*ncell[1]*ncell[2];
-
-    // Prepare cell list
-    ll = __MALLOC(N*sizeof(int));
-    head = __MALLOC(ncell_tot*sizeof(int));
-    for(i=0; i<ncell_tot; i++)
-    	head[i] = -1;
-    // Do cell partitioning 
-    for(i=0; i<N; i++)
-    {
-	for(j=0; j<3; j++)
-	    icell[j] = floor( x[i*3+j]/rn );
-	head_idx = 
-	    icell[0] +
-	    icell[1]*ncell[0] + 
-	    icell[2]*ncell[1]*ncell[0];
-	ll[i] = head[head_idx];
-	head[head_idx] = i;
-    }
-
-    *rn_p = rn;
-    *ll_p = ll;
-    *head_p = head;
-}
-
 //============ QUICKSORT ROUTINE
 // Applies quicksort on an interval (m,n) of *list, 
 // performs the same permutations on *slave.
@@ -655,92 +574,6 @@ static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_pro
 
 // ******************************** compute_rsrc_direct ******************
 // ***********************************************************************
-// ==== BUILD CELL LIST (NEW)
-//
-// TODO: Add some assertions to make sure rc not too big,
-// and that box can be divided into square cells.
-static void build_cell_list_new(
-			    // Input
-			    const double* restrict x, 
-			    const int N,
-			    const double* restrict box,
-			    const double rc,
-			    // Output
-			    double* rn_p,
-			    int ncell[3],
-			    int* restrict *cell_list_p,
-			    int* restrict *cell_idx_p
-			    )
-{
-    int i,j;
-    int head_idx, ncell_tot;
-    int icell[3];
-    double boxmin, rn;
-    // Outputs
-    int* restrict cell_list;
-    int* restrict cell_idx;
-    // Intermediates (could do this with fewer vars, but this is clear)
-    int* restrict cell_count;
-    int* restrict points_in_cell;
-    int* restrict point_cell_map;
-
-
-    // Setup cell partitioning
-    boxmin = box[0];
-
-    if(box[1]<boxmin)
-	boxmin = box[1];
-    if (box[2]<boxmin)
-	boxmin = box[2];
-    rn = boxmin / floor(boxmin/rc);
-    for(i=0;i<3;i++)
-	ncell[i] = round( box[i]/rn );
-    ncell_tot = ncell[0]*ncell[1]*ncell[2];
-
-    // Prepare arrays
-    cell_list  = __MALLOC(N*sizeof(int));
-    cell_idx   = __MALLOC((ncell_tot+1)*sizeof(int));
-    point_cell_map = __MALLOC(N*sizeof(int));
-    points_in_cell = __MALLOC(ncell_tot*sizeof(int));
-
-    for(i=0; i<ncell_tot; i++)
-	points_in_cell[i] = 0;
-
-    // Build list in two sweeps 
-    for(i=0; i<N; i++)
-    {
-	for(j=0; j<3; j++)
-	    icell[j] = x[i*3+j]/rn;
-	int icell_idx = 
-	    icell[0] +
-	    icell[1]*ncell[0] + 
-	    icell[2]*ncell[1]*ncell[0];
-	points_in_cell[icell_idx]++;
-	point_cell_map[i] = icell_idx;
-    }
-    // Generate adressing
-    cell_idx[0]=0;
-    for (int i=0; i<ncell_tot; i++)
-	cell_idx[i+1] = cell_idx[i]+points_in_cell[i];
-    // Setup new vector
-    __FREE(points_in_cell);
-    cell_count = __MALLOC(ncell_tot*sizeof(int));
-    for(i=0; i<ncell_tot; i++)
-	cell_count[i] = 0;
-    // Finally build list
-    for(i=0; i<N; i++)
-    {
-	int icell_idx = point_cell_map[i]; 
-	int adr = cell_idx[icell_idx] + cell_count[icell_idx];
-	cell_list[adr] = i;
-	cell_count[icell_idx]++;
-    }
-    __FREE(cell_count);
-    __FREE(point_cell_map);
-    *rn_p = rn;
-    *cell_list_p = cell_list;
-    *cell_idx_p = cell_idx;
-}
 // Transpose vector
 void transpose(const double* restrict in, double* restrict out, const int N)
 {
@@ -838,7 +671,7 @@ void  compute_rsrc_direct     (const double* restrict x_in,
 
     // Build cell list
     gettimeofday(&tic, NULL);
-    build_cell_list_new(x, N, box, rc, &rn, ncell, &cell_list, &cell_idx);
+    build_cell_list(x, N, box, rc, &rn, ncell, &cell_list, &cell_idx);
     gettimeofday(&toc, NULL);
     time_spent = DELTA(tic,toc);
     if(VERBOSE)

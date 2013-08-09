@@ -1,23 +1,13 @@
+#ifndef __STRESSLET_REAL_RC_H__
+#define __STRESSLET_REAL_RC_H__
+
 #include "math.h"
 #include "string.h"
 #include "time.h"
 #include "sys/time.h"
 #include "unistd.h"
 
-#ifdef MATLAB_MEX_FILE
-#include "mex.h"
-#define __MALLOC mxMalloc
-#define __REALLOC mxRealloc
-#define __FREE mxFree
-#define __PRINTF mexPrintf
-#else
-#include <stdlib.h>
-#include <stdio.h>
-#define __MALLOC malloc
-#define __REALLOC realloc
-#define __FREE free
-#define __PRINTF printf
-#endif
+#include "mex_compat.h"
 
 #ifdef _OPENMP
 #include "omp.h"
@@ -47,4 +37,6 @@ void  compute_rsrc_direct (const double* restrict x,
 			   double rc, 
 			   double* restrict *phi_p
 			   );
+
+#endif
 

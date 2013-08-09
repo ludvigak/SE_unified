@@ -1,5 +1,5 @@
-cc = 'gcc';
-% cc = 'icc';
+% cc = 'gcc';
+cc = 'icc';
 
 openmp = true;
 
@@ -37,6 +37,7 @@ OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags
 
 mex_string = ['mex ' CC CFLAGS LDFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
 
+
 % build FGG code from ../SE_fast_gridding
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
@@ -54,7 +55,7 @@ eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stok
 % build SE_Stresslet specific mex stuff
 eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
 eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
-eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/stresslet_real_rc_mex.c -o stresslet_real_rc_mex'])
-eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/stresslet_real_rc_nomatrix_mex.c -o stresslet_real_rc_nomatrix_mex'])
+eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_mex.c -o stresslet_real_rc_mex'])
+eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_nomatrix_mex.c -o stresslet_real_rc_nomatrix_mex'])
 
 
