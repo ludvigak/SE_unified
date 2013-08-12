@@ -109,14 +109,11 @@ void build_cell_list(
 
     // Prepare arrays
     cell_list  = __MALLOC(N*sizeof(int));
-    cell_idx   = __MALLOC((ncell_tot+1)*sizeof(int));
+    cell_idx   = __CALLOC(ncell_tot+1, sizeof(int));
     point_cell_map = __MALLOC(N*sizeof(int));
-    points_in_cell = __MALLOC(ncell_tot*sizeof(int));
 
-    for(i=0; i<ncell_tot; i++)
-	points_in_cell[i] = 0;
-
-    // Build list in two sweeps 
+    // Build list in two sweeps,
+    // First sweep, count number of points in each cell
     for(i=0; i<N; i++)
     {
 	for(j=0; j<3; j++)
@@ -125,19 +122,16 @@ void build_cell_list(
 	    icell[0] +
 	    icell[1]*ncell[0] + 
 	    icell[2]*ncell[1]*ncell[0];
-	points_in_cell[icell_idx]++;
+	cell_idx[icell_idx + 1]++;
 	point_cell_map[i] = icell_idx;
     }
     // Generate adressing
     cell_idx[0]=0;
     for (int i=0; i<ncell_tot; i++)
-	cell_idx[i+1] = cell_idx[i]+points_in_cell[i];
+	cell_idx[i+1] += cell_idx[i];
     // Setup new vector
-    __FREE(points_in_cell);
-    cell_count = __MALLOC(ncell_tot*sizeof(int));
-    for(i=0; i<ncell_tot; i++)
-	cell_count[i] = 0;
-    // Finally build list
+    cell_count = __CALLOC(ncell_tot, sizeof(int));
+    // Second sweep, build list
     for(i=0; i<N; i++)
     {
 	int icell_idx = point_cell_map[i]; 
