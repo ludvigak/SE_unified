@@ -83,7 +83,7 @@ void build_cell_list(
 			    )
 {
     int i,j;
-    int head_idx, ncell_tot;
+    int ncell_tot;
     int icell[3];
     double boxmin, rn;
     // Outputs
@@ -91,7 +91,6 @@ void build_cell_list(
     int* restrict cell_idx;
     // Intermediates (could do this with fewer vars, but this is clear)
     int* restrict cell_count;
-    int* restrict points_in_cell;
     int* restrict point_cell_map;
 
 
