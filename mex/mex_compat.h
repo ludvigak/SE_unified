@@ -8,10 +8,19 @@
 #define __REALLOC mxRealloc
 #define __FREE mxFree
 #define __PRINTF mexPrintf
-#define __ERROR mexErrMsgTxt
+#define __ERROR(msg) { \
+	char ebuffer[1024];						\
+	snprintf(ebuffer, 1024, "%s at %s, line %d.\n", msg, __FILE__, __LINE__); \
+	mexErrMsgTxt(ebuffer);						\
+    }
+#define __WARNING(msg) { \
+	char wbuffer[1024];						\
+	snprintf(wbuffer, 1024, "%s at %s, line %d.\n", msg, __FILE__, __LINE__); \
+	mexWarnMsgTxt(wbuffer);						\
+    }
 #define ASSERT(expr, err)						\
     if(! (expr))							\
-	mexErrMsgTxt("Assertion failed: (" # expr ") " # err "\n");	
+	__ERROR("Assertion failed: (" # expr ") " # err);	
 #else
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,6 +30,7 @@
 #define __FREE free
 #define __PRINTF printf
 #define __ERROR(msg) assert(0 && msg)
+#define __WARNING(msg) printf("[WARNING] %s at %s, line %d.\n", msg, __FILE__, __LINE__);
 #define ASSERT(expr, err) 						\
 	assert( (expre) && "Assert (" # expr ") failed: " # err "\n");	
 #endif
