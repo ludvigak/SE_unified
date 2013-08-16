@@ -21,9 +21,11 @@
 #define ASSERT(expr, err)						\
     if(! (expr))							\
 	__ERROR("Assertion failed: (" # expr ") " # err);	
+#define __FLUSH() mexEvalString("drawnow;")
 #else
 #include <stdlib.h>
 #include <stdio.h>
+#include "assert.h"
 #define __MALLOC malloc
 #define __CALLOC calloc
 #define __REALLOC realloc
@@ -32,7 +34,8 @@
 #define __ERROR(msg) assert(0 && msg)
 #define __WARNING(msg) printf("[WARNING] %s at %s, line %d.\n", msg, __FILE__, __LINE__);
 #define ASSERT(expr, err) 						\
-	assert( (expre) && "Assert (" # expr ") failed: " # err "\n");	
+	assert( (expr) && "Assert (" # expr ") failed: " # err "\n");	
+#define __FLUSH() 
 #endif
 
 #endif

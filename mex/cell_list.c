@@ -52,6 +52,7 @@ void build_linked_cell_list(
 	    icell[0] +
 	    icell[1]*ncell[0] + 
 	    icell[2]*ncell[1]*ncell[0];
+	// ASSERT(head_idx < ncell_tot, 'cell index out of bounds');
 	ll[i] = head[head_idx];
 	head[head_idx] = i;
     }
@@ -121,6 +122,7 @@ void build_cell_list(
 	    icell[0] +
 	    icell[1]*ncell[0] + 
 	    icell[2]*ncell[1]*ncell[0];
+	// ASSERT(icell_idx < ncell_tot, 'cell index out of bounds');
 	cell_idx[icell_idx + 1]++;
 	point_cell_map[i] = icell_idx;
     }

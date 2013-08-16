@@ -7,6 +7,12 @@
 #error "Must provide -D<method> to compiler"
 #endif
 
+#ifdef _OPENMP
+#define CRITICAL _Pragma("omp critical")
+#else
+#define CRITICAL
+#endif
+
 #define SWAP(x,y) { tmp=x;x=y;y=tmp; }
 static void quicksort(int* restrict list, int* restrict slave, int m, int n);
 static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs);
@@ -692,12 +698,15 @@ void  compute_rsrc_direct     (const double* restrict x_in,
     default(none)
 #endif
     { // Begin parallel section
-	// Setup local output
-	double* restrict phi = __MALLOC(3*N*sizeof(double));
-	for(int i=0;i<3*N;i++)
-	    phi[i] = 0.0;
-
-	int i,j;
+    // Setup local output
+    double* restrict phi;
+    CRITICAL {
+	phi = __MALLOC(3*N*sizeof(double));
+    }
+    for(int i=0;i<3*N;i++)
+	phi[i] = 0.0;
+    
+    int i,j;
     int icell_idx;
     int icell[3], home_cell[3];
 
@@ -836,8 +845,9 @@ void  compute_rsrc_direct     (const double* restrict x_in,
     }
 
     // free/malloc not thread safe under MEX
-#pragma omp critical
-    __FREE(phi);
+    CRITICAL {
+	__FREE(phi);
+    }
 #else
     __FREE(phi_out);
     phi_out = phi;    
