@@ -561,7 +561,7 @@ static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_pro
     // Barrier reset
 #pragma omp critical
     {
-	if (barrier_out[bar_num] >= *num_procs)
+	if (barrier_out[bar_num] == barrier_in[bar_num])
 	{
 	    //__PRINTF("[%d] Everybody passed barrier %d. \n",tnum, bar_num);
 	    barrier_in[bar_num] = 0;
