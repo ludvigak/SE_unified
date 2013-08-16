@@ -13,10 +13,7 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     
     check_inputs(box,rc);
     N = size(x,1);
-    % Recenter points in mother box
-    for dim_idx=1:3
-        x(:,dim_idx) = mod( x(:,dim_idx), box(dim_idx) );
-    end
+    x = recenter_points(x, box);
 
     nvarargin = numel(varargin);
     if nvarargin>0

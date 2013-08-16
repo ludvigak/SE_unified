@@ -11,10 +11,7 @@ box = opt.box;
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
 
-% Recenter points in mother box
-for dim_idx=1:3
-    x(:,dim_idx) = mod( x(:,dim_idx), box(dim_idx) );
-end
+x = recenter_points(x, box);
 
 if nargin == 6
     static_fgg=false;
@@ -82,10 +79,7 @@ stats.wtime_scale = toc();
 
 if opt.eval_external
     u = zeros(size(opt.eval_x));
-    % Recenter points in mother box
-    for dim_idx=1:3
-        opt.eval_x(:,dim_idx) = mod( opt.eval_x(:,dim_idx), box(dim_idx) );
-    end
+    opt.eval_x = recenter_points(opt.eval_x, box);
 elseif static_fgg
     u = zeros(size(x));
     x = x(sdat.iperm,:);

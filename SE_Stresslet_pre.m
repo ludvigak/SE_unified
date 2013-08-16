@@ -8,10 +8,7 @@ eta=(2*opt.w*xi/opt.m)^2;
 opt.c = 2*xi^2/eta;
 opt.box=opt.box;
 
-% Recenter points in mother box
-for dim_idx=1:3
-    x(:,dim_idx) = mod( x(:,dim_idx), opt.box(dim_idx) );
-end
+x = recenter_points(x, opt.box);
 
 [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
 

@@ -20,10 +20,7 @@ VERBOSE = 0;
 
 nosrc=size(f,1);
 noeval=length(idx);  
-% Recenter points in mother box
-for dim_idx=1:3
-    x(:,dim_idx) = mod( x(:,dim_idx), L(dim_idx) );
-end
+x = recenter_points(x, L);
 
 sing_sub = 0;
 
