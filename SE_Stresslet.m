@@ -82,6 +82,10 @@ stats.wtime_scale = toc();
 
 if opt.eval_external
     u = zeros(size(opt.eval_x));
+    % Recenter points in mother box
+    for dim_idx=1:3
+        opt.eval_x(:,dim_idx) = mod( opt.eval_x(:,dim_idx), box(dim_idx) );
+    end
 elseif static_fgg
     u = zeros(size(x));
     x = x(sdat.iperm,:);
