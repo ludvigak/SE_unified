@@ -1,7 +1,7 @@
 // Simple real space interaction computation that saves matrix for later use.
 // Does not make use of interaction symmetries.
 
-#include "mex.h"
+#include "mex_compat.h"
 #include "math.h"
 
 #define X    prhs[0] // Points (Nx3)
@@ -53,6 +53,8 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     int outDims[2];
     outDims[0] = nidx;
     outDims[1] = N;
+    size_t malloc_tot = N*nidx*6*sizeof(double);
+    ASSERT(malloc_tot < MALLOC_MAX, "MALLOC_MAX exceeded");
     AMAT = mxCreateCellMatrix(3,3);
     double* restrict amat[3][3];
     for(int i=0; i<3; i++)

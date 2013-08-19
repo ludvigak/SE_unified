@@ -13,14 +13,14 @@
 #include "omp.h"
 #endif
 
+#ifndef VERBOSE
+#define VERBOSE 0
+#endif
+
 
 #define DELTA(tic,toc) ((toc.tv_sec  - tic.tv_sec) * 1000000u + toc.tv_usec - tic.tv_usec) / 1.e6
 
 #define PI 3.141592653589793
-
-#ifndef VERBOSE
-#define VERBOSE 0
-#endif
 
 void  get_rs_triplets (const double* restrict x, const double* restrict nvec, int N,
 		       const double* restrict box, double xi, double rc, int nlhs,

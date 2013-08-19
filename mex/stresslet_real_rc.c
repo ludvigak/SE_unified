@@ -85,6 +85,8 @@ void  get_rs_triplets (
     // Allocate a guess based on average density +50%
     int maxel = round(  1.5 * N*N*4*PI*rc*rc*rc/3/(box[0]*box[1]*box[2]) );
     int numel = 0;
+    size_t malloc_tot = maxel * (2*sizeof(int) + 6*sizeof(double));
+    ASSERT(malloc_tot < MALLOC_MAX, "MALLOC_MAX exceeded");
     row = __MALLOC(maxel*sizeof(int));
     col = __MALLOC(maxel*sizeof(int));
     for(i=0;i<=2;i++)
@@ -362,12 +364,26 @@ void  get_rs_triplets (
     __FREE(x);
     __FREE(nvec);
 
-    gettimeofday(&toc, NULL);
-    time_spent = DELTA(tic,toc);
-
-    if(VERBOSE)
-    {
+    if(VERBOSE) {
+	gettimeofday(&toc, NULL);
+	time_spent = DELTA(tic,toc);
 	__PRINTF("[RSRC] Triplets generated in %.3f seconds.\n", time_spent);
+    }
+
+    // Reallocate (shrink) values to actual size used
+    gettimeofday(&tic, NULL);
+    for(i=0;i<=2;i++)
+	for(j=i;j<=2;j++)
+	{
+	    double* tmp = val[i][j];
+	    val[i][j] = __REALLOC(val[i][j], numel*sizeof(double));
+	    if (tmp != val[i][j] && VERBOSE)
+		__PRINTF("[RSRC] Realloc moved val[%d][%d].\n", i, j);
+	}
+    if(VERBOSE) {
+	gettimeofday(&toc, NULL);
+	time_spent = DELTA(tic,toc);
+	__PRINTF("[RSRC] Realloc %d->%d took %.3f seconds.\n", maxel, numel, time_spent);
     }
 
     //============================================

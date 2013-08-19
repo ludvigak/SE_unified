@@ -1,6 +1,13 @@
 #ifndef __MEX_COMPAT_H__
 #define __MEX_COMPAT_H__
 
+#define GiB *((size_t) 1024*1024*1024)
+
+/** Maximum total amount of memory to malloc in applications,
+    not strictly followed, but tries to avoid some swap-deaths. */
+#define MALLOC_MAX 6 GiB
+
+
 #ifdef MATLAB_MEX_FILE
 #include "mex.h"
 #define __MALLOC mxMalloc
