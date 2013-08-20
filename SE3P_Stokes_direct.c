@@ -9,6 +9,10 @@
 #error "Must provide -D<decomposition> to compiler"
 #endif
 
+ #ifdef _OPENMP
+ #include <omp.h>
+ #endif
+
 void SE3P_Stokes_direct_real(double* restrict u, 
 			     const int* restrict idx, int nidx,
 			     const double* restrict x, 
@@ -107,6 +111,64 @@ void SE3P_Stokes_direct_real_rc(double* restrict u,
 		}
     }
 }
+
+void SE3P_Stokes_direct_real_ext_rc(double* restrict u, 
+				const double* restrict xt, const int Nt,
+				const double* restrict x, 
+				const double* restrict f, const int N,
+				const ewald_opts opt)
+{
+    const int nbox = opt.layers;
+
+    double r[3];
+    double xm[3];
+    double A[3][3];
+    int i1, i2, i3, m, n;
+
+#ifdef _OPENMP
+#pragma omp parallel for \
+    private(r,xm,A,i1,i2,i3,m,n) \
+    shared(u,xt,x,f)	 \
+    default(none)
+#endif
+    for(m=0; m<Nt; m++)                          // for all evaluation points
+    {
+	double um[3] = {0.0, 0.0, 0.0};
+
+	xm[0] = xt[m     ];
+	xm[1] = xt[m+Nt  ];
+	xm[2] = xt[m+2*Nt];
+
+	for(i1 = -nbox; i1<=nbox; i1++)                           // image boxes
+	    for(i2 = -nbox; i2<=nbox; i2++)
+		for(i3 = -nbox; i3<=nbox; i3++)
+		{
+		    for(n=0; n<N; n++)                      // for all particles
+		    {
+			// Assuming that r != 0 in home box
+
+			r[0] = xm[0]-x[n    ]+opt.box[0]*i1;
+			r[1] = xm[1]-x[n+  N]+opt.box[1]*i2;
+			r[2] = xm[2]-x[n+2*N]+opt.box[2]*i3;
+
+			if(sqrt(r[0]*r[0] + r[1]*r[1] + r[2]*r[2]) > opt.rc)
+			    continue;                         // skip outside rc
+
+			op_A(A,r,opt.xi);                            // u += A*f
+			um[0] += 
+			    A[0][0]*f[n]+A[0][1]*f[n+N]+A[0][2]*f[n+2*N];
+			um[1] += 
+			    A[1][0]*f[n]+A[1][1]*f[n+N]+A[1][2]*f[n+2*N];
+			um[2] +=
+			    A[2][0]*f[n]+A[2][1]*f[n+N]+A[2][2]*f[n+2*N];
+		    }
+		}
+	u[m     ] = um[0];
+	u[m+Nt  ] = um[1];
+	u[m+2*Nt] = um[2];
+    }
+}
+
 
 void SE3P_Stokes_direct_fd(double* restrict u, 
 			   const int* restrict idx, int nidx,

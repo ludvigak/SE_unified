@@ -20,14 +20,8 @@
 #define EWALD_KERNEL SE2P_Stokes_direct_real(u, idx, num_eval, x, f, N, opt)
 #define EWALD_TAG "RS2P"
 #elif THREE_PERIODIC
-#ifdef EXTERNAL
-#define EWALD_KERNEL SE3P_Stokes_direct_real_ext(u, xt, num_eval, x, f, N, opt)
-#define EWALD_TAG "RS3P_EXT"
-#define XT prhs[0] // Target locations
-#else
 #define EWALD_KERNEL SE3P_Stokes_direct_real(u, idx, num_eval, x, f, N, opt)
 #define EWALD_TAG "RS3P"
-#endif
 #else
 #error "Must give -D<TWO/THREE>_PERIODIC to compiler"
 #endif
@@ -38,8 +32,14 @@
 #define EWALD_KERNEL SE2P_Stokes_direct_real_rc(u, idx, num_eval, x, f, N, opt)
 #define EWALD_TAG "RC2P"
 #elif THREE_PERIODIC
+#ifdef EXTERNAL
+#define EWALD_KERNEL SE3P_Stokes_direct_real_ext_rc(u, xt, num_eval, x, f, N, opt)
+#define EWALD_TAG "RC3P_EXT"
+#define XT prhs[0] // Target locations
+#else
 #define EWALD_KERNEL SE3P_Stokes_direct_real_rc(u, idx, num_eval, x, f, N, opt)
 #define EWALD_TAG "RC3P"
+#endif
 #else
 #error "Must give -D<TWO/THREE>_PERIODIC to compiler"
 #endif

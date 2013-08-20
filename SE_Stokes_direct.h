@@ -49,6 +49,10 @@ void SE3P_Stokes_direct_real_rc(double*, const int*, int,
 				const double*, const double*, int, 
 				const ewald_opts);
 
+void SE3P_Stokes_direct_real_ext_rc(double*, const double*, int, 
+				    const double*, const double*, int, 
+				    const ewald_opts);
+
 void SE3P_Stokes_direct_fd(double*, const int*, int,
 			   const double *, const double*, int, 
 			   const ewald_opts);
