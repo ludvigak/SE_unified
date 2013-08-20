@@ -1,8 +1,12 @@
 #include "../SE_fgg.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "emmintrin.h"
 
 // gcc -Wall -g -O3 -DTHREE_PERIODIC -DFGG_SPLIT -std=c99 fgg_test.c ../SE_fgg.c -lm
+
+#define SE_FGG_MALLOC(sz) _mm_malloc((sz),16)
+#define SE_FGG_FREE(sz) _mm_free((sz))
 
 #ifdef FGG_SPLIT
 #define PRECOMP_FGG_EXPA 1
@@ -98,8 +102,8 @@ int main(int argc, char* argv[])
     /* clean up */ 
     SE_FGG_free_workspace(&work);
     SE_free_system(&s);
-    free(H_per);
-    free(phi);
+    SE_FGG_FREE(H_per);
+    SE_FGG_FREE(phi);
 
     return 0;
 }
