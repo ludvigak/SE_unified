@@ -1,0 +1,10 @@
+gcc -O3 --std=c99 -msse4.2 -lm -DTHREE_PERIODIC -DFGG_SPLIT ../SE_fgg.c fgg_test.c
+
+NOTES: 
+1) -O3 needed for inlining of small functions defined in SE_fgg.h
+2) --std=c99 needed because the code conforms to the C99 standard
+3) -msseX X>=2 needed because a lot of the code is SSE intriniscs
+4) -DTHREE_PERIODIC or -DTWO_PERIODIC is needed to bind the right 
+   FGG_expansion call depending on the periodic structure.
+
+//Dag

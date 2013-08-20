@@ -1,0 +1,1 @@
+valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes ./fg2p_grid_test 100000 30 18
