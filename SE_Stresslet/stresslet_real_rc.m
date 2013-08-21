@@ -2,9 +2,10 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
     % Stresslet real space summation with truncation radius rc
     % Usage: 
     % [res]      = stresslet_real_rc( x, f, nvec, xi, box, rc);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, [], sing_sub);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT, sing_sub);
-    % [res AMAT R C V PER] = stresslet_real_rc( x, f, nvec, xi, box, rc);
+    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, [],   sing_sub, ns_quad_mtrx);
+    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT, sing_sub, ns_quad_mtrx);
+    % [res AMAT R C V PER] 
+    %            = stresslet_real_rc( x, f, nvec, xi, box, rc);
     %
     % sing_sub = singularity subtraction, default 0. Only for matrix comp.
     % rc = cutoff radius, must be <= min(box)/2
@@ -28,11 +29,19 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
         sing_sub = varargin{2};
     end
 
+    ns_quad_mtrx = [];
+    if nvarargin > 2
+        ns_quad_mtrx = varargin{3};
+    end
+    
     if ~exist('A','var')
         if nargout==1
             % Compute reults matrix-free
             if sing_sub
                 error('Singularity subtraction not available for matrix-free call.')
+            end
+            if isstruct(ns_quad_mtrx)
+                error('NS quad not available for matrix-free call.')
             end
             res = stresslet_real_rc_nomatrix_mex( x, nvec, q, box, rc, xi);
             return
@@ -43,6 +52,11 @@ function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargi
             [varargout{1:4}] = deal(R,C,V,PER);
         else
             error('Invalid usage');
+        end
+        
+        % NOTE: No test suite for this in place yet
+        if isstruct(ns_quad_mtrx)
+            A = apply_ns_quad_mtrx(A, ns_quad_mtrx);
         end
         
         if sing_sub

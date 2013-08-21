@@ -4,7 +4,7 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc,
 % Sums over layers
 %
 % [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, 
-%                                       [A, [sing_sub]])
+%                                       [A, sing_sub, ns_quad_mtrx])
 %        Evaluate potential, phi, at points x(idx). 
 %        x    --  positions          N-by-3
 %        f    --  source strengths   N-by-3
@@ -15,7 +15,7 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc,
 %        rc   --  cutoff radius
 %        A    --  Precomputed matrix
 %        sing_sub -- Use singularity subtraction
-
+%        ns_quad_mtrx -- Correction matrices for nearly singular quadrature
 VERBOSE = 0;
 
 nosrc=size(f,1);
@@ -23,6 +23,7 @@ noeval=length(idx);
 x = recenter_points(x, L);
 
 sing_sub = 0;
+ns_quad_mtrx = [];
 
 A = {[]};
 
@@ -30,12 +31,16 @@ if VERBOSE
     mytic=tic;
 end
 
-if nargin>=9
+nvarargin = numel(varargin);
+if nvarargin
     if numel(varargin{1})
         A = varargin{1};
     end
-    if nargin==10
+    if nvarargin > 1
         sing_sub = varargin{2};
+    end
+    if nvarargin > 2
+        ns_quad_mtrx = varargin{3};
     end
 end
 
@@ -49,6 +54,11 @@ else
     % component
     idx = int32(idx);
     A = stresslet_direct_real_mexcore(x,nvec,idx,nbox,rc,xi,L);
+    
+    % NOTE: No test suite for this in place yet
+    if isstruct(ns_quad_mtrx)
+        A = apply_ns_quad_mtrx(A, ns_quad_mtrx);
+    end
     
     if sing_sub
         stic=tic;
