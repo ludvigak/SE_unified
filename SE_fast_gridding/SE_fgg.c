@@ -1530,6 +1530,7 @@ void SE_FGG_int_split_SSE_u8(double* restrict phi,
 }
 
 // -----------------------------------------------------------------------------
+#ifdef __AVX__
 void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
                                    const SE_FGG_work* work,
                                    const SE_FGG_params* params)
@@ -1978,7 +1979,7 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 	phi[m] = (h*h*h)*(s[0]+s[1]+s[2]+s[3]);
     }
 }
-
+#endif // AVX
 
 // -----------------------------------------------------------------------------
 void SE_FGG_int_split_SSE_dispatch_force(double* restrict force,  
@@ -2932,6 +2933,7 @@ rFZ = _mm_add_pd(rFZ,_mm_mul_pd(rH3,_mm_mul_pd(_mm_mul_pd(_mm_mul_pd(rZFZ3,rZZ3)
 
 
 // -----------------------------------------------------------------------------
+#ifdef __AVX__
 void SE_FGG_int_split_AVX_dispatch_force(double* restrict force,  
 					 SE_state *st,
 					 const SE_FGG_work* work, 
@@ -3654,6 +3656,7 @@ rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(_mm256_mul
 #endif
     }
 }
+#endif // AVX
 
 // -----------------------------------------------------------------------------
 void SE_FGG_grid(SE_FGG_work* work, const SE_state* st, 
@@ -4199,6 +4202,7 @@ void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st,
 }
 
 // -----------------------------------------------------------------------------
+#ifdef __AVX__
 void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st, 
 				    const SE_FGG_params* params)
 {
@@ -4248,7 +4252,7 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     {
 	// specific for p=16
 	__DISPATCHER_MSG("[FGG GRID AVX] P=16\n");
-	SE_FGG_grid_split_SSE_P16(work, st, params); 
+	SE_FGG_grid_split_AVX_P16(work, st, params); 
     }
     else if(p==8)
     {
@@ -4267,12 +4271,6 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
       // specific for p divisible by 4
       __DISPATCHER_MSG("[FGG GRID AVX] P unroll 4\n");
       SE_FGG_grid_split_AVX(work, st, params);
-    }
-    else
-    {
-	// vanilla AVX code (any even p)
-	__DISPATCHER_MSG("[FGG GRID AVX] Vanilla\n");
-	SE_FGG_grid_split_SSE(work, st, params);
     }
 }
 
@@ -4653,7 +4651,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 	}
     }
 }
-
+#endif __AVX__
 
 // -----------------------------------------------------------------------------
 void 
@@ -5152,6 +5150,7 @@ void SE_FGG_grid_split_SSE_force(SE_FGG_work* work,
 
 
 // -----------------------------------------------------------------------------
+#ifdef __AVX__
 void 
 SE_FGG_grid_split_AVX_dispatch_force(SE_FGG_work* work, 
 				     const SE_state *st,
@@ -5616,7 +5615,7 @@ void SE_FGG_grid_split_AVX_force(SE_FGG_work* work,
 	}
     }
 }
-
+#endif //AVX
 
 
 
