@@ -251,7 +251,6 @@ void SE_init_unit_system(SE_state* s, const SE_FGG_params* params)
     s->x = SE_FGG_MALLOC(3*N*sizeof(double));
     s->q = SE_FGG_MALLOC(  N*sizeof(double));
     s->phi = SE_FGG_MALLOC(N*sizeof(double));
-    s->phi = SE_FGG_MALLOC(N*sizeof(double));
    
     FILE *fp;
     fp = fopen("atoms.txt","r");
@@ -1627,7 +1626,7 @@ void SE_FGG_int_split_AVX(double* restrict phi,
                         rH0  = _mm256_load_pd( H+idx );
                         rZZ0 = _mm256_load_pd( zz + idx_zz);
                         rZS0 = _mm256_load_pd( zs + idx_zs);
-#ifdef __FMA__
+#ifdef AVX_FMA
                         rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 #else
                         rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
@@ -1654,7 +1653,7 @@ void SE_FGG_int_split_AVX(double* restrict phi,
                         rH0  = _mm256_loadu_pd( H+idx );
                         rZZ0 = _mm256_load_pd( zz + idx_zz);
                         rZS0 = _mm256_load_pd( zs + idx_zs);
-#ifdef __FMA__
+#ifdef AVX_FMA
                         rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 #else
                         rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
@@ -1728,7 +1727,7 @@ void SE_FGG_int_split_AVX_P8(double* restrict phi,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs    );
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA
+#ifdef AVX_FMA
                     rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
                     rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 #else
@@ -1754,7 +1753,7 @@ void SE_FGG_int_split_AVX_P8(double* restrict phi,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs    );
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA
+#ifdef AVX_FMA
                     rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
                     rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 #else
@@ -1834,7 +1833,7 @@ void SE_FGG_int_split_AVX_P16(double* restrict phi,
 		    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
 		    rZS2 = _mm256_load_pd( zs + idx_zs + 8 );
 		    rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 		    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 		    rP = _mm256_fmadd_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2),rP);
@@ -1868,7 +1867,7 @@ void SE_FGG_int_split_AVX_P16(double* restrict phi,
 		    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
 		    rZS2 = _mm256_load_pd( zs + idx_zs + 8 );
 		    rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 		    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 		    rP = _mm256_fmadd_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2),rP);
@@ -1943,7 +1942,7 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 			rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 #else
@@ -1978,7 +1977,7 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
 			rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
 #else
@@ -4337,7 +4336,7 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 			rZZ0 = _mm256_load_pd( zz + idx_zz     );
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZZ0 = _mm256_mul_pd(rZZ0,rC);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
 #else
 			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
@@ -4367,7 +4366,7 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 	    		rZZ0 = _mm256_load_pd( zz + idx_zz );
 	    		rZS0 = _mm256_load_pd( zs + idx_zs );
 	    		rZZ0 = _mm256_mul_pd(rZZ0,rC);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
 #else
 			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
@@ -4438,7 +4437,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
                     rZS2 = _mm256_load_pd( zs + idx_zs + 8);
                     rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
@@ -4477,7 +4476,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
                     rZS1 = _mm256_load_pd( zs + idx_zs +  4);
                     rZS2 = _mm256_load_pd( zs + idx_zs +  8);                   
                     rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
@@ -4545,7 +4544,7 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs);
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 #else
@@ -4574,7 +4573,7 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs     );
                     rZS1 = _mm256_load_pd( zs + idx_zs +   4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 #else
@@ -4640,7 +4639,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 #else
@@ -4678,7 +4677,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 
 	    		rZS0 = _mm256_load_pd( zs + idx_zs    );
 	    		rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-#ifdef __FMA__
+#ifdef AVX_FMA
 			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
 			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
 #else
