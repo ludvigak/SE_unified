@@ -44,19 +44,15 @@
 #define __IDX __IDX3_RMAJ
 #endif
 
-// Malloc with 16-byte alignment (from intrinsics library), if available
+// Malloc with 32 or 16-byte alignment (from intrinsics library)
 #ifdef __AVX__
 #define MEM_ALIGNED __attribute__((aligned(32)))
 #define SE_FGG_MALLOC(sz) _mm_malloc((sz),32)
 #define SE_FGG_FREE(sz) _mm_free((sz))
-#elif __SSE__
+#else
 #define MEM_ALIGNED __attribute__((aligned(16)))
 #define SE_FGG_MALLOC(sz) _mm_malloc((sz),16)
 #define SE_FGG_FREE(sz) _mm_free((sz))
-#else
-#define MEM_ALIGNED
-#define SE_FGG_MALLOC(sz) malloc((sz))
-#define SE_FGG_FREE(sz) free((sz))
 #endif
 
 // display debug messages in the SSE dispatcher
@@ -79,7 +75,7 @@ inline int is_odd(int p)
 }
 inline int isnot_div_by_4(int p)
 {
-   return p&2;
+   return p&3;
 }
 
 // Return half of gaussian width:
@@ -163,22 +159,27 @@ void SE_FGG_grid_split(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE_u8(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE_P16(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+#ifdef __AVX__
 void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_P16(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_P8(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_u8(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+#endif
+
 // particles to grid force
 void SE_FGG_grid_split_SSE_dispatch_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_SSE_P16_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+#ifdef __AVX__
 void SE_FGG_grid_split_AVX_dispatch_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 void SE_FGG_grid_split_AVX_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+#endif
 
 // Compute all FGG expansion vectors
 void SE_FGG_expand_all(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
@@ -195,11 +196,13 @@ void SE_FGG_int_split_SSE_P8(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_SSE_P16(double*, const SE_FGG_work*, const SE_FGG_params*);
 
 // Grid to particles Force
+#ifdef __AVX__
 void SE_FGG_int_split_AVX_dispatch(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_P8(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_P16(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_u8(double*, const SE_FGG_work*, const SE_FGG_params*);
+#endif
 
 // Grid to particles Potential
 void SE_FGG_int_split_SSE_dispatch_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
@@ -208,11 +211,13 @@ void SE_FGG_int_split_SSE_force(double*, SE_state*, const SE_FGG_work*, const SE
 void SE_FGG_int_split_SSE_P8_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_SSE_u8_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_SSE_P16_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
+#ifdef __AVX__
 void SE_FGG_int_split_AVX_dispatch_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_P16_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_P8_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_u8_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
 void SE_FGG_int_split_AVX_force(double*, SE_state*, const SE_FGG_work*, const SE_FGG_params*);
+#endif
 
 // Static Gaussian on P^3-grid
 void SE_FGG_base_gaussian(SE_FGG_work*, const SE_FGG_params*);
