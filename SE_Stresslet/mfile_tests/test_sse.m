@@ -9,8 +9,9 @@ N = 5000;        % numbver of charged particles
 xi = 4;        % ewald parameter
 
 % grid
-SE_opt.M = 65*box
+SE_opt.M = 60*box
 SE_opt.box = box;
+
 
 % system
 [x f nvec] = generate_state(N,box);
@@ -19,7 +20,7 @@ eval_idx = (1:N)';
 % params
 maxe = 0;
 
-for P = [ 8 10 11 16 24];
+for P = [ 8 11 12 16 24];
     SE_opt.P = P;
 
     a=tic;

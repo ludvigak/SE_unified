@@ -1,14 +1,14 @@
 cc = 'gcc';
 
-cflags = '-std=c99 -fPIC -msse4.2';
+cflags = '-std=c99 -fPIC -mavx';
 
 switch cc
     case 'icc'
         coptimflags = '-O3 -static -xHOST -vec-report';
         ldoptimflags = '-O3 -static -xHOST -vec-report';
     case 'gcc'
-        coptimflags = '-Wall -O3 -ffast-math';
-        ldoptimflags = '-O3';
+        coptimflags = '-Wall -O3 -ffast-math -fopenmp';
+        ldoptimflags = '-O3 -fopenmp';
 end
 cdebugflags='';
 lddebugflags='';

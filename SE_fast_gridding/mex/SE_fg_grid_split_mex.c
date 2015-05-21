@@ -52,7 +52,12 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 	mexPrintf("[SE%s FG(g)] N=%d, P=%d\n",PER_STR,N,params.P);
 
     // now do the work
+#ifdef __AVX__
+    SE_FGG_grid_split_AVX_dispatch(&work, &st, &params);
+#else
     SE_FGG_grid_split_SSE_dispatch(&work, &st, &params);
+#endif
+    
 #ifdef THREE_PERIODIC
     SE_FGG_wrap_fcn(H_per, &work, &params);
 #endif    

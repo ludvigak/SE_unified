@@ -58,8 +58,13 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #ifdef TWO_PERIODIC
 	SE2P_FGG_extend_fcn(&work, H_per, &params);
 #endif
-	
+
+#ifdef __AVX__	
+	SE_FGG_int_split_AVX_dispatch(phi, &work, &params);
+#else
 	SE_FGG_int_split_SSE_dispatch(phi, &work, &params);
+#endif
+	
     }
     // done
     SE_FGG_free_workspace(&work);

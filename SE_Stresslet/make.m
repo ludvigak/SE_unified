@@ -3,7 +3,7 @@ cc = 'gcc';
 
 openmp = true;
 
-cflags = '-std=c99 -fPIC -msse3';
+cflags = '-std=c99 -fPIC -mavx';
 ldflags = ' -lm ';
 
 switch cc
