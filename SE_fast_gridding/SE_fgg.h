@@ -4,7 +4,7 @@
 // System includes
 #include "math.h"
 #include <sys/time.h>
-#include "emmintrin.h"
+#include "x86intrin.h"
 
 // Consttants and indexing 
 #define PI 3.14159265358979323846
@@ -53,6 +53,17 @@
 #define MEM_ALIGNED __attribute__((aligned(16)))
 #define SE_FGG_MALLOC(sz) _mm_malloc((sz),16)
 #define SE_FGG_FREE(sz) _mm_free((sz))
+#endif
+
+// Print compile-time messages about which kernels will be used
+#ifdef __AVX__
+#ifdef __FMA__
+#pragma message ("Compiling vectorized kernels with AVX and FMA instructions.")
+#else
+#pragma message ("Compiling vectorized kernels with AVX instructions (no FMA).")
+#endif
+#else
+#pragma message ("Compiling vectorized kernels SSE instructions.")
 #endif
 
 // display debug messages in the SSE dispatcher

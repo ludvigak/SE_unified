@@ -3,7 +3,8 @@ cc = 'gcc';
 
 openmp = true;
 
-cflags = '-std=c99 -fPIC -mavx';
+
+cflags = '-std=c99 -fPIC -mavx -mfma';
 ldflags = ' -lm ';
 
 switch cc
@@ -25,6 +26,7 @@ switch cc
             ldflags = [ldflags ' -fopenmp '];
             cflags = [cflags ' -fopenmp '];
         end
+        cc = 'gcc-5';
 end
 cdebugflags='';
 lddebugflags='';

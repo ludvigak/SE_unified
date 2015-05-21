@@ -20,7 +20,7 @@ eval_idx = (1:N)';
 % params
 maxe = 0;
 
-for P = [ 8 11 12 16 24];
+for P = [ 25 8 12 16 24];
     SE_opt.P = P;
 
     a=tic;

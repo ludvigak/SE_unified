@@ -1,5 +1,4 @@
 #include "SE_fgg.h"
-#include "emmintrin.h"
 #include "x86intrin.h"
 #include "string.h"
 #include "malloc.h"
@@ -1558,7 +1557,7 @@ void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
     if(p==16)
     {
         // specific for p=16
-        __DISPATCHER_MSG("[FGG INT AVX here] P=16\n");
+        __DISPATCHER_MSG("[FGG INT AVX] P=16\n");
         SE_FGG_int_split_AVX_P16(phi, work, params);
     }
     else if(p==8)
@@ -1578,12 +1577,6 @@ void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
         // specific for p divisible by 4
         __DISPATCHER_MSG("[FGG INT AVX] P unroll 4\n");
         SE_FGG_int_split_AVX(phi, work, params);
-    }
-    else
-    {
-        // vanilla SSE code (any even p)
-        __DISPATCHER_MSG("[FGG INT SSE] Vanilla\n");
-        SE_FGG_int_split_SSE(phi, work, params);
     }
 }
 
@@ -1634,8 +1627,11 @@ void SE_FGG_int_split_AVX(double* restrict phi,
                         rH0  = _mm256_load_pd( H+idx );
                         rZZ0 = _mm256_load_pd( zz + idx_zz);
                         rZS0 = _mm256_load_pd( zs + idx_zs);
+#ifdef __FMA__
+                        rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+#else
                         rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
-
+#endif
                         idx+=4;
                         idx_zs+=4;
                         idx_zz+=4;
@@ -1658,8 +1654,11 @@ void SE_FGG_int_split_AVX(double* restrict phi,
                         rH0  = _mm256_loadu_pd( H+idx );
                         rZZ0 = _mm256_load_pd( zz + idx_zz);
                         rZS0 = _mm256_load_pd( zs + idx_zs);
+#ifdef __FMA__
+                        rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+#else
                         rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
-
+#endif
                         idx+=4;
                         idx_zs+=4;
                         idx_zz+=4;
@@ -1729,10 +1728,13 @@ void SE_FGG_int_split_AVX_P8(double* restrict phi,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs    );
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA
+                    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+                    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+#else
                     rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
                     rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
-
+#endif
                     idx_zs +=8;
                     idx += incrj + 8;
                 }
@@ -1752,10 +1754,13 @@ void SE_FGG_int_split_AVX_P8(double* restrict phi,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs    );
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA
+                    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+                    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+#else
                     rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
                     rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
-
+#endif
                     idx_zs +=8;
                     idx += incrj + 8;
                 }
@@ -1829,12 +1834,17 @@ void SE_FGG_int_split_AVX_P16(double* restrict phi,
 		    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
 		    rZS2 = _mm256_load_pd( zs + idx_zs + 8 );
 		    rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-		    
+#ifdef __FMA__
+		    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+		    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+		    rP = _mm256_fmadd_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2),rP);
+		    rP = _mm256_fmadd_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3),rP);
+#else		    
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3)));
-
+#endif
 		    idx_zs +=16;
 		    idx += incrj + 16;
 		}
@@ -1858,12 +1868,17 @@ void SE_FGG_int_split_AVX_P16(double* restrict phi,
 		    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
 		    rZS2 = _mm256_load_pd( zs + idx_zs + 8 );
 		    rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-		    
+#ifdef __FMA__
+		    rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+		    rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+		    rP = _mm256_fmadd_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2),rP);
+		    rP = _mm256_fmadd_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3),rP);
+#else		    
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2)));
 		    rP = _mm256_add_pd(rP,_mm256_mul_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3)));
-
+#endif
 		    idx_zs +=16;
 		    idx += incrj + 16;
 		}
@@ -1928,10 +1943,13 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA__
+			rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+			rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+#else
 			rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
 			rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
-			
+#endif			
 			idx+=8; 
 			idx_zs+=8; 
 			idx_zz+=8;
@@ -1960,10 +1978,13 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA__
+			rP = _mm256_fmadd_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0),rP);
+			rP = _mm256_fmadd_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1),rP);
+#else
 			rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
 			rP = _mm256_add_pd(rP,_mm256_mul_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1)));
-			
+#endif			
 			idx+=8; 
 			idx_zs+=8; 
 			idx_zz+=8;
@@ -4315,13 +4336,14 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 			rH0  = _mm256_load_pd( H+idx0     );
 			rZZ0 = _mm256_load_pd( zz + idx_zz     );
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
-
 			rZZ0 = _mm256_mul_pd(rZZ0,rC);
+#ifdef __FMA__
+			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
+#else
 			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
 			rH0  = _mm256_add_pd(rH0,rZZ0);
-
-			_mm256_store_pd( H+idx0    , rH0 );
-
+#endif
+			_mm256_store_pd(H + idx0, rH0);
 			idx0  +=4;
 			idx_zs+=4; 
 			idx_zz+=4;
@@ -4345,8 +4367,12 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 	    		rZZ0 = _mm256_load_pd( zz + idx_zz );
 	    		rZS0 = _mm256_load_pd( zs + idx_zs );
 	    		rZZ0 = _mm256_mul_pd(rZZ0,rC);
-	    		rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
-	    		rH0  = _mm256_add_pd(rH0,rZZ0);
+#ifdef __FMA__
+			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
+#else
+			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
+			rH0  = _mm256_add_pd(rH0,rZZ0);
+#endif
 	    		_mm256_storeu_pd( H+idx0, rH0 );
 
 	    		idx0  +=4;
@@ -4412,12 +4438,17 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
                     rZS2 = _mm256_load_pd( zs + idx_zs + 8);
                     rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-
+#ifdef __FMA__
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
+		    rH3 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ3,rC), rZS3, rH3);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
 		    rH2 = _mm256_add_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2));
 		    rH3 = _mm256_add_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3));
-
+#endif
 		    _mm256_store_pd(H + idx,      rH0);
 		    _mm256_store_pd(H + idx + 4,  rH1);
 		    _mm256_store_pd(H + idx + 8 , rH2);
@@ -4446,12 +4477,17 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
                     rZS1 = _mm256_load_pd( zs + idx_zs +  4);
                     rZS2 = _mm256_load_pd( zs + idx_zs +  8);                   
                     rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-
+#ifdef __FMA__
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
+		    rH3 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ3,rC), rZS3, rH3);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
 		    rH2 = _mm256_add_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2));
 		    rH3 = _mm256_add_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3));
-
+#endif
 		    _mm256_storeu_pd(H + idx,      rH0);
 		    _mm256_storeu_pd(H + idx + 4,  rH1);
 		    _mm256_storeu_pd(H + idx + 8,  rH2);
@@ -4509,10 +4545,13 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs);
                     rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA__
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 		    _mm256_store_pd(H + idx,      rH0);
 		    _mm256_store_pd(H + idx + 4,  rH1);
 
@@ -4535,10 +4574,13 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 
                     rZS0 = _mm256_load_pd( zs + idx_zs     );
                     rZS1 = _mm256_load_pd( zs + idx_zs +   4);
-
+#ifdef __FMA__
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 		    _mm256_storeu_pd(H + idx,      rH0);
 		    _mm256_storeu_pd(H + idx + 4,  rH1);
 
@@ -4598,10 +4640,13 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA__
+			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 			rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 			rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-			
+#endif
 			_mm256_store_pd( H+idx0    , rH0 );
 			_mm256_store_pd( H+idx0 + 4, rH1 );
 
@@ -4633,10 +4678,13 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 
 	    		rZS0 = _mm256_load_pd( zs + idx_zs    );
 	    		rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef __FMA__
+			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 			rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 			rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 	    		_mm256_storeu_pd( H+idx0    , rH0 );
 	    		_mm256_storeu_pd( H+idx0 + 4, rH1 );
 
@@ -4651,7 +4699,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 	}
     }
 }
-#endif __AVX__
+#endif // AVX
 
 // -----------------------------------------------------------------------------
 void 

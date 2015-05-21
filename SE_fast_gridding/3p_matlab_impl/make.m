@@ -1,6 +1,6 @@
 cc = 'gcc';
 
-cflags = '-std=c99 -fPIC -mavx';
+cflags = '-std=c99 -fPIC -mavx -mfma';
 
 switch cc
     case 'icc'
@@ -9,6 +9,7 @@ switch cc
     case 'gcc'
         coptimflags = '-Wall -O3 -ffast-math -fopenmp';
         ldoptimflags = '-O3 -fopenmp';
+        cc = 'gcc-5';
 end
 cdebugflags='';
 lddebugflags='';
