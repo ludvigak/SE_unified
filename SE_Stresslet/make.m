@@ -19,7 +19,7 @@ switch cc
             cflags = [cflags ' -openmp '];
        end
     case 'gcc'
-        coptimflags = '-Wall -O3 -ffast-math';        
+        coptimflags = '-Wall -O3 -ffast-math -ftree-vectorizer-verbose=0';        
         ldoptimflags = '-O3';
         if openmp
             ldflags = [ldflags ' -fopenmp '];
@@ -36,7 +36,6 @@ DEBUGFLAGS = [' CDEBUGFLAGS='''  cdebugflags '''' ' LDDEBUGFLAGS=''' lddebugflag
 OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags ''''];
 
 mex_string = ['mex ' CC CFLAGS LDFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
-
 
 % build FGG code from ../SE_fast_gridding
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
@@ -57,5 +56,4 @@ eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
 eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
 eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_mex.c -output stresslet_real_rc_mex'])
 eval([mex_string ' -largeArrayDims -DVERBOSE -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_nomatrix_mex.c -output stresslet_real_rc_nomatrix_mex'])
-
-
+eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE mex/stresslet_fg_grid_mex.c -I../SE_fast_gridding/ ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
