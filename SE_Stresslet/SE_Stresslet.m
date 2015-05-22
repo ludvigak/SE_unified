@@ -37,7 +37,7 @@ gftic = tic;
 
 % Parfor speeds up split gridding code a little bit,
 % but actually slows down regular gridding
-parfor i=1:9
+for i=1:9
     % to grid, transform and shift
     i1 = n_idx(i);
     i2 = f_idx(i);
