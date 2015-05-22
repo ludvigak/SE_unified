@@ -25,8 +25,6 @@ elseif nargin == 7
     n = n(sdat.perm,:);
 end
 
-G=complex(zeros([9 M]));
-
 % Grid
 gtic = tic;
 F = stresslet_fg_grid_mex(x,n,f,opt);
@@ -41,12 +39,15 @@ stats.wtime_fft = toc(ftic); % Total time spent on FFT
 
 % Shuffle
 % This takes too much time, need to reorder k-scaling to this at the same time.
+G=complex(zeros([M 9]));
 shtic = tic();
 for i=1:9
-    G( i, :, :, :) = F{i};
+    G( :, :, :, i) = F{i};
     F{i} = [];
 end
+G = permute(G, [4 1 2 3]);
 stats.wtime_shuffle = toc(shtic);
+
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
