@@ -354,6 +354,7 @@ void SE_FGG_base_gaussian(SE_FGG_work* work, const SE_FGG_params* params)
 }
 
 // -----------------------------------------------------------------------------
+#ifdef THREE_PERIODIC
 static 
 int fgg_expansion_3p(const double x[3], const double q,
 		     const SE_FGG_params* params,
@@ -438,8 +439,9 @@ int fgg_expansion_3p(const double x[3], const double q,
 		       idx_from[2]+p_half, 
 		       params->npdims[1], params->npdims[2]);
 }
-
+#endif
 // -----------------------------------------------------------------------------
+#ifdef TWO_PERIODIC
 static 
 int fgg_expansion_2p(const double x[3], const double q,
 		     const SE_FGG_params* params,
@@ -534,7 +536,7 @@ int fgg_expansion_2p(const double x[3], const double q,
 		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
-
+#endif
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
 		       const SE_state* st, 
