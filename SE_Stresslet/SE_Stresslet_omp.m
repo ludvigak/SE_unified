@@ -27,24 +27,18 @@ end
 
 % Grid
 gtic = tic;
-F = stresslet_fg_grid_mex(x,n,f,opt);
+G = stresslet_fg_grid_mex(x,n,f,opt);
 stats.wtime_grid = toc(gtic);
 
 % FFT
 ftic = tic;
 for i=1:9
-    F{i} = fftshift( fftn( F{i} ) );
+    G(:,:,:,i) = fftshift( fftn( G(:,:,:,i) ) );
 end
 stats.wtime_fft = toc(ftic); % Total time spent on FFT
 
 % Shuffle
-% This takes too much time, need to reorder k-scaling to this at the same time.
-G=complex(zeros([M 9]));
 shtic = tic();
-for i=1:9
-    G( :, :, :, i) = F{i};
-    F{i} = [];
-end
 G = permute(G, [4 1 2 3]);
 stats.wtime_shuffle = toc(shtic);
 

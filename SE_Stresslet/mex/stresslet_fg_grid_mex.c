@@ -55,13 +55,15 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     if(VERBOSE)
 	mexPrintf("[Stresslet%s FG(G)] N=%d, P=%d\n", PER_STR,N,params.P);
     
-    // allocate output array
-    H_OUT = mxCreateCellMatrix(3, 3);
-    for (int i=0; i<9; i++)
-    {
-    	mxArray* tmp = mxCreateNumericArray(3, params.dims, mxDOUBLE_CLASS, mxREAL);
-    	mxSetCell(H_OUT, i, tmp);
-    }
+    // allocate output array (M1,M2,M3,9)
+    mwSize dims[4];
+    dims[0] = params.dims[0];
+    dims[1] = params.dims[1];
+    dims[2] = params.dims[2];
+    dims[3] = 9;
+    H_OUT = mxCreateNumericArray(4, dims, mxDOUBLE_CLASS, mxREAL);
+    size_t block = dims[0]*dims[1]*dims[2];
+    double* H_base = mxGetPr(H_OUT);
 
     PARALLEL
     {
@@ -94,7 +96,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 		q[i] = n[i+i1*N]*f[i+i2*N];
 	    const SE_state st = {.x = x,  .q = q};
 	    // Set output and clear work areas
-	    double* H_per = mxGetPr(mxGetCell(H_OUT, ii));
+	    double* H_per = &H_base[ii*block];
 	    SE_fp_set_zero(work.H, SE_prod3(params.npdims));
 	    SE_fp_set_zero(H_per, SE_prod3(params.dims));
 	    // Now do the work
