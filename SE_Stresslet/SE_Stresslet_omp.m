@@ -1,4 +1,4 @@
-function [u stats]  = tmp_SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
+function [u stats]  = SE_Stresslet_omp(eval_idx,x,f,n,xi,opt,varargin)
 
 ttic = tic;
 
@@ -35,9 +35,18 @@ stats.wtime_grid = toc(gtic);
 % FFT
 ftic = tic;
 for i=1:9
-    G( i, :, :, :) = fftshift( fftn( F{i} ) );
+    F{i} = fftshift( fftn( F{i} ) );
 end
 stats.wtime_fft = toc(ftic); % Total time spent on FFT
+
+% Shuffle
+% This takes too much time, need to reorder k-scaling to this at the same time.
+shtic = tic();
+for i=1:9
+    G( i, :, :, :) = F{i};
+    F{i} = [];
+end
+stats.wtime_shuffle = toc(shtic);
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);

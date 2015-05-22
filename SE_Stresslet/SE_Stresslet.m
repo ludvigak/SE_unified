@@ -33,12 +33,12 @@ f_idx = [1 1 1 2 2 2 3 3 3];
 
 % Save timings for gridding+FFT separately
 gftic = tic;
-[gtime ftime] = deal(zeros(9,1));
+[gtime ftime shtime] = deal(zeros(9,1));
 
 % Parfor speeds up split gridding code a little bit,
 % but actually slows down regular gridding
 parfor i=1:9
-    % to grid, transform and shift
+    % Grid
     i1 = n_idx(i);
     i2 = f_idx(i);
     S = n(:,i1).*f(:,i2);
@@ -50,18 +50,25 @@ parfor i=1:9
         F = SE_fg_grid_mex(x,S,opt);
     end
     gtime(i) = toc(gtic);
+    % FFT
     ftic = tic;
-    G( i, :, :, :) = fftshift( fftn( F ) );
+    F = fftshift( fftn( F ) );
     ftime(i) = toc(ftic);
+    % Shuffle
+    shtic = tic;    
+    G( i, :, :, :) = F;
+    shtime(i) = toc(shtic);
 end
 
 wgridfft = toc(gftic); % Total time spent in loop
 gtime = sum(gtime); % Total time spent on gridding (over all threads)
 ftime = sum(ftime); % Total time spent on FFT (over all threads)
-% Assume that all thread time was spent on gridding + FFT
-stats.wtime_grid = wgridfft*gtime/(gtime+ftime);
-stats.wtime_fft = wgridfft*ftime/(gtime+ftime);
-
+shtime = sum(shtime); % Total time spent shuffling
+% Assume that all thread time was spent on gridding + FFT + shuffle
+sumtime = gtime+ftime+shtime;
+stats.wtime_grid = wgridfft*gtime/sumtime;
+stats.wtime_fft = wgridfft*ftime/sumtime;
+stats.wtime_shuffle = wgridfft*shtime/sumtime;
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
