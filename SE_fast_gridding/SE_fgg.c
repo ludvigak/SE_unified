@@ -540,9 +540,7 @@ int fgg_expansion_3p(const double x[3], const double q,
 		       idx_from[2]+p_half, 
 		       params->npdims[1], params->npdims[2]);
 }
-#endif
-// -----------------------------------------------------------------------------
-#ifdef TWO_PERIODIC
+
 static 
 int fgg_expansion_3p_force(const double x[3], const double q,
 			   const SE_FGG_params* params,
@@ -643,7 +641,9 @@ int fgg_expansion_3p_force(const double x[3], const double q,
 		       params->npdims[1], params->npdims[2]);
 }
 
-
+#endif
+// -----------------------------------------------------------------------------
+#ifdef TWO_PERIODIC
 // -----------------------------------------------------------------------------
 static 
 int fgg_expansion_2p(const double x[3], const double q,
