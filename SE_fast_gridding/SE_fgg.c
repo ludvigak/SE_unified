@@ -1539,17 +1539,22 @@ void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
     const int incrj = params->dims[2]; // middle increment
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
 
+#ifdef AVX_FMA
+    __DISPATCHER_MSG("[FGG INT AVX-FMA] ");
+#else
+    __DISPATCHER_MSG("[FGG INT AVX] ");
+#endif
 #if 0
     // THIS BYPASSES THE FAST AVX KERNELS.
-    __DISPATCHER_MSG("[FGG INT AVX] AVX Disabled\n");
+    __DISPATCHER_MSG("AVX Disabled\n");
     SE_FGG_int_split(phi, work, params);
     return;
 #endif
-
+    
     // if either P or increments are not divisible by 4, fall back on vanilla
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
-        __DISPATCHER_MSG("[FGG INT AVX] AVX Abort (PARAMS)\n");
+        __DISPATCHER_MSG("AVX Abort (PARAMS)\n");
         SE_FGG_int_split(phi, work, params);
         return;
     }
@@ -1558,25 +1563,25 @@ void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
     if(p==16)
     {
         // specific for p=16
-        __DISPATCHER_MSG("[FGG INT AVX] P=16\n");
+        __DISPATCHER_MSG("P=16\n");
         SE_FGG_int_split_AVX_P16(phi, work, params);
     }
     else if(p==8)
     {
         // specific for p=8
-        __DISPATCHER_MSG("[FGG INT AVX] P=8\n");
+        __DISPATCHER_MSG("P=8\n");
         SE_FGG_int_split_AVX_P8(phi, work, params);
     }
     else if(p%8==0)
     {
       // specific for p divisible by 8
-      __DISPATCHER_MSG("[FGG INT AVX] P unroll 8\n");
+      __DISPATCHER_MSG("P unroll 8\n");
       SE_FGG_int_split_AVX_u8(phi, work, params);
     }
     else if(p%4==0)
     {
         // specific for p divisible by 4
-        __DISPATCHER_MSG("[FGG INT AVX] P unroll 4\n");
+        __DISPATCHER_MSG("P unroll 4\n");
         SE_FGG_int_split_AVX(phi, work, params);
     }
 }
@@ -4232,6 +4237,12 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     const int incrj = params->dims[2]; // middle increment
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
 
+#ifdef AVX_FMA
+    __DISPATCHER_MSG("[FGG GRID AVX-FMA] ");
+#else
+    __DISPATCHER_MSG("[FGG GRID AV] ");
+#endif
+
 #if 0
     // THIS BYPASSES THE FAST AVX KERNELS.
     // 
@@ -4240,7 +4251,7 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     // THE BASICS OF AVX INTRINSICS, AND ARE WILLING TO UNDERSTAND WHERE
     // THE (DATA ALIGNMENT) PRECONDITIONS OF AVX INSTRUCTIONS MAY BREAK
     // IN THE AVX CODE BELOW.
-    __DISPATCHER_MSG("[FGG GRID AVX] AVX Disabled\n");
+    __DISPATCHER_MSG("AVX Disabled\n");
     SE_FGG_grid_split(work, st, params);
     return;
 #endif
@@ -4248,7 +4259,7 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     // if either P or increments are not divisible by 4, fall back on vanilla
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
-	__DISPATCHER_MSG("[FGG GRID AVX] AVX Abort (PARAMS)\n");
+	__DISPATCHER_MSG("AVX Abort (PARAMS)\n");
 	SE_FGG_grid_split(work, st, params);
 	return;
     }
@@ -4263,7 +4274,7 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
 	( (unsigned long) work->zy)%32 != 0 ||
 	( (unsigned long) work->zz)%32 != 0 )
     {
-	__DISPATCHER_MSG("[FGG GRID AVX] AVX Abort (DATA)\n");
+	__DISPATCHER_MSG("AVX Abort (DATA)\n");
 	SE_FGG_grid_split(work, st, params);
 	return;
     }
@@ -4273,25 +4284,25 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     if(p==16)
     {
 	// specific for p=16
-	__DISPATCHER_MSG("[FGG GRID AVX] P=16\n");
+	__DISPATCHER_MSG("P=16\n");
 	SE_FGG_grid_split_AVX_P16(work, st, params); 
     }
     else if(p==8)
     {
       // specific for p=8
-      __DISPATCHER_MSG("[FGG GRID AVX] P=8\n");
+      __DISPATCHER_MSG("P=8\n");
       SE_FGG_grid_split_AVX_P8(work, st, params);
     }
     else if(p%8==0)
     {
 	// specific for p divisible by 8
-	__DISPATCHER_MSG("[FGG GRID AVX] P unroll 8\n");
+	__DISPATCHER_MSG("P unroll 8\n");
 	SE_FGG_grid_split_AVX_u8(work, st, params); 
     }
     else if(p%4==0)
     {
       // specific for p divisible by 4
-      __DISPATCHER_MSG("[FGG GRID AVX] P unroll 4\n");
+      __DISPATCHER_MSG("P unroll 4\n");
       SE_FGG_grid_split_AVX(work, st, params);
     }
 }

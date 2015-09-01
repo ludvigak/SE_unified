@@ -59,12 +59,12 @@
 #ifdef __AVX__
 #if defined(__FMA__) && defined(__AVX2__)
 #define AVX_FMA
-#pragma message ("Compiling vectorized kernels with AVX and FMA instructions.")
+//#pragma message ("Compiling vectorized kernels with AVX and FMA instructions.")
 #else
-#pragma message ("Compiling vectorized kernels with AVX instructions (no FMA).")
+//#pragma message ("Compiling vectorized kernels with AVX instructions (no FMA).")
 #endif
 #else
-#pragma message ("Compiling vectorized kernels with SSE instructions.")
+//#pragma message ("Compiling vectorized kernels with SSE instructions.")
 #endif
 
 // display debug messages in the SSE dispatcher
