@@ -1,9 +1,10 @@
-This package unites four spectrally accurate fast Ewald methods:
+This package unites five spectrally accurate fast Ewald methods:
 
-     - SE:         3-periodic Laplace (electrostatics)
-     - SE2P:       2-periodic Laplace (electrostatics)
-     - SE_Stokes   3-periodic Stokeslet (viscous flow)
-     - SE2P_Stokes 2-periodic Stokeslet (viscous flow)	
+     - SE:          3-periodic Laplace (electrostatics)
+     - SE2P:        2-periodic Laplace (electrostatics)
+     - SE_Stokes    3-periodic Stokeslet (viscous flow)
+     - SE2P_Stokes  2-periodic Stokeslet (viscous flow)	
+     - SE_Stresslet 3-periodic Stresslet (viscous flow)
 
 Each directory contains an m-file that implements the method, and a
 basic accuracy/convergence script that shows how to use it. From any
@@ -12,6 +13,10 @@ one of these directories, do:
 > init          % sets up paths 
 > make          % builds all necessary mex C code 
 > test_accuracy % should see plot of spectral convergence
+
+The SE_Stresslet directory contains more work than the others, and also includes
+several routines related to the computation of the real-space sum. Instead of
+'test_accuracy', the script 'test_all' runs a suite of tests.
 
 The package also contains:
     1) 'util' Common functions
@@ -40,7 +45,7 @@ Notes on fast Gaussian gridding:
 
     3) The FGG C-code contains comments that are meant to be helpful.
 
-    4) By default, manually implemented SSE2 implementations are bypassed,
+    4) By default, manually implemented SSE2 implementations are ENABLED,
        see comments in SE_fgg.c
 
     5) There are remnants of OpenMP parallelization to be found throughout.
@@ -48,10 +53,3 @@ Notes on fast Gaussian gridding:
        particularly in the from-grid part. The most mature OpenMP can be 
        found in the original SE2P implementation (not in this package)
 
-All code written by Dag Lindbo (dag@kth.se) in various revisions from
-the summer of 2009 through 2011. Anna-Karin Tornberg
-(annak@nada.kth.se) own the right to distribute this code as she sees
-fit. Modifications and extensions are encouraged in the academic spirit.
-
-Stockholm, February 12:th 2012,
-Dag Lindbo
