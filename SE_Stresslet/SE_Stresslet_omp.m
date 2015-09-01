@@ -1,4 +1,4 @@
-function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
+function [u stats]  = SE_Stresslet_omp(eval_idx,x,f,n,xi,opt,varargin)
 
 ttic = tic;
 
@@ -17,6 +17,7 @@ if nargin == 6
     static_fgg=false;
     sdat = [];
 elseif nargin == 7
+    error('TBD:BLAH','Not done yet');
     static_fgg=true;
     sdat=varargin{1};
     x = x(sdat.perm,:);
@@ -25,50 +26,22 @@ elseif nargin == 7
 end
 
 % Grid
-G=complex(zeros([9 M]));
+gtic = tic;
+G = stresslet_fg_grid_mex(x,n,f,opt);
+stats.wtime_grid = toc(gtic);
 
-% Indices for outer product
-n_idx = [1 2 3 1 2 3 1 2 3];
-f_idx = [1 1 1 2 2 2 3 3 3];
-
-% Save timings for gridding+FFT separately
-gftic = tic;
-[gtime ftime shtime] = deal(zeros(9,1));
-
-% Parfor speeds up split gridding code a little bit,
-% but actually slows down regular gridding
-parfor i=1:9
-    % Grid
-    i1 = n_idx(i);
-    i2 = f_idx(i);
-    S = n(:,i1).*f(:,i2);
-    gtic = tic;
-    if static_fgg
-        F = SE_fg_grid_split_mex(x,S,opt, ...
-                                sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx );
-    else
-        F = SE_fg_grid_mex(x,S,opt);
-    end
-    gtime(i) = toc(gtic);
-    % FFT
-    ftic = tic;
-    F = fftshift( fftn( F ) );
-    ftime(i) = toc(ftic);
-    % Shuffle
-    shtic = tic;    
-    G( i, :, :, :) = F;
-    shtime(i) = toc(shtic);
+% FFT
+ftic = tic;
+for i=1:9
+    G(:,:,:,i) = fftshift( fftn( G(:,:,:,i) ) );
 end
+stats.wtime_fft = toc(ftic); % Total time spent on FFT
 
-wgridfft = toc(gftic); % Total time spent in loop
-gtime = sum(gtime); % Total time spent on gridding (over all threads)
-ftime = sum(ftime); % Total time spent on FFT (over all threads)
-shtime = sum(shtime); % Total time spent shuffling
-% Assume that all thread time was spent on gridding + FFT + shuffle
-sumtime = gtime+ftime+shtime;
-stats.wtime_grid = wgridfft*gtime/sumtime;
-stats.wtime_fft = wgridfft*ftime/sumtime;
-stats.wtime_shuffle = wgridfft*shtime/sumtime;
+% Shuffle
+shtic = tic();
+G = permute(G, [4 1 2 3]);
+stats.wtime_shuffle = toc(shtic);
+
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);

@@ -1,5 +1,5 @@
-% cc = 'gcc';
-cc = 'icc';
+cc = 'gcc';
+% cc = 'icc';
 
 cflags = '-std=c99 -fPIC -msse2';
 
@@ -32,10 +32,11 @@ eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_split_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 
 % build direct summation code from ../SE_Stokes_direct
-eval([mex_string ' -DVERBOSE -DEWALD_REAL -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -o SE3P_Stokes_direct_real_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_RSRC -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -o SE3P_Stokes_direct_rsrc_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_FD -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -o SE3P_Stokes_direct_fd_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -o SE3P_Stokes_direct_self_mex'])
+eval([mex_string ' -DVERBOSE -DEWALD_REAL -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_real_mex'])
+eval([mex_string ' -DVERBOSE -DEWALD_RSRC -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_rsrc_mex'])
+eval([mex_string ' -DEXTERNAL -DEWALD_RSRC -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_rsrc_ext_mex'])
+eval([mex_string ' -DVERBOSE -DEWALD_FD -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_fd_mex'])
+eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_self_mex'])
 
 % build SE_Stokes specific mex stuff
 eval([mex_string ' -DVERBOSE -DHASIMOTO mex/fast_k_scaling.c'])
