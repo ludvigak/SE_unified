@@ -563,7 +563,7 @@ static void quicksort(int* restrict list, int* restrict slave, int m, int n) {
 static void barrier(int bar_num, int *barrier_in, int *barrier_out, int *num_procs)
 {
 #ifdef _OPENMP
-    int tnum = omp_get_thread_num();
+    //int tnum = omp_get_thread_num();
     // Barrrier arrive
 #pragma omp critical
     {
@@ -728,7 +728,7 @@ void  compute_rsrc_direct     (const double* restrict x_in,
 
     int idx_s,idx_t,ip;
     double rsq;
-    double pshift[3], xs[3], ns[3], fs[3], nt[3], ft[3], xr[3];
+    double pshift[3], xs[3], ns[3], fs[3], xr[3];
 
     const double rcsq = rc*rc;
 
@@ -738,7 +738,6 @@ void  compute_rsrc_direct     (const double* restrict x_in,
     // into triplet list
     const int buf_size = 256;
     int buf_cnt = 0;
-    int idx_buf;
     int buf_idx_t[buf_size];
     double buf_xr[3*buf_size];
     double buf_rsq[buf_size];

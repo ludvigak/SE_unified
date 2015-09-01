@@ -4,7 +4,7 @@ cc = 'gcc';
 openmp = true;
 
 
-cflags = '-std=c99 -fPIC -mavx -mfma';
+cflags = '-std=c99 -fPIC -mavx2 -mfma';
 ldflags = ' -lm ';
 
 switch cc
@@ -47,11 +47,12 @@ eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fgg_bas
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_split_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_int_split_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 
-% build direct summation code from ../SE_Stokes_direct
-eval([mex_string ' -DVERBOSE -DEWALD_REAL -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_real_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_RSRC -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_rsrc_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_FD -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_fd_mex'])
-eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_self_mex'])
+% Not doing Stokes here anymore
+% % build direct summation code from ../SE_Stokes_direct
+% eval([mex_string ' -DVERBOSE -DEWALD_REAL -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_real_mex'])
+% eval([mex_string ' -DVERBOSE -DEWALD_RSRC -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_rsrc_mex'])
+% eval([mex_string ' -DVERBOSE -DEWALD_FD -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_fd_mex'])
+% eval([mex_string ' -DVERBOSE -DEWALD_SELF -DTHREE_PERIODIC -DHASIMOTO ../SE_Stokes_direct/SE_Stokes_direct_mex.c ../SE_Stokes_direct/SE3P_Stokes_direct.c -output SE3P_Stokes_direct_self_mex'])
 
 % build SE_Stresslet specific mex stuff
 eval([mex_string ' -DVERBOSE -DBEENAKKER mex/stresslet_fast_k_scaling.c'])

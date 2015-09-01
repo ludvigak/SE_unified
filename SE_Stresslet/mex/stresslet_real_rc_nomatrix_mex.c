@@ -14,7 +14,6 @@
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 {
     // Setup variables
-    int i,j,numel;
     double* restrict phi; 
    
     // Get input arrays
