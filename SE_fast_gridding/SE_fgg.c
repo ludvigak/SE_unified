@@ -1551,11 +1551,11 @@ void SE_FGG_int_split_AVX_dispatch(double* restrict phi,
     return;
 #endif
     
-    // if either P or increments are not divisible by 4, fall back on vanilla
+    // if either P or increments are not divisible by 4, fall back to SSE
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
         __DISPATCHER_MSG("AVX Abort (PARAMS)\n");
-        SE_FGG_int_split(phi, work, params);
+        SE_FGG_int_split_SSE_dispatch(phi, work, params);
         return;
     }
 
@@ -4256,11 +4256,11 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     return;
 #endif
 
-    // if either P or increments are not divisible by 4, fall back on vanilla
+    // if either P or increments are not divisible by 4, fall back to SSE
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
 	__DISPATCHER_MSG("AVX Abort (PARAMS)\n");
-	SE_FGG_grid_split(work, st, params);
+	SE_FGG_grid_split_SSE_dispatch(work, st, params);
 	return;
     }
 
