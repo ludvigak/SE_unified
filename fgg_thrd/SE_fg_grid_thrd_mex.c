@@ -1,6 +1,7 @@
 #include "mex.h"
 #include "SE_fgg.h"
 #include "SE_fgg_thrd.h"
+#include "fgg_thrd.h"
 
 void SE_FGG_MEX_params(SE_FGG_params*, const mxArray*, int);
 
