@@ -40,10 +40,9 @@ OPTIMFLAGS = [' COPTIMFLAGS=''' coptimflags '''' ' LDOPTIMFLAGS=''' ldoptimflags
 
 mex_string = ['mex ' INC CC CFLAGS LDFLAGS DEBUGFLAGS OPTIMFLAGS ' -outdir bin/'];
 
-eval([mex_string ' -DFGG_THRD -DTHREE_PERIODIC -DVERBOSE SE_fg_grid_thrd_mex.c SE_fgg_thrd.c ' ...
-      '../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c' ...
-      ' ' ...
-     ])
+eval([mex_string ' -DFGG_THRD -DTHREE_PERIODIC -DVERBOSE SE_fg_grid_split_thrd_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
+
+eval([mex_string ' -DFGG_THRD -DTHREE_PERIODIC -DVERBOSE SE_fg_grid_thrd_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 
 eval([mex_string ' -DTHREE_PERIODIC -DVERBOSE ../SE_fast_gridding/mex/SE_fg_grid_split_mex.c ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
 

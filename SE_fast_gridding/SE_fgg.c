@@ -3,6 +3,9 @@
 #include "string.h"
 #include "malloc.h"
 
+#include "fgg_thrd.h"
+#include "fgg_thrd.c"
+
 // Dag Lindbo, dag@kth.se
 // Core of SE is written by Dag Lindbo. The routines are modified
 // to calculate forces.
@@ -3703,22 +3706,23 @@ void SE_FGG_grid(SE_FGG_work* work, const SE_state* st,
     double cij0;
     double xn[3];
     double qn;
-    int idx0, zidx, i,j,k;
+    int idx0, zidx, i,j,k, i_end;
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
 	// compute index and expansion vectors
 	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
-	qn = st->q[n];
-	
+	qn = st->q[n];	
 	idx0 = __FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
-	zidx = 0;
-	for(i = 0; i<p; i++)
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	for(; i < i_end; i++)
 	{
 	    for(j = 0; j<p; j++)
 	    {
@@ -3818,21 +3822,22 @@ void SE_FGG_grid_split(SE_FGG_work* work, const SE_state* st,
 
     double cij0;
     double qn;
-    int idx0, zidx, idxzz, i, j, k;
+    int idx0, zidx, idxzz, i, j, k, i_end;
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
-
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	qn = st->q[n];
 	// inline vanilla loop
-	zidx = 0;
-	for(i = 0; i<p; i++)
+	for(; i < i_end; i++)
 	{
 	    for(j = 0; j<p; j++)
 	    {
