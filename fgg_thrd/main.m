@@ -6,7 +6,7 @@ function main(N)
     
     P = 15;
     
-    for P=[P,P+1]    
+    for P=[P+1]    
         clear output;
         x = rand(N, 3);
         f = rand(N, 1);   
@@ -34,8 +34,8 @@ function main(N)
 
         % PAR
         F_fggp = SE_fg_grid_thrd_mex(x,f,opt);
-        t_fggi = timeit(@() SE_fg_grid_thrd_mex(x,f,opt) );    
-        output(end+1) = formatter('MEX FGG THRD', relerr(F_fggp), t_fggi);
+        t_fggp = timeit(@() SE_fg_grid_thrd_mex(x,f,opt) );    
+        output(end+1) = formatter('MEX FGG THRD', relerr(F_fggp), t_fggp);
 
         
         % vanilla

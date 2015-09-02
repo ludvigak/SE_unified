@@ -9,7 +9,6 @@
 
 #define DELTA(tic,toc) ((toc.tv_sec  - tic.tv_sec) * 1000000u + toc.tv_usec - tic.tv_usec) / 1.e6
 
-
 // Ludvig af Klinteberg, ludvigak@kth.se
 
 // =============================================================================
@@ -116,6 +115,7 @@ typedef struct {
 
 static void inline grid_thrd_setup(grid_thrd_ws_t* ws, const int* npdims, int p)
 {
+#ifdef FGG_THRD
     // Determine which block current thread is working on
     int num_threads = omp_get_num_threads();
     int thread_num = omp_get_thread_num();
@@ -126,6 +126,9 @@ static void inline grid_thrd_setup(grid_thrd_ws_t* ws, const int* npdims, int p)
 	ws->block_end = npdims[0];
     ws->block_size = npdims[1]*npdims[2];    
     ws->p = p;
+#else
+    ws->p = p;
+#endif
 }
 
 
@@ -135,8 +138,10 @@ static void inline grid_thrd_slice(grid_thrd_ws_t* ws,
 				   int* last_slice, 
 				   int* zidx)
 {
+#ifdef FGG_THRD
     // Figure out which slices of current P^3 block that go into this block.
     *first_slice = 0;	
+    *zidx = 0;
     int block_id = *support_begin / ws->block_size;
     // Skip point if above our chunk
     if (block_id >= ws->block_end)
@@ -164,6 +169,13 @@ static void inline grid_thrd_slice(grid_thrd_ws_t* ws,
     if (*last_slice > ws->p)
 	*last_slice = ws->p;
     ws->skip = false;
+#else
+    // Fallback to give normal behavior
+    *first_slice = 0;
+    *last_slice = ws->p;
+    *zidx = 0;
+    ws->skip = false;
+#endif
 }
 
 // ##########################
@@ -201,10 +213,8 @@ void SE_FGG_grid_thrd(SE_FGG_work* work, const SE_state* st,
 	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
 	qn = st->q[n];       
 	idx0 = __FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
-	zidx = 0;
-	i = 0;
 	// ### GRID_THRD slice ###
-	int i_end = p;	
+	int i_end;	
 	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
 	if (grid_thrd_ws.skip) 
 	    continue;

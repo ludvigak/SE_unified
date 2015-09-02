@@ -42,7 +42,11 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 
     // now do the work
     SE_FGG_base_gaussian(&work, &params);
+#if FGG_THRD
 #pragma omp parallel
+#else
+#warning "Threading must be activated with -DFGG_THRD"
+#endif
     {
 	SE_FGG_grid_thrd(&work, &st, &params);
     }
