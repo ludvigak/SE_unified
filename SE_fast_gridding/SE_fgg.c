@@ -459,24 +459,17 @@ void SE_FGG_base_gaussian(SE_FGG_work* work, const SE_FGG_params* params)
 
 // -----------------------------------------------------------------------------
 #ifdef THREE_PERIODIC
-static 
-int fgg_expansion_3p(const double x[3], const double q,
-		     const SE_FGG_params* params,
-		     double z2_0[P_MAX], 
-		     double z2_1[P_MAX], 
-		     double z2_2[P_MAX])
+
+static inline 
+void fgg_offset_3p(const double x[3],
+		   const SE_FGG_params* params,
+		   double t0[3],
+		   int idx_from[3])
 {
-    // unpack params
     const int p = params->P;
     const int p_half = params->P_half;
     const double h = params->h;
-    const double c=params->c;
-    
-    double t0[3];
     int idx;
-    int idx_from[3];
-
-    // compute index range and centering
     if(is_odd(p))
     {
 	for(int j=0; j<3; j++)
@@ -495,6 +488,26 @@ int fgg_expansion_3p(const double x[3], const double q,
 	    t0[j] = x[j]-h*idx;
 	}
     }
+}
+
+static inline
+int fgg_expansion_3p(const double x[3], const double q,
+		     const SE_FGG_params* params,
+		     double z2_0[P_MAX], 
+		     double z2_1[P_MAX], 
+		     double z2_2[P_MAX])
+{
+    // unpack params
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double c=params->c;
+    
+    double t0[3];
+    int idx_from[3];
+
+    // compute index range and centering
+    fgg_offset_3p(x, params, t0, idx_from);
 
     // compute third factor 
     double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
@@ -644,11 +657,25 @@ int fgg_expansion_3p_force(const double x[3], const double q,
 		       params->npdims[1], params->npdims[2]);
 }
 
+static inline
+int fgg_index_3p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p_half = params->P_half;
+    double t0[3];
+    int idx_from[3];
+    fgg_offset_3p(x, params, t0, idx_from);
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
+		       idx_from[1]+p_half, 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+
 #endif
 // -----------------------------------------------------------------------------
 #ifdef TWO_PERIODIC
 // -----------------------------------------------------------------------------
-static 
+static inline
 int fgg_expansion_2p(const double x[3], const double q,
 		     const SE_FGG_params* params,
 		     double z2_0[P_MAX], 
@@ -742,6 +769,49 @@ int fgg_expansion_2p(const double x[3], const double q,
 		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
+
+static inline
+int fgg_index_2p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double a=params->a;
+
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round(x[0]/h);
+	idx_from[0] = idx - p_half;
+	
+	idx = (int) round(x[1]/h);
+	idx_from[1] = idx - p_half;
+
+	idx = (int) round((x[2]-(a+h/2))/h);
+	idx_from[2] = idx - p_half;
+    }
+    else
+    {
+	idx = (int) floor(x[0]/h);
+	idx_from[0] = idx - (p_half-1);
+
+	idx = (int) floor(x[1]/h);
+	idx_from[1] = idx - (p_half-1);
+
+	idx = (int) floor((x[2]-(a+h/2))/h);
+	idx_from[2] = idx - (p_half-1);
+    }
+
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
+		       idx_from[1]+p_half, 
+		       idx_from[2], 
+		       params->npdims[1], params->npdims[2]);
+}
+
 #endif
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
@@ -3717,11 +3787,12 @@ void SE_FGG_grid(SE_FGG_work* work, const SE_state* st,
     {
 	// compute index and expansion vectors
 	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
-	qn = st->q[n];	
-	idx0 = __FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
+	idx0 = __FGG_INDEX(xn, params);
 	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
 	if (grid_thrd_ws.skip) 
 	    continue;
+	qn = st->q[n];		
+	__FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
 	for(; i < i_end; i++)
 	{
 	    for(j = 0; j<p; j++)
