@@ -59,7 +59,11 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #warning "Threading must be activated with -DFGG_THRD"
 #endif
     {
-	SE_FGG_grid_split(&work, &st, &params);
+#ifdef __AVX__
+    SE_FGG_grid_split_AVX_dispatch(&work, &st, &params);
+#else
+    SE_FGG_grid_split_SSE_dispatch(&work, &st, &params);
+#endif
     }
     
 #ifdef THREE_PERIODIC

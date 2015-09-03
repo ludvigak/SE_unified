@@ -3825,7 +3825,7 @@ void SE_FGG_grid_split(SE_FGG_work* work, const SE_state* st,
     int idx0, zidx, idxzz, i, j, k, i_end;
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
-
+    
     grid_thrd_ws_t grid_thrd_ws;
     grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
 
@@ -3876,15 +3876,21 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
     __m128d rH0, rH1, rH2, rH3;
     __m128d rC, rZS0;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
-
 	idx = work->idx[n];
-	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
+	qn = st->q[n];
 
         rZZ0 = _mm_load_pd(zz + n*16     );
         rZZ1 = _mm_load_pd(zz + n*16 + 2 );
@@ -3897,7 +3903,7 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
 
 	if(idx%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -3957,7 +3963,7 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4044,19 +4050,25 @@ void SE_FGG_grid_split_SSE_u8(SE_FGG_work* work, const SE_state* st,
     __m128d rH2, rZZ2, rZS2;
     __m128d rH3, rZZ3, rZS3;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
-
 	idx0 = work->idx[n];
-	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
 
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4101,7 +4113,7 @@ void SE_FGG_grid_split_SSE_u8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4168,15 +4180,23 @@ void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st,
 
     __m128d rH0, rZZ0, rZS0, rC;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4205,7 +4225,7 @@ void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4245,7 +4265,7 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
 #ifdef AVX_FMA
     __DISPATCHER_MSG("[FGG GRID AVX-FMA] ");
 #else
-    __DISPATCHER_MSG("[FGG GRID AV] ");
+    __DISPATCHER_MSG("[FGG GRID AVX] ");
 #endif
 
 #if 0
@@ -4334,15 +4354,24 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+
 	if(idx0%4 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4372,7 +4401,7 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4427,11 +4456,20 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
     const int incrj = params->npdims[2]-16; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-16);// outer increment
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
 	idx_zs = 0;
+
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 
         rZZ0 = _mm256_load_pd(zz + n*16     );
         rZZ1 = _mm256_load_pd(zz + n*16 + 4 );
@@ -4440,7 +4478,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4479,7 +4517,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4540,18 +4578,26 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
     __m256d rH0, rH1;
     __m256d rC, rZS0, rZS1;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 8);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
         rZZ0 = _mm256_load_pd(zz + n*8     );
         rZZ1 = _mm256_load_pd(zz + n*8 + 4 );
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
@@ -4580,7 +4626,7 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
@@ -4632,15 +4678,24 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
     __m256d rH0, rZZ0, rZS0, rC;
     __m256d rH1, rZZ1, rZS1;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+
 	if(idx0%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4678,7 +4733,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{

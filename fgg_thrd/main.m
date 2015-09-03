@@ -1,10 +1,9 @@
-function main(N)
+function main(P, N)
     addpath('bin');
     addpath('../SE_Stresslet')
+
     
     rng(1)
-    
-    P = 16;
     
     for P=[P]    
         clear output;
@@ -18,19 +17,18 @@ function main(N)
         opt = setup(params);
         [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
         zs = SE_fgg_base_gaussian_mex(opt);
-
         
-        formatter = @(n,e,t) struct('name', n,'error', e,'time', t, 'rel', 0);
+        formatter = @(n,e,t) struct('name', n,'error', e,'time', t, 'rel_time', 0);
         % Vanilla / ref
         F_ref = SE_fg_grid_mex(x,f,opt);
         t_ref = timeit(@() SE_fg_grid_mex(x,f,opt) );       
-        output(1) = formatter('MEX FGG / REF',0,t_ref);
+        output(1) = formatter('MEX FGG / REF',NaN,t_ref);
         relerr = @(X) norm(F_ref(:)-X(:), inf) / norm(F_ref(:), inf);
         
         % MEX SSE FGG
         F_fgg = SE_fg_grid_split_mex(x,f,opt,zs,zx,zy,zz,idx);
         t_fgg = timeit(@() SE_fg_grid_split_mex(x,f,opt,zs,zx,zy,zz,idx) );    
-        output(end+1) = formatter('MEX FGG SSE', relerr(F_fgg), t_fgg);
+        output(end+1) = formatter('MEX FGG AVX2', relerr(F_fgg), t_fgg);
 
         % THRD
         F_fggp = SE_fg_grid_thrd_mex(x,f,opt);
@@ -40,10 +38,10 @@ function main(N)
         % THRD SPLIT
         F_fgg = SE_fg_grid_split_thrd_mex(x,f,opt,zs,zx,zy,zz,idx);
         t_fgg = timeit(@() SE_fg_grid_split_thrd_mex(x,f,opt,zs,zx,zy,zz,idx) );    
-        output(end+1) = formatter('MEX FGG THRD SPLIT', relerr(F_fgg), t_fgg);        
+        output(end+1) = formatter('MEX FGG AVX2 THRD', relerr(F_fgg), t_fgg);        
         
         for i=1:numel(output)
-            output(i).rel = output(i).time / output(1).time;
+            output(i).rel_time = output(i).time / output(1).time;
         end
         
         % vanilla
@@ -62,6 +60,9 @@ function main(N)
         
         % Output
         disp(' ');
+        disp('Run parameters:')
+        fprintf('N = %d\nP = %d \n', N, P);
+        fprintf('M = [%s]\n', num2str(params.M));
         disp(struct2table(output))
         if max([output.error]) > 1e-10
             error('FAILURE!')

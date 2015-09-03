@@ -14,6 +14,44 @@ void SE_FGG_MEX_params(SE_FGG_params*, const mxArray*, int);
 #define VERBOSE 0
 #endif
 
+static inline
+int get_idx0(const double x[3],
+	     const SE_FGG_params* params)
+{
+    // unpack params
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	for(int j=0; j<3; j++)
+	{
+	    idx = (int) round(x[j]/h);
+	    idx_from[j] = idx - p_half;
+	}
+    }
+    else
+    {
+	for(int j=0; j<3; j++)
+	{
+	    idx = (int) floor(x[j]/h);
+	    idx_from[j] = idx - (p_half-1);
+	}
+    }
+
+
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
+		       idx_from[1]+p_half, 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+
+
 void mexFunction(int nlhs,       mxArray *plhs[],
 		 int nrhs, const mxArray *prhs[] )
 {
@@ -27,7 +65,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 
     // scratch arrays
     SE_FGG_work work;
-    SE_FGG_allocate_workspace(&work, &params,true,false);
+    SE_FGG_allocate_workspace(&work, &params,true,true);
     
     // allocate output array
     H_OUT = mxCreateNumericArray(3, params.dims, mxDOUBLE_CLASS, mxREAL);
@@ -42,6 +80,17 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 
     // now do the work
     SE_FGG_base_gaussian(&work, &params);
+
+    for(int n=0; n < N; n++)
+    {	
+	double xn[3];
+	xn[0] = x[n]; 
+	xn[1] = x[n+N]; 
+	xn[2] = x[n+2*N];
+	work.idx[n] = get_idx0(xn, &params);
+    }
+    
+
 #if FGG_THRD
 #pragma omp parallel
 #else
