@@ -17,7 +17,7 @@ if nargin == 6
     static_fgg=false;
     sdat = [];
 elseif nargin == 7
-    error('TBD:BLAH','Not done yet');
+    %warning('TBD:SE_STATIC','SE_static not passed to gridding');
     static_fgg=true;
     sdat=varargin{1};
     x = x(sdat.perm,:);

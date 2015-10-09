@@ -103,7 +103,11 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 	    NOPARALLEL // Disable work-sharing in FGG routines
 	    {
 #ifdef SSE
+#ifdef __AVX__
+        SE_FGG_grid_split_AVX_dispatch(&work, &st, &params);
+#else
 		SE_FGG_grid_split_SSE_dispatch(&work, &st, &params);
+#endif
 #else
 		SE_FGG_grid(&work, &st, &params);
 #endif		

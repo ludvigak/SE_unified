@@ -4334,9 +4334,14 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
 
 #ifdef AVX_FMA
-    __DISPATCHER_MSG("[FGG GRID AVX-FMA] ");
+    __DISPATCHER_MSG("[FGG GRID AVX-FMA");
 #else
-    __DISPATCHER_MSG("[FGG GRID AVX] ");
+    __DISPATCHER_MSG("[FGG GRID AVX");
+#endif
+#ifdef FGG_THRD
+    __DISPATCHER_MSG(" THRD] ");
+#else
+    __DISPATCHER_MSG("] ");
 #endif
 
 #if 0

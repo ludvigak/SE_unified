@@ -25,7 +25,7 @@ elseif nargin == 7
 end
 
 % Grid
-G=complex(zeros([9 M]));
+G=complex(zeros([M 9]));
 
 % Indices for outer product
 n_idx = [1 2 3 1 2 3 1 2 3];
@@ -37,14 +37,14 @@ gftic = tic;
 
 % Parfor speeds up split gridding code a little bit,
 % but actually slows down regular gridding
-parfor i=1:9
+for i=1:9
     % Grid
     i1 = n_idx(i);
     i2 = f_idx(i);
     S = n(:,i1).*f(:,i2);
     gtic = tic;
     if static_fgg
-        F = SE_fg_grid_split_mex(x,S,opt, ...
+        F = SE_fg_grid_split_thrd_mex(x,S,opt, ...
                                 sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx );
     else
         F = SE_fg_grid_mex(x,S,opt);
@@ -52,13 +52,15 @@ parfor i=1:9
     gtime(i) = toc(gtic);
     % FFT
     ftic = tic;
-    F = fftshift( fftn( F ) );
+    G(:, :, :, i) = fftshift( fftn( F ) );
     ftime(i) = toc(ftic);
-    % Shuffle
-    shtic = tic;    
-    G( i, :, :, :) = F;
-    shtime(i) = toc(shtic);
 end
+
+
+% Shuffle
+shtic = tic();
+G = permute(G, [4 1 2 3]);
+shtoc = toc(shtic);
 
 wgridfft = toc(gftic); % Total time spent in loop
 gtime = sum(gtime); % Total time spent on gridding (over all threads)
@@ -68,7 +70,7 @@ shtime = sum(shtime); % Total time spent shuffling
 sumtime = gtime+ftime+shtime;
 stats.wtime_grid = wgridfft*gtime/sumtime;
 stats.wtime_fft = wgridfft*ftime/sumtime;
-stats.wtime_shuffle = wgridfft*shtime/sumtime;
+stats.wtime_shuffle = shtoc();
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
