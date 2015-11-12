@@ -1,0 +1,1 @@
+gcc -Wall -Wno-missing-field-initializers -Wno-sign-compare -O3 -fopenmp -std=c99 -ffast-math -fomit-frame-pointer -fexcess-precision=fast -funroll-all-loops -ftree-vectorizer-verbose=0 FMM_expint.c -lm
