@@ -162,10 +162,10 @@ int main() {
     int current_level,nside,ptr,numthreads,maxparticles_in_box;
 
     /*Get some constants*/
-    n_particles = 40000;
+    n_particles = 10000;
     tol = 1e-4;
     lev_max = ceil(pow(n_particles,.25));
-    numthreads = 7;
+    numthreads = 8;
 
     /*Warn user if lev_max is larger than 16.*/
     if(lev_max > 16) {
@@ -211,7 +211,7 @@ int main() {
     /*The breakpoint in terms of number of particles in a box deciding
      *if to use summed up local taylor expansions or direct evaluated
      *multipole expansions.*/
-    taylor_threshold = n_terms/2;
+    taylor_threshold = n_terms*2;
     
     /*The main double data vector. It is aligned on a 16 byte boundary
      *to allow for SSE instructions. Contains:
