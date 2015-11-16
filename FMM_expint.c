@@ -95,7 +95,7 @@
 /*The structure that is passed as the input parameter to MpolesWorker
  *and MpolesWorkerSum.*/
 typedef struct {
-    double *z_re, *z_im, *q_re, *q_im;
+    double *z_x, *z_y, *q;
     double *thread_data;
     double *double_data, *localexp;
     int *realloc_data, *int_data, *cursquare;
@@ -105,7 +105,7 @@ typedef struct {
 
 /*The structure that is passed as the input parameter to DirectWorker.*/
 typedef struct {
-    double *z_re, *z_im, *q_re, *q_im;
+    double *z_x, *z_y, *q;
     double *double_data;
     int *int_data, *realloc_data, *ilist_x, *ilist_y, *cursquare;
     int nside, n_particles;
@@ -125,7 +125,7 @@ typedef struct {
  *   evaluates the local taylor series in each box with enough particles.
  *------------------------------------------------------------------------
  */
-void Mpoles(double *z_re, double *z_im, double* q_re, double* q_im,
+void Mpoles(double *z_x, double *z_y, double* q,
             double* double_data, int* int_data, int* realloc_data, 
             int n_terms, int nside, int taylor_threshold, int n_particles, 
             int num_threads);
@@ -136,7 +136,7 @@ void Mpoles(double *z_re, double *z_im, double* q_re, double* q_im,
  *neighbors as well as box self-interaction.
  *------------------------------------------------------------------------
  */
-void Direct(double *z_re, double *z_im, double* q_re, double* q_im, 
+void Direct(double *z_x, double *z_y, double* q, 
             double* double_data, int* int_data, int* realloc_data, 
             int nside, int n_particles, int num_threads);
 
@@ -144,7 +144,7 @@ void Direct(double *z_re, double *z_im, double* q_re, double* q_im,
  *This function assigns particles to boxes on the current grid.
  *------------------------------------------------------------------------
  */
-void Assign(double *z_re, double *z_im, int n_particles, int nside,
+void Assign(double *z_x, double *z_y, int n_particles, int nside,
             int *maxparticles_in_box, int *int_data, int *realloc_data);
 
 /*-----------------------------------------
@@ -153,7 +153,7 @@ void Assign(double *z_re, double *z_im, int n_particles, int nside,
 int main() {
     // Input args
     double *double_data;
-    double *M1_re,*M2_re,*q_re,*q_im,*z_re,*z_im;
+    double *M1_re,*M2_re,*q,*z_x,*z_y;
     double *M1_c,*C,*CC;
     double tol;
     int *int_data,*realloc_data;
@@ -165,7 +165,7 @@ int main() {
     n_particles = 600;
     tol = 1e-15;
     lev_max = ceil(pow(n_particles,.25));
-    numthreads = 1;
+    numthreads = 8;
 
     /*Warn user if lev_max is larger than 16.*/
     if(lev_max > 16) {
@@ -177,20 +177,19 @@ int main() {
     }
     
     /*Get the positions of the particles.*/
-    z_re = (double*) malloc(n_particles*sizeof(double));
-    z_im = (double*) malloc(n_particles*sizeof(double));
-    z_im = (double*) malloc(n_particles*sizeof(double));
-    q_re = (double*) malloc(n_particles*sizeof(double));
-    q_im = (double*) malloc(n_particles*sizeof(double));
+    z_x = (double*) malloc(n_particles*sizeof(double));
+    z_y = (double*) malloc(n_particles*sizeof(double));
+    q = (double*) malloc(n_particles*sizeof(double));
 
     /* Fill the matrix */
+    k = 1;
     srand(time(NULL));
     for (int i=0; i<n_particles;i++)
     {
-	z_re[i] = (double) rand()/RAND_MAX-.5;
-	z_im[i] = (double) rand()/RAND_MAX-.5;
-	q_re[i] = 1;
-	q_im[i] = 0.;
+	z_x[i] = (double) rand()/RAND_MAX-.5;
+	z_y[i] = (double) rand()/RAND_MAX-.5;
+	q[i] = k;
+	k = -k;
     }
     
     /* start timing */
@@ -233,7 +232,7 @@ int main() {
 
     /*Clear the output*/
     for(j=0;j<2*n_particles;j++)
-        M1_c[j] = 0;
+      M1_c[j] = 0;
     
     /*Compute a matrix containing binomial numbers. It is used when
      *converting from multipole to taylor expansions.*/
@@ -326,9 +325,9 @@ int main() {
         if(nside > PREALLOCNSIDE)
             realloc_data = realloc(realloc_data,(5*nside*nside+2)*sizeof(int));
 
-        Assign(z_re,z_im,n_particles,nside,
+        Assign(z_x,z_y,n_particles,nside,
                 &maxparticles_in_box,int_data,realloc_data);
-	Mpoles(z_re,z_im,q_re,q_im,double_data,int_data,realloc_data,
+	Mpoles(z_x,z_y,q,double_data,int_data,realloc_data,
 	       n_terms,nside,taylor_threshold,n_particles,numthreads);
 
         current_level++;
@@ -337,7 +336,7 @@ int main() {
     }
     nside /=2;
     /*Compute the last interactions via direct evaluation.*/
-    Direct(z_re,z_im,q_re,q_im,double_data,int_data,realloc_data,nside,n_particles,numthreads);
+    Direct(z_x,z_y,q,double_data,int_data,realloc_data,nside,n_particles,numthreads);
     
     /*Clean up mutexes*/
     for(i=0;i<num_mutexes;i++) {
@@ -380,9 +379,9 @@ int main() {
              continue;
          else
 	 {
-	     double  vx = (z_re[m]-z_re[n]);
-	     double  vy = (z_im[m]-z_im[n]);
-             M2_re[n] += q_re[m]*expint_log_euler(vx*vx+vy*vy);
+	     double  vx = (z_x[m]-z_x[n]);
+	     double  vy = (z_y[m]-z_y[n]);
+             M2_re[n] += q[m]*expint_log_euler(vx*vx+vy*vy);
          }
     }
 
@@ -395,10 +394,9 @@ int main() {
     printf("%g\n", sqrt(nrm/ns));
  }  
 
-    free(z_re);
-    free(z_im);
-    free(q_re);
-    free(q_im);
+    free(z_x);
+    free(z_y);
+    free(q);
     free(M1_re);
     free(M2_re);
 
@@ -420,7 +418,7 @@ int main() {
  *   evaluates the local taylor series in each box with enough particles.
  *------------------------------------------------------------------------
  */
-void Mpoles(double *z_re, double *z_im, double* q_re, double* q_im,
+void Mpoles(double *z_x, double *z_y, double* q,
             double* double_data, int* int_data, int* realloc_data, 
             int n_terms, int nside, int taylor_threshold, int n_particles, 
             int num_threads) {
@@ -479,12 +477,10 @@ void Mpoles(double *z_re, double *z_im, double* q_re, double* q_im,
     
     /*Fill the arguments structs and spawn the threads that are 
      *responsible for step 1 and 2 in the description above.*/
-    for(i=0;i<num_threads;i++) {
-        
-        arguments[i].z_re = z_re;
-        arguments[i].z_im = z_im;
-        arguments[i].q_re = q_re;
-        arguments[i].q_im = q_im;
+    for(i=0;i<num_threads;i++) {       
+        arguments[i].z_x = z_x;
+        arguments[i].z_y = z_y;
+        arguments[i].q = q;
         arguments[i].thread_data = double_offset;
         arguments[i].double_data = double_data;
         arguments[i].realloc_data = realloc_data;
@@ -515,9 +511,9 @@ void Mpoles(double *z_re, double *z_im, double* q_re, double* q_im,
       THREAD_CREATE(mpoleWorkerThd[i],MpolesWorkerSum,(void*) &arguments[i]);
   
     /*Wait for all threads to complete */
-	for(i = 0;i<num_threads;i++)
-        THREAD_JOIN(mpoleWorkerThd[i]);
-
+    for(i = 0;i<num_threads;i++)
+      THREAD_JOIN(mpoleWorkerThd[i]);
+    
     /*Clean up and free the memory used.*/
     _mm_mxFree(localexp_c);
     free(mpoleWorkerThd);
@@ -556,9 +552,9 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
     int *cursquare = arg->cursquare;
     
     /*Pointers to particle position and charges.*/
-    double *z_re = arg->z_re;
-    double *z_im = arg->z_im;
-    double *q_re = arg->q_re;
+    double *z_x = arg->z_x;
+    double *z_y = arg->z_y;
+    double *q = arg->q;
     /*Pointer to the output sums.*/
     double *M1_c = &(arg->double_data[M1_C_OFFSET]);
     /*A binomial matrix. Used when going from multipole to Taylor.*/
@@ -589,7 +585,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
      * the summation over \Sum qi(xi-xA)^k1(yi-yA)^k2.*/
     double* mpole_v = _mm_mxMalloc(n2_terms*sizeof(double),16);
     
-    /* Temporary array to store powers of z_x and z_y .*/
+    /* Temporary array to store powers of zx and zy .*/
     double* zx_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
     double* zy_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
 
@@ -631,17 +627,17 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
          for(j=0;j<nparticles_in_box[current_box];j++) {
 	   unsigned int k1, k2, nt;
              
-            double z_x = box_center_re-z_re[particle_offsets[box_offsets[current_box]+j]];
-            double z_y = box_center_im-z_im[particle_offsets[box_offsets[current_box]+j]];
+            double zxc = box_center_re-z_x[particle_offsets[box_offsets[current_box]+j]];
+            double zyc = box_center_im-z_y[particle_offsets[box_offsets[current_box]+j]];
             
-            double qj  = q_re[particle_offsets[box_offsets[current_box]+j]];
+            double qj  = q[particle_offsets[box_offsets[current_box]+j]];
             double sx,sy;
 
-            /* compute powers of z_x and z_y */
+            /* compute powers of zx and zy */
             zx_pow[0]=1.0; zy_pow[0]=1.0;
             for (k1=1; k1<n_terms; k1++){
-                zx_pow[k1] = zx_pow[k1-1]*z_x;
-                zy_pow[k1] = zy_pow[k1-1]*z_y;
+                zx_pow[k1] = zx_pow[k1-1]*zxc;
+                zy_pow[k1] = zy_pow[k1-1]*zyc;
             }
 
              /*compute the rest of mpole_a coeffs and add up to form mpole_c*/
@@ -736,9 +732,9 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
                             unsigned int l;
                             for(l=0;l<(unsigned int)nparticles_in_box[current_box];l++) {
-                                double z = (z_re[tptr2[k]]-z_re[tptr[l]])*(z_re[tptr2[k]]-z_re[tptr[l]])
-                                          +(z_im[tptr2[k]]-z_im[tptr[l]])*(z_im[tptr2[k]]-z_im[tptr[l]]);   
-                                M1_c[2*tptr2[k]] += q_re[tptr[l]]*expint_log_euler(z);
+                                double z = (z_x[tptr2[k]]-z_x[tptr[l]])*(z_x[tptr2[k]]-z_x[tptr[l]])
+                                          +(z_y[tptr2[k]]-z_y[tptr[l]])*(z_y[tptr2[k]]-z_y[tptr[l]]);   
+                                M1_c[2*tptr2[k]] += q[tptr[l]]*expint_log_euler(z);
                             }
                         }
                         UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
@@ -758,8 +754,8 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			 *speed-up with the expnse of more memory. (tunable). */
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
 			  unsigned int k1,k2, nt;
-			  double t_x = (z_re[tptr[k]]-box_center_re);
-			  double t_y = (z_im[tptr[k]]-box_center_im);
+			  double t_x = (z_x[tptr[k]]-box_center_re);
+			  double t_y = (z_y[tptr[k]]-box_center_im);
 			  
 			  /* compute mpole_c coefficients.*/
 			  compute_mpole_c(mpole_c, n_terms, t_x, t_y);
@@ -815,7 +811,7 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
     int ntboxes = arg->ntboxes;
     
     /*Pointers to particle positions.*/
-    double *z_re = arg->z_re,*z_im = arg->z_im;
+    double *z_x = arg->z_x,*z_y = arg->z_y;
     /*Pointer to matrix of Taylor series for boxes with enough particles.*/
     double *localexp_c = arg->localexp;
     /*Pointer to the output data.*/
@@ -873,14 +869,14 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
         for(j=0;j<nparticles_in_box[current_box];j++) {
 	  unsigned int k1, k2, nt;
 
-	  double z_x = box_center_re - z_re[tptr[j]];
-	  double z_y = box_center_im - z_im[tptr[j]];
+	  double zxc = box_center_re - z_x[tptr[j]];
+	  double zyc = box_center_im - z_y[tptr[j]];
 
-	  /* compute powers of z_x and z_y */
+	  /* compute powers of zx and zy */
 	  zx_pow[0]=1.0; zy_pow[0]=1.0;
 	  for (k1=1; k1<n_terms; k1++){
-	    zx_pow[k1] = zx_pow[k1-1]*z_x;
-	    zy_pow[k1] = zy_pow[k1-1]*z_y;
+	    zx_pow[k1] = zx_pow[k1-1]*zxc;
+	    zy_pow[k1] = zy_pow[k1-1]*zyc;
 	  }
 
 	  /*Add the contribution of the taylor expansion to the end 
@@ -905,7 +901,7 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
  *neighbors as well as box self-interaction.
  *------------------------------------------------------------------------
  */
-void Direct(double *z_re, double *z_im, double* q_re, double* q_im, 
+void Direct(double *z_x, double *z_y, double* q,
             double* double_data, int* int_data, int* realloc_data, 
             int nside, int n_particles, int num_threads) {
     
@@ -926,10 +922,9 @@ void Direct(double *z_re, double *z_im, double* q_re, double* q_im,
     for(i=0;i<num_threads;i++) {
         arguments[i].ilist_x = ilist_x;
         arguments[i].ilist_y = ilist_y;
-        arguments[i].z_re = z_re;
-        arguments[i].z_im = z_im;
-        arguments[i].q_re = q_re;
-        arguments[i].q_im = q_im;
+        arguments[i].z_x = z_x;
+        arguments[i].z_y = z_y;
+        arguments[i].q = q;
         arguments[i].double_data = double_data;
         arguments[i].realloc_data = realloc_data;
         arguments[i].int_data = int_data;
@@ -967,9 +962,9 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
     /*Pointer to the output sums.*/
     double *M1_c = &(arg->double_data[M1_C_OFFSET]);
     /*Pointers to the positions and charges of the particles.*/
-    double *z_re = arg->z_re;
-    double *z_im = arg->z_im;
-    double *q_re = arg->q_re;
+    double *z_x = arg->z_x;
+    double *z_y = arg->z_y;
+    double *q = arg->q;
     
     /*The relative offsets of the nearest neighbors.*/
     int *ilist_x = arg->ilist_x;
@@ -1012,11 +1007,11 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
             unsigned int k;
             for(k=0;k<nparticles_in_box[current_box];k++) {
                 if(k!=j) {
-                    double tz_re = z_re[tptr[k]]-z_re[tptr[j]];
-                    double tz_im = z_im[tptr[k]]-z_im[tptr[j]];
-                    double tmp = (tz_re*tz_re+tz_im*tz_im);
-                    M1_c[2*tptr[j]] += q_re[tptr[k]]*expint_log_euler(tmp);
-                }               
+                    double tz_x = z_x[tptr[k]]-z_x[tptr[j]];
+                    double tz_y = z_y[tptr[k]]-z_y[tptr[j]];
+                    double tmp = (tz_x*tz_x+tz_y*tz_y);
+                    M1_c[2*tptr[j]] += q[tptr[k]]*expint_log_euler(tmp);
+                }
             }
         }
 
@@ -1044,10 +1039,10 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
                          *the total running time. SIMD instructions doesn't 
                          *really help but they don't hurt either.*/
                         for(l=0;l<nparticles_in_box[source_box];l++) {
-                            double tz_re = z_re[tptr2[l]]-z_re[tptr[k]];
-                            double tz_im = z_im[tptr2[l]]-z_im[tptr[k]];
-                            double tmp = (tz_re*tz_re+tz_im*tz_im);
-                            M1_c[2*tptr[k]] += q_re[tptr2[l]]*expint_log_euler(tmp);
+                            double tz_x = z_x[tptr2[l]]-z_x[tptr[k]];
+                            double tz_y = z_y[tptr2[l]]-z_y[tptr[k]];
+                            double tmp = (tz_x*tz_x+tz_y*tz_y);
+                            M1_c[2*tptr[k]] += q[tptr2[l]]*expint_log_euler(tmp);
                         }
                     }
                 }
@@ -1061,7 +1056,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
  *This function assigns particles to boxes on the current grid.
  *------------------------------------------------------------------------
  */
-void Assign(double *z_re, double *z_im, int n_particles, int nside,
+void Assign(double *z_x, double *z_y, int n_particles, int nside,
             int *maxparticles_in_box, int *int_data, int *realloc_data) {
             
     /*The offsets of the particles in the arrays. Sorted by box.*/
@@ -1084,8 +1079,8 @@ void Assign(double *z_re, double *z_im, int n_particles, int nside,
 
     /*Assign the particles to boxes.*/
     for(j = 0;j<n_particles;j++) {
-        int box_x = (int)floor(nside*(z_re[j]+.5));
-        int box_y = (int)floor(nside*(z_im[j]+.5));
+        int box_x = (int)floor(nside*(z_x[j]+.5));
+        int box_y = (int)floor(nside*(z_y[j]+.5));
         if(box_x < 0) box_x = 0;
         if(box_x >= nside) box_x = nside-1;
         if(box_y < 0) box_y = 0;
