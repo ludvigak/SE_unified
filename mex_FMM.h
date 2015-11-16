@@ -156,10 +156,31 @@ void compute_mpole_c(double*, int, double, double);
 
 void isaligned(void* p, unsigned int n)
 {
-    if ( ((unsigned long) p & n)==0)
-        printf("is %d bit aligned\n", n+1);
+    if ( ((unsigned long) p & (n-1))==0)
+        printf("is %d bit aligned\n", n);
     else
-        printf("is NOT %d bit aligned\n",n+1);
+        printf("is NOT %d bit aligned\n",n);
+}
+
+typedef struct T{
+  double START;
+  double STOP;
+} TIME0;
+
+TIME0 TIME;
+
+void START_TIME()
+{
+   TIME.START = gettime();
+}
+void STOP_TIME()
+{
+   TIME.STOP += gettime()-TIME.START;
+}
+
+void print_log()
+{
+  printf("RUNTIME %f\n",TIME.STOP);
 }
 
 #endif

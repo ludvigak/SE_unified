@@ -27,7 +27,7 @@
  *
  *SSE3       - This code uses SSE3-instructions in some inner loops, so
  *             a Pentium 4 processor or later is required. For this to 
- *             be efficient, some arrays need to be aligned on a 16 byte
+ *             be efficient, some arrays need to be aligned on a 32 byte
  *             boundary. To accomplish this, gcc's aligned malloc was
  *             rewritten to use Matlab's mxMalloc (the code is in 
  *             mm_mxmalloc.h). 
@@ -86,11 +86,11 @@
 /*double_data:*/
 #define M1_C_OFFSET                (0)
 #define CC_OFFSET                  (n_particles)
-#define DBL_THDATA_OFFSET          (n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf)))
+#define DBL_THDATA_OFFSET          (n_particles+n_terms*n_terms+(32-((n_terms*n_terms)&0xf)))
 #define MPOLE_C_OFFSET             (0)
 #define TAYLOREXP_C_OFFSET         (n_terms*n_terms)
 #define TEMP_C_OFFSET              (5*n_terms*n_terms)
-#define DBL_THDATA_SIZE            (5*n_terms*n_terms+n_particles+(16-((n_terms*n_terms)&0xf)))
+#define DBL_THDATA_SIZE            (5*n_terms*n_terms+n_particles+(32-((n_terms*n_terms)&0xf)))
 
 /*The structure that is passed as the input parameter to MpolesWorker
  *and MpolesWorkerSum.*/
@@ -161,8 +161,10 @@ int main() {
     int lev_max,n_particles,n_terms,taylor_threshold,csize,i,j,k;
     int current_level,nside,ptr,numthreads,maxparticles_in_box;
 
+    TIME.STOP = 0.0;
+
     /*Get some constants*/
-    n_particles = 600;
+    n_particles = 100000;
     tol = 1e-15;
     lev_max = ceil(pow(n_particles,.25));
     numthreads = 8;
@@ -193,7 +195,7 @@ int main() {
     }
     
     /* start timing */
-     double start = gettime();
+    double start = gettime();
 
     /*The number of terms required in the multipole expansion to get
      *an accuracy of tol. Actually, this formula is a bit pessimistic,
@@ -213,20 +215,20 @@ int main() {
     /*The breakpoint in terms of number of particles in a box deciding
      *if to use summed up local taylor expansions or direct evaluated
      *multipole expansions.*/
-    taylor_threshold = n_terms*2;
+    taylor_threshold = n_terms*4;
     
-    /*The main double data vector. It is aligned on a 16 byte boundary
+    /*The main double data vector. It is aligned on a 32 byte boundary
      *to allow for SSE instructions. Contains:
-     * M1_c[n_particles]     Output field. Real. Read/Write. Mutexed
-     * CC[n_terms*n_terms]     Binomial matrix. Real. Read-only
+     * M1_c[n_particles]               Output field. Real. Read/Write. Mutexed
+     * CC[n_terms*n_terms]             Binomial matrix. Real. Read-only
      * --- One for each thread --- 
      * mpole_c[n_terms*n_terms]        Temp data. Separated from other threads
      * taylorexp_c[4*n_terms*n_terms]  Temp data. Separated from other threads
      * temp_c[n_particles]             Temp data. Separated from other threads
      */
-    int ddsz = n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
-    int ddth = n_particles+5*n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
-    double_data = _mm_mxMalloc((ddsz + numthreads*ddth)*sizeof(double),16);
+    int ddsz = n_particles+n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
+    int ddth = n_particles+5*n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
+    double_data = _mm_mxMalloc((ddsz + numthreads*ddth)*sizeof(double),32);
     M1_c = &double_data[M1_C_OFFSET];
     CC = &double_data[CC_OFFSET];
 
@@ -272,6 +274,7 @@ int main() {
      *                              box numbers.
      */
     int_data = calloc((2*n_particles+3*108),sizeof(int));
+
     ilist_x = &int_data[ILIST_X_OFFSET];
     ilist_y = &int_data[ILIST_Y_OFFSET];
     /*Initialize the interaction list. See mex_FMM.h.*/
@@ -354,32 +357,34 @@ int main() {
 
     /* stop timing */
     double stop = gettime();
-    printf("Timing with %d threads: %f\n",numthreads,stop-start);  
+    print_log();
+    printf("Timing with %d threads: %f\n",numthreads, stop-start);
     
     /*Create the output vector for direct*/
     M2_c = (double*) malloc(n_particles*sizeof(double));
+    for (int n=0; n<n_particles; n++)
+      M2_c[n] = 0;
+
    /* DO the exact */
  if(n_particles<1000)
  {
  for (int n=0; n<n_particles; n++)
    {
-    M2_c[n] = 0;
-    for (int m=0; m<n_particles; m++)
-        if(m==n)
-             continue;
-         else
-	 {
-	     double  vx = (z_x[m]-z_x[n]);
-	     double  vy = (z_y[m]-z_y[n]);
-             M2_c[n] += q[m]*expint_log_euler(vx*vx+vy*vy);
-         }
-    }
+     for (int m=n+1; m<n_particles; m++)
+       {
+	 double  vx = (z_x[m]-z_x[n]);
+	 double  vy = (z_y[m]-z_y[n]);
+	 double  vv = expint_log_euler(vx*vx+vy*vy);
+	 M2_c[n] += q[m]*vv;
+	 M2_c[m] += q[n]*vv;
+       }
+   }
 
     double nrm = 0, ns=0;
     for (int m=0; m<n_particles; m++)
     {
       nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
-      ns   += (M1_c[m])*(M1_c[m]);
+      ns  += (M1_c[m])*(M1_c[m]);
     }
     printf("%g\n", sqrt(nrm/ns));
  }  
@@ -444,7 +449,7 @@ void Mpoles(double *z_x, double *z_y, double* q,
     /*localexp_c. Contains the local taylor expansions which are common
      *to all threads.*/
     if(ntboxes > 0)
-        localexp_c = _mm_mxMalloc(n_terms*n_terms*ntboxes*sizeof(double),16);
+        localexp_c = _mm_mxMalloc(n_terms*n_terms*ntboxes*sizeof(double),32);
     else
         localexp_c = NULL;
 
@@ -572,11 +577,11 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
     double box_center_re,box_center_im;
     /* mpole_v stores the powers
      * the summation over \Sum qi(xi-xA)^k1(yi-yA)^k2.*/
-    double* mpole_v = _mm_mxMalloc(n2_terms*sizeof(double),16);
+    double* mpole_v = _mm_mxMalloc(n2_terms*sizeof(double),32);
     
     /* Temporary array to store powers of zx and zy .*/
-    double* zx_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
-    double* zy_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
+    double* zx_pow = _mm_mxMalloc(n_terms*sizeof(double),32);
+    double* zy_pow = _mm_mxMalloc(n_terms*sizeof(double),32);
 
     /*Loop through the boxes.*/
     for(;;) {
@@ -629,15 +634,15 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                 zy_pow[k1] = zy_pow[k1-1]*zyc;
             }
 
-             /*compute the rest of mpole_a coeffs and add up to form mpole_c*/
-            /* FIXME: Horner's method should be used here. */
-	    for (nt = 0; nt<n_terms; nt++)
-	      for (k1=0; k1<=nt; k1++){
-		sx = zx_pow[k1];
-		k2 = nt-k1;
+             /*compute the rest of mpole_a coeffs and add up to form mpole_c.
+	      *This loop accounts for 10% of the runtime.*/
+	    for (k1=0; k1<n_terms; k1++){
+	      sx = qj*zx_pow[k1];
+	      for (k2=0; k2<n_terms-k1; k2++){
 		sy = zy_pow[k2];
-		mpole_v[k1*n_terms+k2] += qj*sx*sy;
+		mpole_v[k1*n_terms+k2] += sx*sy;
 	      }
+	    }
 	 }
         
         /*Loop though the interaction list.*/
@@ -705,7 +710,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                     
                 }else if(nparticles_in_box[target_box] > 0) {
 
-                    if(nparticles_in_box[current_box] < 12) {
+                    if(nparticles_in_box[current_box] < 32) {
                         /*There are relatively few particles in the target
                          *box, and if there are few particles in the 
                          *current box, we may as well evaluate interactions 
@@ -715,16 +720,38 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                         int* tptr2 = &particle_offsets[box_offsets[target_box]]; 
                         LOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                         /*This loop computes the direct interaction between
-                             *all the particles in current_box and the 
-                             *particles in target_box.*/
-
+			 *all the particles in current_box and the 
+			 *particles in target_box.*/
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
-                            unsigned int l;
-                            for(l=0;l<(unsigned int)nparticles_in_box[current_box];l++) {
-                                double z = (z_x[tptr2[k]]-z_x[tptr[l]])*(z_x[tptr2[k]]-z_x[tptr[l]])
-                                          +(z_y[tptr2[k]]-z_y[tptr[l]])*(z_y[tptr2[k]]-z_y[tptr[l]]);   
-                                M1_c[tptr2[k]] += q[tptr[l]]*expint_log_euler(z);
-                            }
+			  unsigned int l,l0;
+			  double res=0;
+			  double tz_x, tz_y;
+			  double cz_x = z_x[tptr2[k]];
+			  double cz_y = z_y[tptr2[k]];
+			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/4*4;l+=4) {
+			    l0=0;
+			    tz_x = (cz_x-z_x[tptr[l+l0]])*(cz_x-z_x[tptr[l+l0]]);
+			    tz_y = (cz_y-z_y[tptr[l+l0]])*(cz_y-z_y[tptr[l+l0]]);
+			    res += q[tptr[l+l0]]*expint_log_euler(tz_x+tz_y);
+			    l0++;
+			    tz_x = (cz_x-z_x[tptr[l+l0]])*(cz_x-z_x[tptr[l+l0]]);
+			    tz_y = (cz_y-z_y[tptr[l+l0]])*(cz_y-z_y[tptr[l+l0]]);
+			    res += q[tptr[l+l0]]*expint_log_euler(tz_x+tz_y);
+			    l0++;
+			    tz_x = (cz_x-z_x[tptr[l+l0]])*(cz_x-z_x[tptr[l+l0]]);
+			    tz_y = (cz_y-z_y[tptr[l+l0]])*(cz_y-z_y[tptr[l+l0]]);
+			    res += q[tptr[l+l0]]*expint_log_euler(tz_x+tz_y);
+			    l0++;
+			    tz_x = (cz_x-z_x[tptr[l+l0]])*(cz_x-z_x[tptr[l+l0]]);
+			    tz_y = (cz_y-z_y[tptr[l+l0]])*(cz_y-z_y[tptr[l+l0]]);
+			    res += q[tptr[l+l0]]*expint_log_euler(tz_x+tz_y);
+			  }
+			  for(l0=l;l0<(unsigned int)nparticles_in_box[current_box];l0++) {
+			    tz_x = (cz_x-z_x[tptr[l0]])*(cz_x-z_x[tptr[l0]]);
+			    tz_y = (cz_y-z_y[tptr[l0]])*(cz_y-z_y[tptr[l0]]);
+			    res += q[tptr[l0]]*expint_log_euler(tz_x+tz_y);
+			  }
+			  M1_c[tptr2[k]] += res;
                         }
                         UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                     }else{
@@ -732,7 +759,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                          *and direct evaluation would be expensive. Instead
                          *evaluate the multipole expansion at each particle
                          *in the target box.*/
-                        unsigned int k;
+		      unsigned int k,k0;
                         int* tptr = &particle_offsets[box_offsets[target_box]];
 
                         /*For each particle in the target box compute the multipole
@@ -748,28 +775,29 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  
 			  /* compute mpole_c coefficients.*/
 			  compute_mpole_c(mpole_c, n_terms, t_x, t_y);
-			  
-			  /*This is the main hotspot in shark. We spend
-			   *over 30% of the time here.*/
 			  temp_c[k] = 0;
-			  for (nt=0;nt<n_terms; nt++)
-			    for (k1=0; k1<=nt; k1++){
-			      k2 = nt-k1;
-			      temp_c[k] += mpole_c[k1*n_terms+k2]*mpole_v[k1*n_terms+k2];
-			    }
+			  double tmp = 0;
+			  for (k1=0; k1<n_terms; k1++){
+			      for (k2=0; k2<n_terms-k1; k2++){
+				tmp += mpole_c[k1*n_terms+k2]*mpole_v[k1*n_terms+k2];
+			      }
+			  }
+			  temp_c[k] = tmp;
 			}
 
                         /*Add the contributions, this is safe since we
                          *know that there is less than taylor_threshold
                          *particles in the target box. taylor_threshold is 
-                         *n_terms/2 by default, and a value of 2*n_terms
-                         *would be very slow(and now also crash the program).*/
-			/* FIXME: tptr is not aligned always*/
+                         *n_terms*2 by default.*/
 			LOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
-                        for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
-			  M1_c[tptr[k]] += temp_c[k];
-			  //__m128d tmp = _mm_loadu_pd(&temp_c[2*k]);
-			  //_mm_storeu_pd(&M1_c[2*tptr[k]], _mm_add_pd(tmp, _mm_loadu_pd(&M1_c[2*tptr[k]])));
+                        for(k=0;k<(unsigned int)nparticles_in_box[target_box]/4*4;k+=4) {
+			  k0=0; M1_c[tptr[k+k0]] += temp_c[k+k0];
+			  k0++; M1_c[tptr[k+k0]] += temp_c[k+k0];
+			  k0++; M1_c[tptr[k+k0]] += temp_c[k+k0];
+			  k0++; M1_c[tptr[k+k0]] += temp_c[k+k0];
+                        }
+                        for(k0=k;k0<(unsigned int)nparticles_in_box[target_box];k0++) {
+			  M1_c[tptr[k0]]   += temp_c[k0];
                         }
 			UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                     }/*Direct or multipole in target box.*/
@@ -818,8 +846,8 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
     int *nparticles_in_box = &(arg->realloc_data[NPARTICLES_IN_BOX_OFFSET]);
     
     double box_center_re,box_center_im;
-    double *zx_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
-    double *zy_pow = _mm_mxMalloc(n_terms*sizeof(double),16);
+    double *zx_pow = _mm_mxMalloc(n_terms*sizeof(double),32);
+    double *zy_pow = _mm_mxMalloc(n_terms*sizeof(double),32);
 
     /*Loop through the boxes with more than taylor_threshold points in them.*/
     for(;;) {
@@ -991,16 +1019,17 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
         /*Temporary pointer to the particles of current box.*/
         tptr = &particle_offsets[box_offsets[current_box]];
 
-        /*Compute the box self-interactions.*/
+        /*Compute the box self-interactions. Since the particles
+	 *are in a box, we can compute ij and ji interactions 
+	 * simultaneously.*/
         for(j=0;j<nparticles_in_box[current_box];j++) {
             unsigned int k;
-            for(k=0;k<nparticles_in_box[current_box];k++) {
-                if(k!=j) {
+            for(k=j+1;k<nparticles_in_box[current_box];k++) {
                     double tz_x = z_x[tptr[k]]-z_x[tptr[j]];
                     double tz_y = z_y[tptr[k]]-z_y[tptr[j]];
                     double tmp = (tz_x*tz_x+tz_y*tz_y);
                     M1_c[tptr[j]] += q[tptr[k]]*expint_log_euler(tmp);
-                }
+		    M1_c[tptr[k]] += q[tptr[j]]*expint_log_euler(tmp);
             }
         }
 
@@ -1021,18 +1050,41 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
                     /*Pointer to the particles of the source box.*/
                     int* tptr2 = &particle_offsets[box_offsets[source_box]];
                     for(k=0;k<nparticles_in_box[current_box];k++) {
-                        int l;
-                        /*This loop computes the direct interaction between
-                         *all the particles in current_box and the source  
-                         *particles. This loop accounts for about 5% of  
-                         *the total running time. SIMD instructions doesn't 
-                         *really help but they don't hurt either.*/
-                        for(l=0;l<nparticles_in_box[source_box];l++) {
-                            double tz_x = z_x[tptr2[l]]-z_x[tptr[k]];
-                            double tz_y = z_y[tptr2[l]]-z_y[tptr[k]];
-                            double tmp = (tz_x*tz_x+tz_y*tz_y);
-                            M1_c[tptr[k]] += q[tptr2[l]]*expint_log_euler(tmp);
-                        }
+		      unsigned int l,l0;
+		      double res = 0.0;
+		      double cz_x = z_x[tptr[k]];
+		      double cz_y = z_y[tptr[k]];
+		      double tz_x, tz_y;
+		      /*This loop computes the direct interaction between
+		       *all the particles in current_box and the source  
+		       *particles. This loop accounts for about 5% of  
+		       *the total running time. We unroll manually since the 
+		       *compiler cannot do that automatically.*/
+		      for(l=0;l<nparticles_in_box[source_box]/4*4;l+=4) {
+			l0 = 0;
+			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
+			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
+			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
+			l0++;
+			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
+			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
+			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
+			l0++;
+			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
+			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
+			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
+			l0++;
+			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
+			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
+			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
+		      }
+		      for (l0=l; l0<nparticles_in_box[source_box];l0++){
+			tz_x = (z_x[tptr2[l0]]-cz_x)*(z_x[tptr2[l0]]-cz_x);
+			tz_y = (z_y[tptr2[l0]]-cz_y)*(z_y[tptr2[l0]]-cz_y);
+			res += q[tptr2[l0]]*expint_log_euler(tz_x+tz_y);
+		      }
+
+		      M1_c[tptr[k]] += res;
                     }
                 }
             }
@@ -1114,7 +1166,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   double exp2 = exp(-x2y2);
   double s=0;
 
-  double* mpole_b = _mm_mxMalloc(nt*nt*sizeof(double),16);
+  double* mpole_b = _mm_mxMalloc(nt*nt*sizeof(double),32);
 
   /* compute mpole_b coeffs*/
   mpole_b[0*nt+0] =  exp2;

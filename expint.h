@@ -98,13 +98,12 @@ double expint(double x)
  */
 double expint_log_euler(double x)
 {
-    return expint(x)+log(x)+EULER;
   int j;
   double am1,am2,bm1,bm2,f,oldf,pterm,term,y,polyv,egamma,a,b,alpha,beta;
   double INF = 1.e308;
   double p[] = {-3.602693626336023e-09, -4.819538452140960e-07, -2.569498322115933e-05,
-	  	        -6.973790859534190e-04, -1.019573529845792e-02, -7.811863559248197e-02,
-		        -3.012432892762715e-01, -7.773807325735529e-01,  8.267661952366478e+00};
+		-6.973790859534190e-04, -1.019573529845792e-02, -7.811863559248197e-02,
+		-3.012432892762715e-01, -7.773807325735529e-01,  8.267661952366478e+00};
 
   polyv = polyval(p,x);
   if(polyv>=0)
