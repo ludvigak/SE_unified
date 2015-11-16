@@ -85,12 +85,12 @@
 #define INTERACTION_LIST_OFFSET    (2*n_particles+216)
 /*double_data:*/
 #define M1_C_OFFSET                (0)
-#define CC_OFFSET                  (2*n_particles)
-#define DBL_THDATA_OFFSET          (2*n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf)))
+#define CC_OFFSET                  (n_particles)
+#define DBL_THDATA_OFFSET          (n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf)))
 #define MPOLE_C_OFFSET             (0)
 #define TAYLOREXP_C_OFFSET         (n_terms*n_terms)
 #define TEMP_C_OFFSET              (5*n_terms*n_terms)
-#define DBL_THDATA_SIZE            (5*n_terms*n_terms+2*n_particles+(16-((n_terms*n_terms)&0xf)))
+#define DBL_THDATA_SIZE            (5*n_terms*n_terms+n_particles+(16-((n_terms*n_terms)&0xf)))
 
 /*The structure that is passed as the input parameter to MpolesWorker
  *and MpolesWorkerSum.*/
@@ -153,8 +153,8 @@ void Assign(double *z_x, double *z_y, int n_particles, int nside,
 int main() {
     // Input args
     double *double_data;
-    double *M1_re,*M2_re,*q,*z_x,*z_y;
-    double *M1_c,*C,*CC;
+    double *q,*z_x,*z_y;
+    double *M1_c,*M2_c,*C,*CC;
     double tol;
     int *int_data,*realloc_data;
     int *ilist_x,*ilist_y;
@@ -217,21 +217,21 @@ int main() {
     
     /*The main double data vector. It is aligned on a 16 byte boundary
      *to allow for SSE instructions. Contains:
-     * M1_c[2*n_particles]     Output field. Complex. Read/Write. Mutexed
+     * M1_c[n_particles]     Output field. Real. Read/Write. Mutexed
      * CC[n_terms*n_terms]     Binomial matrix. Real. Read-only
      * --- One for each thread --- 
      * mpole_c[n_terms*n_terms]        Temp data. Separated from other threads
      * taylorexp_c[4*n_terms*n_terms]  Temp data. Separated from other threads
-     * temp_c[2*n_particles]           Temp data. Separated from other threads
+     * temp_c[n_particles]             Temp data. Separated from other threads
      */
-    int ddsz = 2*n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
-    int ddth = 2*n_particles+5*n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
+    int ddsz = n_particles+n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
+    int ddth = n_particles+5*n_terms*n_terms+(16-((n_terms*n_terms)&0xf));
     double_data = _mm_mxMalloc((ddsz + numthreads*ddth)*sizeof(double),16);
     M1_c = &double_data[M1_C_OFFSET];
     CC = &double_data[CC_OFFSET];
 
     /*Clear the output*/
-    for(j=0;j<2*n_particles;j++)
+    for(j=0;j<n_particles;j++)
       M1_c[j] = 0;
     
     /*Compute a matrix containing binomial numbers. It is used when
@@ -354,26 +354,16 @@ int main() {
 
     /* stop timing */
     double stop = gettime();
-    printf("Timing with %d threads: %f\n",numthreads,stop-start);
+    printf("Timing with %d threads: %f\n",numthreads,stop-start);  
     
-    /*Create the output vector.*/
-    M1_re = (double*) malloc(n_particles*sizeof(double));
-    M2_re = (double*) malloc(n_particles*sizeof(double));
-    
-    /*Convert vector back to matlab format*/
-    ptr = 0;
-    for(j = 0;j<n_particles;j++, ptr+=2) {
-        M1_re[j] = M1_c[ptr];
-    }
-   
-    
-
+    /*Create the output vector for direct*/
+    M2_c = (double*) malloc(n_particles*sizeof(double));
    /* DO the exact */
  if(n_particles<1000)
  {
  for (int n=0; n<n_particles; n++)
    {
-    M2_re[n] = 0;
+    M2_c[n] = 0;
     for (int m=0; m<n_particles; m++)
         if(m==n)
              continue;
@@ -381,15 +371,15 @@ int main() {
 	 {
 	     double  vx = (z_x[m]-z_x[n]);
 	     double  vy = (z_y[m]-z_y[n]);
-             M2_re[n] += q[m]*expint_log_euler(vx*vx+vy*vy);
+             M2_c[n] += q[m]*expint_log_euler(vx*vx+vy*vy);
          }
     }
 
     double nrm = 0, ns=0;
     for (int m=0; m<n_particles; m++)
     {
-	nrm += (M1_re[m]-M2_re[m])*(M1_re[m]-M2_re[m]);
-	ns   += (M1_re[m])*(M1_re[m]);
+      nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
+      ns   += (M1_c[m])*(M1_c[m]);
     }
     printf("%g\n", sqrt(nrm/ns));
  }  
@@ -397,8 +387,7 @@ int main() {
     free(z_x);
     free(z_y);
     free(q);
-    free(M1_re);
-    free(M2_re);
+    free(M2_c);
 
     /*Free the last of the allocated memory. (Aligned free)*/
     _mm_mxFree(double_data);
@@ -478,19 +467,19 @@ void Mpoles(double *z_x, double *z_y, double* q,
     /*Fill the arguments structs and spawn the threads that are 
      *responsible for step 1 and 2 in the description above.*/
     for(i=0;i<num_threads;i++) {       
-        arguments[i].z_x = z_x;
-        arguments[i].z_y = z_y;
-        arguments[i].q = q;
-        arguments[i].thread_data = double_offset;
-        arguments[i].double_data = double_data;
-        arguments[i].realloc_data = realloc_data;
-        arguments[i].localexp = localexp_c;
-        arguments[i].int_data = int_data;
-        arguments[i].n_terms = n_terms;
-        arguments[i].n_particles = n_particles;
-        arguments[i].ntboxes = ntboxes;
-        arguments[i].nside = nside;
-        arguments[i].cursquare = &cursquare;
+        arguments[i].z_x              = z_x;
+        arguments[i].z_y              = z_y;
+        arguments[i].q                = q;
+        arguments[i].thread_data      = double_offset;
+        arguments[i].double_data      = double_data;
+        arguments[i].realloc_data     = realloc_data;
+        arguments[i].localexp         = localexp_c;
+        arguments[i].int_data         = int_data;
+        arguments[i].n_terms          = n_terms;
+        arguments[i].n_particles      = n_particles;
+        arguments[i].ntboxes          = ntboxes;
+        arguments[i].nside            = nside;
+        arguments[i].cursquare        = &cursquare;
         arguments[i].taylor_threshold = taylor_threshold;
         
         /*Spawn thread*/
@@ -722,7 +711,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                          *current box, we may as well evaluate interactions 
                          *directly.*/
                         unsigned int k;
-                        int* tptr = &particle_offsets[box_offsets[current_box]]; 
+                        int* tptr  = &particle_offsets[box_offsets[current_box]]; 
                         int* tptr2 = &particle_offsets[box_offsets[target_box]]; 
                         LOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                         /*This loop computes the direct interaction between
@@ -734,7 +723,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                             for(l=0;l<(unsigned int)nparticles_in_box[current_box];l++) {
                                 double z = (z_x[tptr2[k]]-z_x[tptr[l]])*(z_x[tptr2[k]]-z_x[tptr[l]])
                                           +(z_y[tptr2[k]]-z_y[tptr[l]])*(z_y[tptr2[k]]-z_y[tptr[l]]);   
-                                M1_c[2*tptr2[k]] += q[tptr[l]]*expint_log_euler(z);
+                                M1_c[tptr2[k]] += q[tptr[l]]*expint_log_euler(z);
                             }
                         }
                         UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
@@ -762,11 +751,11 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  
 			  /*This is the main hotspot in shark. We spend
 			   *over 30% of the time here.*/
-			  temp_c[2*k] = 0;
+			  temp_c[k] = 0;
 			  for (nt=0;nt<n_terms; nt++)
 			    for (k1=0; k1<=nt; k1++){
 			      k2 = nt-k1;
-			      temp_c[2*k] += mpole_c[k1*n_terms+k2]*mpole_v[k1*n_terms+k2];
+			      temp_c[k] += mpole_c[k1*n_terms+k2]*mpole_v[k1*n_terms+k2];
 			    }
 			}
 
@@ -778,7 +767,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			/* FIXME: tptr is not aligned always*/
 			LOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
-			  M1_c[2*tptr[k]] += temp_c[2*k];
+			  M1_c[tptr[k]] += temp_c[k];
 			  //__m128d tmp = _mm_loadu_pd(&temp_c[2*k]);
 			  //_mm_storeu_pd(&M1_c[2*tptr[k]], _mm_add_pd(tmp, _mm_loadu_pd(&M1_c[2*tptr[k]])));
                         }
@@ -885,9 +874,9 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
 	  for (nt=0; nt<n_terms; nt++)
 	    for (k1=0; k1<=nt; k1++){
 	      k2 = nt - k1;
-	      M1_c[2*tptr[j]] += zx_pow[k1]*zy_pow[k2]*tptr2[k1*n_terms+k2];
+	      M1_c[tptr[j]] += zx_pow[k1]*zy_pow[k2]*tptr2[k1*n_terms+k2];
 	    }
-        }        	
+        }
     }
     _mm_mxFree(zx_pow);
     _mm_mxFree(zy_pow);
@@ -920,17 +909,17 @@ void Direct(double *z_x, double *z_y, double* q,
     
     /*Spawn the threads*/
     for(i=0;i<num_threads;i++) {
-        arguments[i].ilist_x = ilist_x;
-        arguments[i].ilist_y = ilist_y;
-        arguments[i].z_x = z_x;
-        arguments[i].z_y = z_y;
-        arguments[i].q = q;
-        arguments[i].double_data = double_data;
+        arguments[i].ilist_x      = ilist_x;
+        arguments[i].ilist_y      = ilist_y;
+        arguments[i].z_x          = z_x;
+        arguments[i].z_y          = z_y;
+        arguments[i].q            = q;
+        arguments[i].double_data  = double_data;
         arguments[i].realloc_data = realloc_data;
-        arguments[i].int_data = int_data;
-        arguments[i].n_particles = n_particles;
-        arguments[i].nside = nside;
-        arguments[i].cursquare = &cursquare;
+        arguments[i].int_data     = int_data;
+        arguments[i].n_particles  = n_particles;
+        arguments[i].nside        = nside;
+        arguments[i].cursquare    = &cursquare;
 
         THREAD_CREATE(directWorkerThd[i],DirectWorker,(void *) &arguments[i]);
     }
@@ -1010,7 +999,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
                     double tz_x = z_x[tptr[k]]-z_x[tptr[j]];
                     double tz_y = z_y[tptr[k]]-z_y[tptr[j]];
                     double tmp = (tz_x*tz_x+tz_y*tz_y);
-                    M1_c[2*tptr[j]] += q[tptr[k]]*expint_log_euler(tmp);
+                    M1_c[tptr[j]] += q[tptr[k]]*expint_log_euler(tmp);
                 }
             }
         }
@@ -1042,7 +1031,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
                             double tz_x = z_x[tptr2[l]]-z_x[tptr[k]];
                             double tz_y = z_y[tptr2[l]]-z_y[tptr[k]];
                             double tmp = (tz_x*tz_x+tz_y*tz_y);
-                            M1_c[2*tptr[k]] += q[tptr2[l]]*expint_log_euler(tmp);
+                            M1_c[tptr[k]] += q[tptr2[l]]*expint_log_euler(tmp);
                         }
                     }
                 }
