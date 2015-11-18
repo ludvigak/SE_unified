@@ -92,6 +92,7 @@
 #define TEMP_C_OFFSET              (5*n_terms*n_terms)
 #define DBL_THDATA_SIZE            (5*n_terms*n_terms+n_particles+(32-((n_terms*n_terms)&0xf)))
 
+
 /*The structure that is passed as the input parameter to MpolesWorker
  *and MpolesWorkerSum.*/
 typedef struct {
@@ -145,7 +146,7 @@ void Direct(double *z_x, double *z_y, double* q,
  *------------------------------------------------------------------------
  */
 void Assign(double *z_x, double *z_y, int n_particles, int nside,
-            int *maxparticles_in_box, int *int_data, int *realloc_data);
+            int *maxparticles_in_box, int *int_data, int *realloc_data, double box_size);
 
 /*-----------------------------------------
  *The main entry function
@@ -155,16 +156,17 @@ int main() {
     double *double_data;
     double *q,*z_x,*z_y;
     double *M1_c,*M2_c,*C,*CC;
-    double tol;
+    double tol, box_size;
     int *int_data,*realloc_data;
     int *ilist_x,*ilist_y;
     int lev_max,n_particles,n_terms,taylor_threshold,csize,i,j,k;
-    int current_level,nside,ptr,numthreads,maxparticles_in_box;
+    int current_level,nside,numthreads,maxparticles_in_box;
 
     TIME.STOP = 0.0;
 
     /*Get some constants*/
-    n_particles = 100000;
+    n_particles = 100;
+    box_size = 1.0;
     tol = 1e-15;
     lev_max = ceil(pow(n_particles,.25));
     numthreads = 8;
@@ -186,14 +188,13 @@ int main() {
     /* Fill the matrix */
     k = 1;
     srand(time(NULL));
-    for (int i=0; i<n_particles;i++)
-    {
-	z_x[i] = (double) rand()/RAND_MAX-.5;
-	z_y[i] = (double) rand()/RAND_MAX-.5;
-	q[i] = k;
-	k = -k;
+    for (int i=0; i<n_particles;i++){
+      z_x[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
+      z_y[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
+      q[i] = k;
+      k = -k;
     }
-    
+
     /* start timing */
     double start = gettime();
 
@@ -329,7 +330,7 @@ int main() {
             realloc_data = realloc(realloc_data,(5*nside*nside+2)*sizeof(int));
 
         Assign(z_x,z_y,n_particles,nside,
-                &maxparticles_in_box,int_data,realloc_data);
+	       &maxparticles_in_box,int_data,realloc_data, box_size);
 	Mpoles(z_x,z_y,q,double_data,int_data,realloc_data,
 	       n_terms,nside,taylor_threshold,n_particles,numthreads);
 
@@ -386,8 +387,15 @@ int main() {
       nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
       ns  += (M1_c[m])*(M1_c[m]);
     }
-    printf("%g\n", sqrt(nrm/ns));
+    printf("Err: %g, sum: %g\n", sqrt(nrm/ns), ns);
  }  
+ if(DIRECT)
+   printf("Direct\n");
+ if(TAYLOR)
+   printf("Taylor\n");
+ if(MPOLE)
+   printf("Mpole\n");
+
 
     free(z_x);
     free(z_y);
@@ -619,7 +627,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
          *This loop shows up as a hotspot in Shark, so SIMD instructions
          *are used to speed it up.*/
          for(j=0;j<nparticles_in_box[current_box];j++) {
-	   unsigned int k1, k2, nt;
+	   unsigned int k1, k2;
              
             double zxc = box_center_re-z_x[particle_offsets[box_offsets[current_box]+j]];
             double zyc = box_center_im-z_y[particle_offsets[box_offsets[current_box]+j]];
@@ -665,7 +673,8 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 
                 /*Check the number of sources of the target box.*/
                 if(nparticles_in_box[target_box] > taylor_threshold) {
-		    unsigned int k1, k2, l1, l2, nt1, nt2;
+ 		    TAYLOR = 1;
+  		    unsigned int k1, k2, l1, l2;
                     /*If larger than taylor_threshold we convert the
                      *multipole expansion into a local taylor expansion 
                      *centered around the target box center.*/
@@ -692,26 +701,25 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                      *boxes, so that we lock up as little of the localexp-
                      *matrix as possible.*/
                     LOCK_MUTEX(&localexp_mutex[target_box&(num_mutexes-1)]);
-		    for (nt1=0; nt1<n_terms; nt1++)
-		      for (l1=0; l1<=nt1; l1++){
-			l2 = nt1 - l1;
+		    for (l1=0; l1<n_terms; l1++)
+		      for (l2=0; l2<n_terms-l1; l2++){
 			double tmp=0;
-			for (nt2=0; nt2<n_terms; nt2++)
-			  for (k1=0; k1<=nt2; k1++){
-			    k2   = nt2 - k1;
-			    double cc1 = CC[k1*n_terms+l1];
-			    double cc2 = CC[k2*n_terms+l2];
-			    tmp += cc1*cc2*taylorexp_c[(k1+l1)*twon_terms+(k2+l2)]*mpole_v[k1*n_terms+k2];
-			  }
-			tptr2[l1*n_terms+l2] += tmp;
+			  for (k1=0; k1<n_terms; k1++)
+			    for (k2=0; k2<n_terms-k1; k2++){
+			      double cc1 = CC[k1*n_terms+l1];
+			      double cc2 = CC[k2*n_terms+l2];
+			      tmp += cc1*cc2*taylorexp_c[(k1+l1)*twon_terms+(k2+l2)]*mpole_v[k1*n_terms+k2];
+			    }
+			  tptr2[l1*n_terms+l2] += tmp;
 		      }
                     UNLOCK_MUTEX(&localexp_mutex[target_box&(num_mutexes-1)]);
 
                     
                 }else if(nparticles_in_box[target_box] > 0) {
 
-                    if(nparticles_in_box[current_box] < 32) {
-                        /*There are relatively few particles in the target
+                    if(nparticles_in_box[current_box] < 26) {
+ 		        DIRECT = 1;
+		        /*There are relatively few particles in the target
                          *box, and if there are few particles in the 
                          *current box, we may as well evaluate interactions 
                          *directly.*/
@@ -755,6 +763,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                         }
                         UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                     }else{
+ 		        MPOLE = 1;
                         /*There are too many particles in the current box,
                          *and direct evaluation would be expensive. Instead
                          *evaluate the multipole expansion at each particle
@@ -769,7 +778,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			 *where row+col=n_terms. This should give us two times 
 			 *speed-up with the expnse of more memory. (tunable). */
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
-			  unsigned int k1,k2, nt;
+			  unsigned int k1,k2;
 			  double t_x = (z_x[tptr[k]]-box_center_re);
 			  double t_y = (z_y[tptr[k]]-box_center_im);
 			  
@@ -884,7 +893,7 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
         /*Evaluate the taylor series using Horner's rule.
          *(Minor)Shark hotspot, so we go SIMD.*/
         for(j=0;j<nparticles_in_box[current_box];j++) {
-	  unsigned int k1, k2, nt;
+	  unsigned int k1, k2;
 
 	  double zxc = box_center_re - z_x[tptr[j]];
 	  double zyc = box_center_im - z_y[tptr[j]];
@@ -899,9 +908,8 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
 	  /*Add the contribution of the taylor expansion to the end 
 	   *result. Accesses to M1_c here are completely parallel, so no 
 	   *mutexes are necessary.*/
-	  for (nt=0; nt<n_terms; nt++)
-	    for (k1=0; k1<=nt; k1++){
-	      k2 = nt - k1;
+	  for (k1=0; k1<n_terms; k1++)
+	    for (k2=0; k2<n_terms-k1; k2++){
 	      M1_c[tptr[j]] += zx_pow[k1]*zy_pow[k2]*tptr2[k1*n_terms+k2];
 	    }
         }
@@ -1048,7 +1056,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 
                 if(nparticles_in_box[source_box] > 0) {
                     /*Pointer to the particles of the source box.*/
-                    int* tptr2 = &particle_offsets[box_offsets[source_box]];
+		  int* tptr2 = &particle_offsets[box_offsets[source_box]];
                     for(k=0;k<nparticles_in_box[current_box];k++) {
 		      unsigned int l,l0;
 		      double res = 0.0;
@@ -1057,8 +1065,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 		      double tz_x, tz_y;
 		      /*This loop computes the direct interaction between
 		       *all the particles in current_box and the source  
-		       *particles. This loop accounts for about 5% of  
-		       *the total running time. We unroll manually since the 
+		       *particles. We unroll manually since the 
 		       *compiler cannot do that automatically.*/
 		      for(l=0;l<nparticles_in_box[source_box]/4*4;l+=4) {
 			l0 = 0;
@@ -1078,6 +1085,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
 			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
 		      }
+		      /*The remainder loop*/
 		      for (l0=l; l0<nparticles_in_box[source_box];l0++){
 			tz_x = (z_x[tptr2[l0]]-cz_x)*(z_x[tptr2[l0]]-cz_x);
 			tz_y = (z_y[tptr2[l0]]-cz_y)*(z_y[tptr2[l0]]-cz_y);
@@ -1098,7 +1106,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
  *------------------------------------------------------------------------
  */
 void Assign(double *z_x, double *z_y, int n_particles, int nside,
-            int *maxparticles_in_box, int *int_data, int *realloc_data) {
+            int *maxparticles_in_box, int *int_data, int *realloc_data, double box_size) {
             
     /*The offsets of the particles in the arrays. Sorted by box.*/
     int* particle_offsets = &int_data[PARTICLE_OFFSETS_OFFSET];

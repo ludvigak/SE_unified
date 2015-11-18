@@ -162,6 +162,8 @@ void isaligned(void* p, unsigned int n)
         printf("is NOT %d bit aligned\n",n);
 }
 
+unsigned int MPOLE=0, TAYLOR=0, DIRECT=0;
+
 typedef struct T{
   double START;
   double STOP;
