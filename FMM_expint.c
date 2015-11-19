@@ -369,6 +369,7 @@ int main() {
    /* DO the exact */
  if(n_particles<1000)
  {
+#ifdef __AVX__
  for (int n=0; n<n_particles; n++)
    {
      __m256d ZX = _mm256_set1_pd(z_x[n]);
@@ -376,8 +377,8 @@ int main() {
      __m256d Qn = _mm256_set1_pd(q[n]);
      for (int m=0; m<n_particles; m+=4)
        {
-	 __m256d VX = _mm256_set_pd(z_x[m+3],z_x[m+2],z_x[m+1],z_x[m]);
-	 __m256d VY = _mm256_set_pd(z_y[m+3],z_y[m+2],z_y[m+1],z_y[m]);
+	 __m256d VX = _mm256_load_pd(&z_x[m]);
+	 __m256d VY = _mm256_load_pd(&z_y[m]);
 	 __m256d Qm = _mm256_set1_pd(q[m]);
 	 VX = _mm256_sub_pd(VX,ZX);
 	 VX = _mm256_mul_pd(VX,VX);
@@ -394,6 +395,33 @@ int main() {
 	 M2_c[m] += q[n]*vv;
        }
    }
+#elif defined __SSE4_2__
+ for (int n=0; n<n_particles; n++)
+   {
+     __m128d ZX = _mm_set1_pd(z_x[n]);
+     __m128d ZY = _mm_set1_pd(z_y[n]);
+     __m128d Qn = _mm_set1_pd(q[n]);
+     for (int m=0; m<n_particles; m+=2)
+       {
+	 __m128d VX = _mm_load_pd(&z_x[m]);
+	 __m128d VY = _mm_load_pd(&z_y[m]);
+	 __m128d Qm = _mm_set1_pd(q[m]);
+	 VX = _mm_sub_pd(VX,ZX);
+	 VX = _mm_mul_pd(VX,VX);
+	 VY = _mm_sub_pd(VY,ZY);
+	 VY = _mm_mul_pd(VY,VY);
+	 __m128d VVQn = _mm_mul_pd(Qn,_mm_ein_pd(_mm_add_pd(VX,VY)));
+	 _mm_store_pd(&M2_c[m], _mm_add_pd(VVQn, _mm_load_pd(&M2_c[m] ) ) );
+       }
+     for (int m=n_particles/2*2; m<n_particles; m++)
+       {
+	 double vx = (z_x[m]-z_x[n])*(z_x[m]-z_x[n]);
+	 double vy = (z_y[m]-z_y[n])*(z_y[m]-z_y[n]);
+	 double vv = expint_log_euler(vx+vy);
+	 M2_c[m] += q[n]*vv;
+       }
+   }
+#endif
 
     double nrm = 0, ns=0;
     for (int m=0; m<n_particles; m++)
@@ -656,15 +684,15 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                 zy_pow[k1] = zy_pow[k1-1]*zyc;
             }
 
-             /*compute the rest of mpole_a coeffs and add up to form mpole_c.
-	      *This loop accounts for 10% of the runtime.*/
+	    /*compute the rest of mpole_a coeffs and add up to form mpole_c.
+	     *This loop accounts for 10% of the runtime.*/    
 	    for (k1=0; k1<n_terms; k1++){
 	      sx = qj*zx_pow[k1];
 	      for (k2=0; k2<n_terms-k1; k2++){
 		sy = zy_pow[k2];
 		mpole_v[k1*n_terms+k2] += sx*sy;
 	      }
-	    }
+	    } 
 	 }
         
         /*Loop though the interaction list.*/
@@ -744,40 +772,118 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                         /*This loop computes the direct interaction between
 			 *all the particles in current_box and the 
 			 *particles in target_box. This loop accounts for more than
-			 *50% of the runtime, so we go SIMD.*/
+			 *50% of the runtime, so we do SIMD + unrolling.*/
+#ifdef __AVX__
                         for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
-			  unsigned int l,l0;
+			  unsigned int l=0,l0=0;
 			  double res=0;
 			  double tz_x, tz_y;
 			  double cz_x = z_x[tptr2[k]];
 			  double cz_y = z_y[tptr2[k]];
-			  double resv[4] __attribute__((aligned(32)));
+			  double resv[4] MEM_ALIGN;
 			  __m256d RESV = _mm256_setzero_pd();
-			  __m256d CZX = _mm256_set1_pd(z_x[tptr2[k]]);
-			  __m256d CZY = _mm256_set1_pd(z_y[tptr2[k]]);
-			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/4*4;l+=4) {
-			    __m256d ZX = _mm256_set_pd(z_x[tptr[l+3]],z_x[tptr[l+2]],z_x[tptr[l+1]],z_x[tptr[l]]);
-			    __m256d ZY = _mm256_set_pd(z_y[tptr[l+3]],z_y[tptr[l+2]],z_y[tptr[l+1]],z_y[tptr[l]]);
-			    __m256d Ql = _mm256_set_pd(q[tptr[l+3]],q[tptr[l+2]],q[tptr[l+1]],q[tptr[l]]);
+			  __m256d CZX = _mm256_set1_pd(cz_x);
+			  __m256d CZY = _mm256_set1_pd(cz_y);
+			  __m256d ZX,ZY,Ql, V;
+			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/8*8;l+=8) {
+			    ZX = _mm256_set_pd(z_x[tptr[l+3]],z_x[tptr[l+2]],z_x[tptr[l+1]],z_x[tptr[l]]);
+			    ZY = _mm256_set_pd(z_y[tptr[l+3]],z_y[tptr[l+2]],z_y[tptr[l+1]],z_y[tptr[l]]);
+			    Ql = _mm256_set_pd(q[tptr[l+3]],q[tptr[l+2]],q[tptr[l+1]],q[tptr[l]]);
 			    
 			    ZX = _mm256_sub_pd(CZX,ZX);
 			    ZX = _mm256_mul_pd(ZX,ZX);
 			    ZY = _mm256_sub_pd(CZY,ZY);
 			    ZY = _mm256_mul_pd(ZY,ZY);
-			    __m256d V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+			    V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+			    V = _mm256_mul_pd(Ql,V);
+			    RESV = _mm256_add_pd(RESV, V);
+			    
+			    l0 = 4;
+			    ZX = _mm256_set_pd(z_x[tptr[l+3+l0]],z_x[tptr[l+2+l0]],z_x[tptr[l+1+l0]],z_x[tptr[l+l0]]);
+			    ZY = _mm256_set_pd(z_y[tptr[l+3+l0]],z_y[tptr[l+2+l0]],z_y[tptr[l+1+l0]],z_y[tptr[l+l0]]);
+			    Ql = _mm256_set_pd(q[tptr[l+3+l0]],q[tptr[l+2+l0]],q[tptr[l+1+l0]],q[tptr[l+l0]]);
+			    
+			    ZX = _mm256_sub_pd(CZX,ZX);
+			    ZX = _mm256_mul_pd(ZX,ZX);
+			    ZY = _mm256_sub_pd(CZY,ZY);
+			    ZY = _mm256_mul_pd(ZY,ZY);
+			    V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
 			    V = _mm256_mul_pd(Ql,V);
 			    RESV = _mm256_add_pd(RESV, V);
 			  }
-			  
-			  for(l0=l;l0<(unsigned int)nparticles_in_box[current_box];l0++) {
-			    tz_x = (cz_x-z_x[tptr[l0]])*(cz_x-z_x[tptr[l0]]);
-			    tz_y = (cz_y-z_y[tptr[l0]])*(cz_y-z_y[tptr[l0]]);
-			    res += q[tptr[l0]]*expint_log_euler(tz_x+tz_y);
+			  l0=l;
+			  for(l=l0;l<(unsigned int)nparticles_in_box[current_box]/4*4;l+=4) {
+			    ZX = _mm256_set_pd(z_x[tptr[l+3]],z_x[tptr[l+2]],z_x[tptr[l+1]],z_x[tptr[l]]);
+			    ZY = _mm256_set_pd(z_y[tptr[l+3]],z_y[tptr[l+2]],z_y[tptr[l+1]],z_y[tptr[l]]);
+			    Ql = _mm256_set_pd(q[tptr[l+3]],q[tptr[l+2]],q[tptr[l+1]],q[tptr[l]]);
+			    
+			    ZX = _mm256_sub_pd(CZX,ZX);
+			    ZX = _mm256_mul_pd(ZX,ZX);
+			    ZY = _mm256_sub_pd(CZY,ZY);
+			    ZY = _mm256_mul_pd(ZY,ZY);
+			    V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+			    V = _mm256_mul_pd(Ql,V);
+			    RESV = _mm256_add_pd(RESV, V);
+			  }
+			  l0 = l;
+			  for(l=l0;l<(unsigned int)nparticles_in_box[current_box];l++) {
+			    tz_x = (cz_x-z_x[tptr[l]])*(cz_x-z_x[tptr[l]]);
+			    tz_y = (cz_y-z_y[tptr[l]])*(cz_y-z_y[tptr[l]]);
+			    res += q[tptr[l]]*expint_log_euler(tz_x+tz_y);
 			  }
 			  _mm256_store_pd(resv,RESV);
 			  res += sum4(resv);
 			  M1_c[tptr2[k]] += res;
                         }
+#elif defined __SSE4_2__
+                        for(k=0;k<(unsigned int)nparticles_in_box[target_box];k++) {
+			  unsigned int l=0,l0=0;
+			  double res=0;
+			  double tz_x, tz_y;
+			  double cz_x = z_x[tptr2[k]];
+			  double cz_y = z_y[tptr2[k]];
+			  double resv[2] MEM_ALIGN;
+			  __m128d RESV = _mm_setzero_pd();
+			  __m128d CZX = _mm_set1_pd(cz_x);
+			  __m128d CZY = _mm_set1_pd(cz_y);
+			  __m128d ZX,ZY,Ql, V;
+			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/4*4;l+=4) {
+			    ZX = _mm_set_pd(z_x[tptr[l+1]],z_x[tptr[l]]);
+			    ZY = _mm_set_pd(z_y[tptr[l+1]],z_y[tptr[l]]);
+			    Ql = _mm_set_pd(q[tptr[l+1]],q[tptr[l]]);
+			    
+			    ZX = _mm_sub_pd(CZX,ZX);
+			    ZX = _mm_mul_pd(ZX,ZX);
+			    ZY = _mm_sub_pd(CZY,ZY);
+			    ZY = _mm_mul_pd(ZY,ZY);
+			    V = _mm_ein_pd(_mm_add_pd(ZX,ZY));
+			    V = _mm_mul_pd(Ql,V);
+			    RESV = _mm_add_pd(RESV, V);
+			    
+			    l0 = 2;
+			    ZX = _mm_set_pd(z_x[tptr[l+1+l0]],z_x[tptr[l+l0]]);
+			    ZY = _mm_set_pd(z_y[tptr[l+1+l0]],z_y[tptr[l+l0]]);
+			    Ql = _mm_set_pd(q[tptr[l+1+l0]],q[tptr[l+l0]]);
+			    
+			    ZX = _mm_sub_pd(CZX,ZX);
+			    ZX = _mm_mul_pd(ZX,ZX);
+			    ZY = _mm_sub_pd(CZY,ZY);
+			    ZY = _mm_mul_pd(ZY,ZY);
+			    V = _mm_ein_pd(_mm_add_pd(ZX,ZY));
+			    V = _mm_mul_pd(Ql,V);
+			    RESV = _mm_add_pd(RESV, V);
+			  }
+			  l0 = l;
+			  for(l=l0;l<(unsigned int)nparticles_in_box[current_box];l++) {
+			    tz_x = (cz_x-z_x[tptr[l]])*(cz_x-z_x[tptr[l]]);
+			    tz_y = (cz_y-z_y[tptr[l]])*(cz_y-z_y[tptr[l]]);
+			    res += q[tptr[l]]*expint_log_euler(tz_x+tz_y);
+			  }
+			  _mm_store_pd(resv,RESV);
+			  res += resv[0]+resv[1];
+			  M1_c[tptr2[k]] += res;
+                        }
+#endif
                         UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                     }else{
  		        MPOLE = 1;
@@ -822,8 +928,9 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  k0++; M1_c[tptr[k+k0]] += temp_c[k+k0];
 			  k0++; M1_c[tptr[k+k0]] += temp_c[k+k0];
                         }
-                        for(k0=k;k0<(unsigned int)nparticles_in_box[target_box];k0++) {
-			  M1_c[tptr[k0]]   += temp_c[k0];
+			k0 = k;
+                        for(k=k0;k<(unsigned int)nparticles_in_box[target_box];k++) {
+			  M1_c[tptr[k]]   += temp_c[k];
                         }
 			UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
                     }/*Direct or multipole in target box.*/
@@ -1074,44 +1181,127 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
                 if(nparticles_in_box[source_box] > 0) {
                     /*Pointer to the particles of the source box.*/
 		  int* tptr2 = &particle_offsets[box_offsets[source_box]];
-                    for(k=0;k<nparticles_in_box[current_box];k++) {
-		      unsigned int l,l0;
-		      double res = 0.0;
-		      double cz_x = z_x[tptr[k]];
-		      double cz_y = z_y[tptr[k]];
-		      double tz_x, tz_y;
-		      /*This loop computes the direct interaction between
-		       *all the particles in current_box and the source  
-		       *particles. We unroll manually since the 
-		       *compiler cannot do that automatically.*/
-		      for(l=0;l<nparticles_in_box[source_box]/4*4;l+=4) {
-			l0 = 0;
-			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
-			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
-			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
-			l0++;
-			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
-			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
-			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
-			l0++;
-			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
-			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
-			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
-			l0++;
-			tz_x = (z_x[tptr2[l+l0]]-cz_x)*(z_x[tptr2[l+l0]]-cz_x);
-			tz_y = (z_y[tptr2[l+l0]]-cz_y)*(z_y[tptr2[l+l0]]-cz_y);
-			res += q[tptr2[l+l0]]*expint_log_euler(tz_x+tz_y);
-		      }
-		      /*The remainder loop*/
-		      for (l0=l; l0<nparticles_in_box[source_box];l0++){
-			tz_x = (z_x[tptr2[l0]]-cz_x)*(z_x[tptr2[l0]]-cz_x);
-			tz_y = (z_y[tptr2[l0]]-cz_y)*(z_y[tptr2[l0]]-cz_y);
-			res += q[tptr2[l0]]*expint_log_euler(tz_x+tz_y);
-		      }
 
-		      M1_c[tptr[k]] += res;
-                    }
-                }
+		  /*This loop computes the direct interaction between
+		   *all the particles in current_box and the source  
+		   *particles. We use SIMD and unroll manually since the 
+		   *compiler cannot do that automatically.*/
+#ifdef __AVX__
+		  for(k=0;k<(unsigned int)nparticles_in_box[current_box];k++) {
+		    unsigned int l=0,l0=0;
+		    double res=0;
+		    double tz_x, tz_y;
+		    double cz_x = z_x[tptr[k]];
+		    double cz_y = z_y[tptr[k]];
+		    double resv[4] __attribute__((aligned(32)));
+		    __m256d RESV = _mm256_setzero_pd();
+		    __m256d CZX = _mm256_set1_pd(cz_x);
+		    __m256d CZY = _mm256_set1_pd(cz_y);
+		    __m256d ZX,ZY,Ql, V;
+		    for(l=0;l<nparticles_in_box[source_box]/8*8;l+=8) {
+		      ZX = _mm256_set_pd(z_x[tptr2[l+3]],z_x[tptr2[l+2]],z_x[tptr2[l+1]],z_x[tptr2[l]]);
+		      ZY = _mm256_set_pd(z_y[tptr2[l+3]],z_y[tptr2[l+2]],z_y[tptr2[l+1]],z_y[tptr2[l]]);
+		      Ql = _mm256_set_pd(q[tptr2[l+3]],q[tptr2[l+2]],q[tptr2[l+1]],q[tptr2[l]]);
+		      
+		      ZX = _mm256_sub_pd(ZX,CZX);
+		      ZX = _mm256_mul_pd(ZX,ZX);
+		      ZY = _mm256_sub_pd(ZY,CZY);
+		      ZY = _mm256_mul_pd(ZY,ZY);
+		      V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+		      V = _mm256_mul_pd(Ql,V);
+		      RESV = _mm256_add_pd(RESV, V);
+		      
+		      l0 = 4;
+		      ZX = _mm256_set_pd(z_x[tptr2[l+3+l0]],z_x[tptr2[l+2+l0]],z_x[tptr2[l+1+l0]],z_x[tptr2[l+l0]]);
+		      ZY = _mm256_set_pd(z_y[tptr2[l+3+l0]],z_y[tptr2[l+2+l0]],z_y[tptr2[l+1+l0]],z_y[tptr2[l+l0]]);
+		      Ql = _mm256_set_pd(q[tptr2[l+3+l0]],q[tptr2[l+2+l0]],q[tptr2[l+1+l0]],q[tptr2[l+l0]]);
+		      
+		      ZX = _mm256_sub_pd(ZX,CZX);
+		      ZX = _mm256_mul_pd(ZX,ZX);
+		      ZY = _mm256_sub_pd(ZY,CZY);
+		      ZY = _mm256_mul_pd(ZY,ZY);
+		      V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+		      V = _mm256_mul_pd(Ql,V);
+		      RESV = _mm256_add_pd(RESV, V);
+		    }
+		    l0 = l;
+		    for(l=l0;l<nparticles_in_box[source_box]/4*4;l+=4) {
+		      ZX = _mm256_set_pd(z_x[tptr2[l+3]],z_x[tptr2[l+2]],z_x[tptr2[l+1]],z_x[tptr2[l]]);
+		      ZY = _mm256_set_pd(z_y[tptr2[l+3]],z_y[tptr2[l+2]],z_y[tptr2[l+1]],z_y[tptr2[l]]);
+		      Ql = _mm256_set_pd(q[tptr2[l+3]],q[tptr2[l+2]],q[tptr2[l+1]],q[tptr2[l]]);
+		      
+		      ZX = _mm256_sub_pd(ZX,CZX);
+		      ZX = _mm256_mul_pd(ZX,ZX);
+		      ZY = _mm256_sub_pd(ZY,CZY);
+		      ZY = _mm256_mul_pd(ZY,ZY);
+		      V = _mm256_ein_pd(_mm256_add_pd(ZX,ZY));
+		      V = _mm256_mul_pd(Ql,V);
+		      RESV = _mm256_add_pd(RESV, V);
+		    }
+		    /*The remainder loop*/
+		    l0 = l;
+		    for (l=l0; l<nparticles_in_box[source_box];l++){
+		      tz_x = (z_x[tptr2[l]]-cz_x)*(z_x[tptr2[l]]-cz_x);
+		      tz_y = (z_y[tptr2[l]]-cz_y)*(z_y[tptr2[l]]-cz_y);
+		      res += q[tptr2[l]]*expint_log_euler(tz_x+tz_y);
+		    }
+		    
+		    _mm256_store_pd(resv,RESV);
+		    res += sum4(resv);
+		    M1_c[tptr[k]] += res;
+		  }
+#elif defined __SSE4_2__
+		  for(k=0;k<(unsigned int)nparticles_in_box[current_box];k++) {
+		    unsigned int l=0,l0=0;
+		    double res=0;
+		    double tz_x, tz_y;
+		    double cz_x = z_x[tptr[k]];
+		    double cz_y = z_y[tptr[k]];
+		    double resv[2] MEM_ALIGN;
+		    __m128d RESV = _mm_setzero_pd();
+		    __m128d CZX = _mm_set1_pd(cz_x);
+		    __m128d CZY = _mm_set1_pd(cz_y);
+		    __m128d ZX,ZY,Ql, V;
+		    for(l=0;l<nparticles_in_box[source_box]/4*4;l+=4) {
+		      ZX = _mm_set_pd(z_x[tptr2[l+1]],z_x[tptr2[l]]);
+		      ZY = _mm_set_pd(z_y[tptr2[l+1]],z_y[tptr2[l]]);
+		      Ql = _mm_set_pd(q[tptr2[l+1]],q[tptr2[l]]);
+		      
+		      ZX = _mm_sub_pd(ZX,CZX);
+		      ZX = _mm_mul_pd(ZX,ZX);
+		      ZY = _mm_sub_pd(ZY,CZY);
+		      ZY = _mm_mul_pd(ZY,ZY);
+		      V = _mm_ein_pd(_mm_add_pd(ZX,ZY));
+		      V = _mm_mul_pd(Ql,V);
+		      RESV = _mm_add_pd(RESV, V);
+		      
+		      l0 = 2;
+		      ZX = _mm_set_pd(z_x[tptr2[l+1+l0]],z_x[tptr2[l+l0]]);
+		      ZY = _mm_set_pd(z_y[tptr2[l+1+l0]],z_y[tptr2[l+l0]]);
+		      Ql = _mm_set_pd(q[tptr2[l+1+l0]],q[tptr2[l+l0]]);
+		      
+		      ZX = _mm_sub_pd(ZX,CZX);
+		      ZX = _mm_mul_pd(ZX,ZX);
+		      ZY = _mm_sub_pd(ZY,CZY);
+		      ZY = _mm_mul_pd(ZY,ZY);
+		      V = _mm_ein_pd(_mm_add_pd(ZX,ZY));
+		      V = _mm_mul_pd(Ql,V);
+		      RESV = _mm_add_pd(RESV, V);
+		    }
+		    /*The remainder loop*/
+		    l0 = l;
+		    for (l=l0; l<nparticles_in_box[source_box];l++){
+		      tz_x = (z_x[tptr2[l]]-cz_x)*(z_x[tptr2[l]]-cz_x);
+		      tz_y = (z_y[tptr2[l]]-cz_y)*(z_y[tptr2[l]]-cz_y);
+		      res += q[tptr2[l]]*expint_log_euler(tz_x+tz_y);
+		    }
+		    
+		    _mm_store_pd(resv,RESV);
+		    res += resv[0]+resv[1];
+		    M1_c[tptr[k]] += res;
+		  }
+#endif
+		}
             }
         }
     }

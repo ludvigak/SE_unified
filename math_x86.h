@@ -359,6 +359,141 @@ se_mm_exp_pd(__m128d exparg)
     return z;
 }
 
+static __m128d
+se_mm_log_pd(__m128d x)
+{
+    /* Same algorithm as cephes library */
+    const __m128d expmask    = _mm_castsi128_pd( _mm_set_epi32(0x7FF00000, 0x00000000, 0x7FF00000, 0x00000000) );
+
+    const __m128i expbase_m1 = _mm_set1_epi32(1023-1); /* We want non-IEEE format */
+
+    const __m128d half       = _mm_set1_pd(0.5);
+    const __m128d one        = _mm_set1_pd(1.0);
+    const __m128d two        = _mm_set1_pd(2.0);
+    const __m128d invsq2     = _mm_set1_pd(1.0/sqrt(2.0));
+
+    const __m128d corr1      = _mm_set1_pd(-2.121944400546905827679e-4);
+    const __m128d corr2      = _mm_set1_pd(0.693359375);
+
+    const __m128d P5         = _mm_set1_pd(1.01875663804580931796e-4);
+    const __m128d P4         = _mm_set1_pd(4.97494994976747001425e-1);
+    const __m128d P3         = _mm_set1_pd(4.70579119878881725854e0);
+    const __m128d P2         = _mm_set1_pd(1.44989225341610930846e1);
+    const __m128d P1         = _mm_set1_pd(1.79368678507819816313e1);
+    const __m128d P0         = _mm_set1_pd(7.70838733755885391666e0);
+
+    const __m128d Q4         = _mm_set1_pd(1.12873587189167450590e1);
+    const __m128d Q3         = _mm_set1_pd(4.52279145837532221105e1);
+    const __m128d Q2         = _mm_set1_pd(8.29875266912776603211e1);
+    const __m128d Q1         = _mm_set1_pd(7.11544750618563894466e1);
+    const __m128d Q0         = _mm_set1_pd(2.31251620126765340583e1);
+
+    const __m128d R2         = _mm_set1_pd(-7.89580278884799154124e-1);
+    const __m128d R1         = _mm_set1_pd(1.63866645699558079767e1);
+    const __m128d R0         = _mm_set1_pd(-6.41409952958715622951e1);
+
+    const __m128d S2         = _mm_set1_pd(-3.56722798256324312549E1);
+    const __m128d S1         = _mm_set1_pd(3.12093766372244180303E2);
+    const __m128d S0         = _mm_set1_pd(-7.69691943550460008604E2);
+
+   __m128d       fexp;
+    __m128i       iexp;
+
+    __m128d       mask1, mask2;
+    __m128d       corr, t1, t2, q;
+    __m128d       zA, yA, xA, zB, yB, xB, z;
+    __m128d       polyR, polyS;
+    __m128d       polyP1, polyP2, polyQ1, polyQ2;
+
+    /* Separate x into exponent and mantissa, with a mantissa in the range [0.5..1[ (not IEEE754 standard!) */
+    fexp   = _mm_and_pd(x, expmask);
+    iexp   = _mm_castpd_si128(fexp);
+    iexp   = _mm_srli_epi64(iexp, 52);
+    iexp   = _mm_sub_epi32(iexp, expbase_m1);
+    iexp   = _mm_shuffle_epi32(iexp, _MM_SHUFFLE(1, 1, 2, 0) );
+    fexp   = _mm_cvtepi32_pd(iexp);
+
+    x      = _mm_andnot_pd(expmask, x);
+    x      = _mm_or_pd(x, one);
+    x      = _mm_mul_pd(x, half);
+
+    mask1     = _mm_cmpgt_pd(se_mm_abs_pd(fexp), two);
+    mask2     = _mm_cmplt_pd(x, invsq2);
+
+    fexp   = _mm_sub_pd(fexp, _mm_and_pd(mask2, one));
+
+    /* If mask1 is set ('A') */
+    zA     = _mm_sub_pd(x, half);
+    t1     = _mm_blendv_pd( zA, x, mask2 );
+    zA     = _mm_sub_pd(t1, half);
+    t2     = _mm_blendv_pd( x, zA, mask2 );
+    yA     = _mm_mul_pd(half, _mm_add_pd(t2, one));
+
+    xA     = _mm_mul_pd(zA, se_mm_inv_pd(yA));
+    zA     = _mm_mul_pd(xA, xA);
+
+    /* EVALUATE POLY */
+    polyR  = _mm_mul_pd(R2, zA);
+    polyR  = _mm_add_pd(polyR, R1);
+    polyR  = _mm_mul_pd(polyR, zA);
+    polyR  = _mm_add_pd(polyR, R0);
+
+    polyS  = _mm_add_pd(zA, S2);
+    polyS  = _mm_mul_pd(polyS, zA);
+    polyS  = _mm_add_pd(polyS, S1);
+    polyS  = _mm_mul_pd(polyS, zA);
+    polyS  = _mm_add_pd(polyS, S0);
+
+    q      = _mm_mul_pd(polyR, se_mm_inv_pd(polyS));
+    zA     = _mm_mul_pd(_mm_mul_pd(xA, zA), q);
+
+    zA     = _mm_add_pd(zA, _mm_mul_pd(corr1, fexp));
+    zA     = _mm_add_pd(zA, xA);
+    zA     = _mm_add_pd(zA, _mm_mul_pd(corr2, fexp));
+
+    /* If mask1 is not set ('B') */
+    corr   = _mm_and_pd(mask2, x);
+    xB     = _mm_add_pd(x, corr);
+    xB     = _mm_sub_pd(xB, one);
+    zB     = _mm_mul_pd(xB, xB);
+
+    polyP1 = _mm_mul_pd(P5, zB);
+    polyP2 = _mm_mul_pd(P4, zB);
+    polyP1 = _mm_add_pd(polyP1, P3);
+    polyP2 = _mm_add_pd(polyP2, P2);
+    polyP1 = _mm_mul_pd(polyP1, zB);
+    polyP2 = _mm_mul_pd(polyP2, zB);
+    polyP1 = _mm_add_pd(polyP1, P1);
+    polyP2 = _mm_add_pd(polyP2, P0);
+    polyP1 = _mm_mul_pd(polyP1, xB);
+    polyP1 = _mm_add_pd(polyP1, polyP2);
+
+    polyQ2 = _mm_mul_pd(Q4, zB);
+    polyQ1 = _mm_add_pd(zB, Q3);
+    polyQ2 = _mm_add_pd(polyQ2, Q2);
+    polyQ1 = _mm_mul_pd(polyQ1, zB);
+    polyQ2 = _mm_mul_pd(polyQ2, zB);
+    polyQ1 = _mm_add_pd(polyQ1, Q1);
+    polyQ2 = _mm_add_pd(polyQ2, Q0);
+    polyQ1 = _mm_mul_pd(polyQ1, xB);
+    polyQ1 = _mm_add_pd(polyQ1, polyQ2);
+
+    fexp   = _mm_and_pd(fexp, _mm_cmpneq_pd(fexp, _mm_setzero_pd()));
+
+    q      = _mm_mul_pd(polyP1, se_mm_inv_pd(polyQ1));
+    yB     = _mm_mul_pd(_mm_mul_pd(xB, zB), q);
+
+    yB     = _mm_add_pd(yB, _mm_mul_pd(corr1, fexp));
+    yB     = _mm_sub_pd(yB, _mm_mul_pd(half, zB));
+    zB     = _mm_add_pd(xB, yB);
+    zB     = _mm_add_pd(zB, _mm_mul_pd(corr2, fexp));
+
+    z      = _mm_blendv_pd( zB, zA, mask1 );
+
+    return z;
+}
+
+
 
 #endif // AVX
 

@@ -26,6 +26,14 @@
 /*Only needed to compute the required number of multipole terms*/
 #define LOG2 0.69314718055994529
 
+/*Define alignment*/
+#ifdef __AVX__
+#define MEM_ALIGN __attribute__((aligned(32)));
+#else
+#define MEM_ALIGN __attribute__((aligned(16)));
+#endif
+
+
 /*The size of the preallocation of some of the data, before we resort to
  *reallocation. This needs to be an even power of two.*/
 #define PREALLOCNSIDE (128)

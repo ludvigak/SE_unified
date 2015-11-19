@@ -250,7 +250,7 @@ __m256d _mm256_ein_pd(__m256d Z)
   /* branch prediction */
   __m256d C1 = _mm256_cmp_pd(Z,C0_BRANCH_PRED,_CMP_LT_OQ);
   
-  double s[4] __attribute__((aligned(32)));
+  double s[4] MEM_ALIGN;
 
   /*If polyv >=0, Z < 3.0162691827353.*/
   bool term = 1;
@@ -335,6 +335,112 @@ __m256d _mm256_ein_pd(__m256d Z)
   /* The output is in F*/
   /* Return the corresponding answer */
   Y = _mm256_or_pd( _mm256_and_pd(C1,Y),_mm256_andnot_pd(C1,F) );
+  return Y;
+}
+
+#elif defined __SSE4_2__
+#include "math_x86.h"
+bool any_greater_eps(double p[], double a)
+{
+  if (fabs(p[0]) > a*EPS ||  fabs(p[1]) > a*EPS)
+    return 1;
+  else
+    return 0;
+}
+
+__m128d _mm_ein_pd(__m128d Z)
+{
+  int MAXITER = 25;
+  __m128d GAMMA          = _mm_set1_pd(0.57721566490153286061);
+  __m128d C0_BRANCH_PRED = _mm_set1_pd(3.0162691827353);
+
+  /* branch prediction */
+  __m128d C1 = _mm_cmp_pd(Z,C0_BRANCH_PRED,_CMP_LT_OQ);
+  
+  double s[2] MEM_ALIGN;
+
+  /*If polyv >=0, Z < 3.0162691827353.*/
+  bool term = 1;
+  int j = 1;
+  
+  __m128d Y     = _mm_set1_pd(0.0);
+  __m128d PTERM = Z;
+  __m128d TERM  = Z;
+  
+  /* The output will be in Y.*/
+  while (term && j<MAXITER){
+    Y     = _mm_add_pd(Y, TERM);
+    j++;
+    PTERM = _mm_mul_pd(Z,_mm_mul_pd(PTERM,_mm_set1_pd(-1.0/j)));
+    TERM  = _mm_mul_pd(PTERM,_mm_set1_pd(1.0/j));
+    _mm_store_pd(s,TERM);
+    term  = any_greater_eps(s,1.0);
+  }
+
+  if(j<MAXITER)
+    return Y;
+  
+  /* If polyv <0, Z >= 3.0162691827353. 
+   *This is the continued fraction.  */
+  j = 2;
+  double alpha;
+  bool err = 1;
+  __m128d ONE  = _mm_set1_pd(1.0);
+  __m128d MINUS= _mm_set1_pd(-1.0);
+  __m128d AM2 = _mm_set1_pd(0.0);
+  __m128d BM2 = ONE;
+  __m128d AM1 = ONE;
+  __m128d BM1 = Z;
+  __m128d F   = _mm_div_pd(AM1,BM1);
+  __m128d OLDF= _mm_set1_pd(INFTY);
+  __m128d ALPHA, A, B, INVB, BETA;
+
+  while (err && j<MAXITER*2){
+    /* calculate the coefficients of the recursion formulas for j even*/
+    alpha = j/2.0;
+    ALPHA = _mm_set1_pd(alpha);
+    A = _mm_add_pd(AM1, _mm_mul_pd(ALPHA,AM2));
+    B = _mm_add_pd(BM1, _mm_mul_pd(ALPHA,BM2));
+
+    /*save new normalized variables for next pass through the loop
+     *note: normalization to avoid overflow or underflow*/
+    INVB = se_mm_inv_pd(B);
+    AM2  = _mm_mul_pd(AM1,INVB);
+    BM2  = _mm_mul_pd(BM1,INVB);
+    AM1  = _mm_mul_pd(A,INVB);
+    BM1  = ONE;
+
+    F    = AM1;
+    j++;
+
+    /*calculate the coefficients for j odd*/
+    alpha = (j-1.0)/2.0;
+    ALPHA = _mm_set1_pd(alpha);
+    BETA  = Z;
+    A = _mm_add_pd(_mm_mul_pd(BETA,AM1), _mm_mul_pd(ALPHA,AM2));
+    B = _mm_add_pd(_mm_mul_pd(BETA,BM1), _mm_mul_pd(ALPHA,BM2));
+
+    /*save new normalized variables for next pass through the loop
+     *note: normalization to avoid overflow or underflow*/
+    INVB = se_mm_inv_pd(B);
+    AM2  = _mm_mul_pd(AM1,INVB);
+    BM2  = _mm_mul_pd(BM1,INVB);
+    AM1  = _mm_mul_pd(A,INVB);
+    BM1  = ONE;
+
+    OLDF = F;
+    F    = AM1;
+    j++;
+    _mm_store_pd(s,_mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F)));
+    err = any_greater_eps(s,100.0);
+  }
+
+  F = _mm_mul_pd(F, se_mm_exp_pd(_mm_mul_pd(MINUS,Z)));
+  F = _mm_sub_pd( _mm_add_pd(se_mm_log_pd(Z),GAMMA), F);
+
+  /* The output is in F*/
+  /* Return the corresponding answer */
+  Y = _mm_or_pd( _mm_and_pd(C1,Y),_mm_andnot_pd(C1,F) );
   return Y;
 }
 
