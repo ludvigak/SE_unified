@@ -2,7 +2,7 @@
  * FMM_expint.c
  *------------------------------------------------------------------------
  *Fast Multipole code for particles in the plane. At each particle 
- *z(k) the sum q(m)*ein(xi*(z(m)-z(k))) is computed over 
+ *z(k) the sum q(m)*ein(alpha*(z(m)-z(k))) is computed over 
  *all k, where q(m) are the charges of the particles, and 
  *ein(v) = expint(v^2)+log(v^2)+GammaEulerConst.
  *  
@@ -146,308 +146,304 @@ void Direct(double *z_x, double *z_y, double* q,
  *------------------------------------------------------------------------
  */
 void Assign(double *z_x, double *z_y, int n_particles, int nside,
-            int *maxparticles_in_box, int *int_data, int *realloc_data, double box_size);
+            int *maxparticles_in_box, int *int_data, int *realloc_data);
+
+/*------------------------------------------------------------------------
+ *This function calls the FMM for evaluting ein sum.
+ *------------------------------------------------------------------------
+ */
+void Do_FMM_Ein(double* M1, int n_particles, double alpha,
+		double* z_x, double* z_y, double* q,double tol, int numthreads, int lev_max);
+
+
+#define OUTPUT_OFFSET  (0)
+#define ZX_OFFSET      (n_particles)
+#define ZY_OFFSET      (2*n_particles)
+#define Q_OFFSET       (3*n_particles)
+#define ALL_DATA_SZ    (4*n_particles)
 
 /*-----------------------------------------
  *The main entry function
  *-----------------------------------------*/
 int main() {
-    // Input args
-    double *double_data;
-    double *q,*z_x,*z_y;
-    double *M1_c,*M2_c,*C,*CC;
-    double tol, box_size;
-    int *int_data,*realloc_data;
-    int *ilist_x,*ilist_y;
-    int lev_max,n_particles,n_terms,taylor_threshold,csize,i,j,k;
-    int current_level,nside,numthreads,maxparticles_in_box;
+  // Input args
+  int k;
+  double *q,*z_x,*z_y, *all_input;
+  double *M1_c,*M2_c;
+  double tol, box_size, alpha;  /*alpha is the ewald parameter*/
+  int lev_max,n_particles, numthreads;  
+  
+  /*Get some constants*/
+  n_particles = 100;
+  box_size    = 1.0;
+  alpha       = 1.0;
+  tol         = 1e-15;
+  lev_max     = ceil(pow(n_particles,.25));
+  numthreads  = 8;
+  
+  /*Get the positions of the particles.*/
+  all_input = (double*) _mm_malloc(ALL_DATA_SZ*sizeof(double),32);
+  z_x = &all_input[ZX_OFFSET];
+  z_y = &all_input[ZY_OFFSET];
+  q   = &all_input[Q_OFFSET];
+  
+  /* Fill the matrix */
+  k = 1;
+  //    srand(time(NULL));
+  for (int i=0; i<n_particles;i++){
+    z_x[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
+    z_y[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
+    q[i] = k;
+    k = -k;
+  }
+  
+  /*Create the output vector for direct*/
+  M1_c = &all_input[OUTPUT_OFFSET];
+  for (int n=0; n<n_particles; n++)
+    M1_c[n] = 0;
 
-    TIME.STOP = 0.0;
-
-    /*Get some constants*/
-    n_particles = 100000;
-    box_size = 1.0;
-    tol = 1e-15;
-    lev_max = ceil(pow(n_particles,.25));
-    numthreads = 8;
-
-    /*Warn user if lev_max is larger than 16.*/
-    if(lev_max > 16) {
-        lev_max = 16;
-    }
-    /*We need at least 3 levels.*/
-    if(lev_max < 3) {
-        lev_max = 3;
-    }
-    
-    /*Get the positions of the particles.*/
-    z_x = (double*) malloc(n_particles*sizeof(double));
-    z_y = (double*) malloc(n_particles*sizeof(double));
-    q = (double*) malloc(n_particles*sizeof(double));
-
-    /* Fill the matrix */
-    k = 1;
-    //    srand(time(NULL));
-    for (int i=0; i<n_particles;i++){
-      z_x[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
-      z_y[i] = (double) box_size*rand()/RAND_MAX-box_size/2.0;
-      q[i] = k;
-      k = -k;
-    }
-
-    /* start timing */
-    double start = gettime();
-
-    /*The number of terms required in the multipole expansion to get
-     *an accuracy of tol. Actually, this formula is a bit pessimistic,
-     *to get a relative error around machine epsilon it suffices to
-     *specify tol = 1e-13.*/
-    n_terms = -(int)ceil(log(tol)/LOG2/4);
-
-    if( (n_terms%2) != 2)
-      n_terms ++;
-
-    /*We set the minimum number of taylro terms to 4 
-     *for simplicity of computing the taylor and mpole
-     *coeffs in compute_mpole_coeff function.*/
-    if(n_terms<4)
-      n_terms = 4;
-
-    /*The breakpoint in terms of number of particles in a box deciding
-     *if to use summed up local taylor expansions or direct evaluated
-     *multipole expansions.*/
-    taylor_threshold = n_terms*4;
-    
-    /*The main double data vector. It is aligned on a 32 byte boundary
-     *to allow for SSE instructions. Contains:
-     * M1_c[n_particles]               Output field. Real. Read/Write. Mutexed
-     * CC[n_terms*n_terms]             Binomial matrix. Real. Read-only
-     * --- One for each thread --- 
-     * mpole_c[n_terms*n_terms]        Temp data. Separated from other threads
-     * taylorexp_c[4*n_terms*n_terms]  Temp data. Separated from other threads
-     * temp_c[n_particles]             Temp data. Separated from other threads
-     */
-    int ddsz = n_particles+n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
-    int ddth = n_particles+5*n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
-    double_data = _mm_mxMalloc((ddsz + numthreads*ddth)*sizeof(double),32);
-    M1_c = &double_data[M1_C_OFFSET];
-    CC = &double_data[CC_OFFSET];
-
-    /*Clear the output*/
-    for(j=0;j<n_particles;j++)
-      M1_c[j] = 0;
-    
-    /*Compute a matrix containing binomial numbers. It is used when
-     *converting from multipole to taylor expansions.*/
-    csize = 2*n_terms-1;
-    C = calloc(csize*csize,sizeof(double));
-
-    for(i = 0;i<csize;i++)
-        C[i] = 1;
-
-    for(i = 2;i<=csize;i++)
-        for(j=2;j<=i;j++)
-            C[(j-1)*csize +i-1] = C[(j-2)*csize +i-2]+C[(j-1)*csize +i-2];
-    k = 1;
-    for(i = 1;i<=n_terms;i++) {
-        for (j = 1;j<=n_terms;j++)
-            CC[(j-1)*n_terms+i-1]=k*C[(i-1)*csize+j+i-2];
-	k*=-1;
-    }
-    free(C);
-
-    /*We start with a level-2 grid, that is 4x4 boxes. On coarser grids
-     *the interaction list is empty, so a bit of work would be wasted
-     *setting up for these cases.*/
-    current_level = 2;
-    nside = 4;
-
-    /*int_data. Contains data which is read-only in the threads. Contains:
-     *
-     *in_box[n_particles]           The box point j is assigned to
-     *particle_offsets[n_particles] The addresses of the particles in each 
-     *                              box.
-     *ilist_x[108]                  x-coordinates of the boxes in the 
-     *                              interaction list.
-     *ilist_y[108]                  y-coordinates of the boxes in the 
-     *                              interaction list.
-     *interactionlist[108]          interaction list in terms of relative
-     *                              box numbers.
-     */
-    int_data = calloc((2*n_particles+3*108),sizeof(int));
-
-    ilist_x = &int_data[ILIST_X_OFFSET];
-    ilist_y = &int_data[ILIST_Y_OFFSET];
-    /*Initialize the interaction list. See mex_FMM.h.*/
-    Intlist(ilist_x,ilist_y);
-
-    /*Set up the mutexes. output_mutex[] and localexp_mutex[] are mutexes 
-     *protecting the output and localexp_c arrays.*/
-    if(numthreads <= 2)
-      num_mutexes = 64;
-    else
-        num_mutexes = 4*512;
-
-    output_mutex = malloc(num_mutexes*sizeof(MUTEX_TYPE));
-    localexp_mutex = malloc(num_mutexes*sizeof(MUTEX_TYPE));
-    for(i=0;i<num_mutexes;i++) {
-        INIT_MUTEX(&output_mutex[i]);
-        INIT_MUTEX(&localexp_mutex[i]);
-    }
-    INIT_MUTEX(&mpoleSqTblmutex);
-    INIT_MUTEX(&directSqTblmutex);
-    
-    /*The realloc_data array contains read-only data shared by the 
-     *threads. The array is realloc'd each level in the hierarchy since
-     *it contains members that depend on the number of sides of the current
-     *grid. Calloc-ing this once and for all would be bad since for 
-     *uneven distributions of particles many layers may be needed to 
-     *resolve tight clusters of particles. A safe size would thus be 
-     *prohibitively large. Instead we use a more moderate initial size and
-     *start reallocing when this memory is no longer sufficient. 
-     *
-     *The array contains: 
-     *box_offsets[nside*nside+1]          The addresses of the boxes in 
-     *                                    particle_offsets
-     *nparticles_in_box[nside*nside]      The number of particles in each 
-     *                                    box
-     *particlenum_in_box[nside*nside+1]   Temporary array in Assign
-     *taylor_boxes[nside*nside]           Contains the boxes with more than 
-     *                                    taylor_threshold particles. 
-     *taylor_box_nbr[nside*nside]         contains the "local numbering" of 
-     *                                    the taylor boxes*/
-    realloc_data = calloc((5*PREALLOCNSIDE*PREALLOCNSIDE+2),sizeof(int));
-
-    maxparticles_in_box = n_terms+1;
-    /*This is the main loop. Work our way down finer grids until the 
-     *maximum number of particles in a box is less than a threshold, or  
-     *until the maximum number of refinements is reached, in 
-     *which case we break and compute the rest of the interactions via  
-     *direct evaluation.*/
-    while(current_level < lev_max && maxparticles_in_box > n_terms) {
- 
-        if(nside > PREALLOCNSIDE)
-            realloc_data = realloc(realloc_data,(5*nside*nside+2)*sizeof(int));
-
-        Assign(z_x,z_y,n_particles,nside,
-	       &maxparticles_in_box,int_data,realloc_data, box_size);
-	Mpoles(z_x,z_y,q,double_data,int_data,realloc_data,
-	       n_terms,nside,taylor_threshold,n_particles,numthreads);
-
-        current_level++;
-        nside *= 2;
-        
-    }
-    nside /=2;
-    /*Compute the last interactions via direct evaluation.*/
-    Direct(z_x,z_y,q,double_data,int_data,realloc_data,nside,n_particles,numthreads);
-    
-    /*Clean up mutexes*/
-    for(i=0;i<num_mutexes;i++) {
-        DESTROY_MUTEX(&output_mutex[i]);
-        DESTROY_MUTEX(&localexp_mutex[i]);
-    }
-    DESTROY_MUTEX(&mpoleSqTblmutex);
-    DESTROY_MUTEX(&directSqTblmutex);
-    
-    /*Free some of the allocated memory*/
-    free(output_mutex);
-    free(localexp_mutex);
-    free(int_data);
-    free(realloc_data);
-
-    /* stop timing */
-    double stop = gettime();
-    print_log();
-    printf("Timing with %d threads: %f\n",numthreads, stop-start);
-    
-    /*Create the output vector for direct*/
-    M2_c = (double*) malloc(n_particles*sizeof(double));
+  /*Do the FMM ein evaluation*/
+  Do_FMM_Ein(M1_c, n_particles, alpha, z_x, z_y, q, tol, numthreads, lev_max);
+  
+  /*Create the output vector for direct*/
+  M2_c = (double*) _mm_malloc(n_particles*sizeof(double),32);
+  for (int n=0; n<n_particles; n++)
+    M2_c[n] = 0;
+  
+  /* DO the exact */
+  if(n_particles<1000){
     for (int n=0; n<n_particles; n++)
-      M2_c[n] = 0;
-
-   /* DO the exact */
- if(n_particles<1000)
- {
-#ifdef __AVX__
- for (int n=0; n<n_particles; n++)
-   {
-     __m256d ZX = _mm256_set1_pd(z_x[n]);
-     __m256d ZY = _mm256_set1_pd(z_y[n]);
-     __m256d Qn = _mm256_set1_pd(q[n]);
-     for (int m=0; m<n_particles; m+=4)
-       {
-	 __m256d VX = _mm256_load_pd(&z_x[m]);
-	 __m256d VY = _mm256_load_pd(&z_y[m]);
-	 __m256d Qm = _mm256_set1_pd(q[m]);
-	 VX = _mm256_sub_pd(VX,ZX);
-	 VX = _mm256_mul_pd(VX,VX);
-	 VY = _mm256_sub_pd(VY,ZY);
-	 VY = _mm256_mul_pd(VY,VY);
-	 __m256d VVQn = _mm256_mul_pd(Qn,_mm256_ein_pd(_mm256_add_pd(VX,VY)));
-	 _mm256_store_pd(&M2_c[m], _mm256_add_pd(VVQn, _mm256_load_pd(&M2_c[m] ) ) );
-       }
-     for (int m=n_particles/4*4; m<n_particles; m++)
-       {
-	 double vx = (z_x[m]-z_x[n])*(z_x[m]-z_x[n]);
-	 double vy = (z_y[m]-z_y[n])*(z_y[m]-z_y[n]);
-	 double vv = expint_log_euler(vx+vy);
-	 M2_c[m] += q[n]*vv;
-       }
-   }
-#elif defined __SSE4_2__
- for (int n=0; n<n_particles; n++)
-   {
-     __m128d ZX = _mm_set1_pd(z_x[n]);
-     __m128d ZY = _mm_set1_pd(z_y[n]);
-     __m128d Qn = _mm_set1_pd(q[n]);
-     for (int m=0; m<n_particles; m+=2)
-       {
-	 __m128d VX = _mm_load_pd(&z_x[m]);
-	 __m128d VY = _mm_load_pd(&z_y[m]);
-	 __m128d Qm = _mm_set1_pd(q[m]);
-	 VX = _mm_sub_pd(VX,ZX);
-	 VX = _mm_mul_pd(VX,VX);
-	 VY = _mm_sub_pd(VY,ZY);
-	 VY = _mm_mul_pd(VY,VY);
-	 __m128d VVQn = _mm_mul_pd(Qn,_mm_ein_pd(_mm_add_pd(VX,VY)));
-	 _mm_store_pd(&M2_c[m], _mm_add_pd(VVQn, _mm_load_pd(&M2_c[m] ) ) );
-       }
-     for (int m=n_particles/2*2; m<n_particles; m++)
-       {
-	 double vx = (z_x[m]-z_x[n])*(z_x[m]-z_x[n]);
-	 double vy = (z_y[m]-z_y[n])*(z_y[m]-z_y[n]);
-	 double vv = expint_log_euler(vx+vy);
-	 M2_c[m] += q[n]*vv;
-       }
-   }
-#endif
-
+      {
+	for (int m=0; m<n_particles; m++)
+	  {
+	    double vx = (z_x[m]-z_x[n])*(z_x[m]-z_x[n]);
+	    double vy = (z_y[m]-z_y[n])*(z_y[m]-z_y[n]);
+	    double vv = expint_log_euler(vx+vy);
+	    M2_c[m] += q[n]*vv;
+	  }
+      }
     double nrm = 0, ns=0;
     for (int m=0; m<n_particles; m++)
-    {
-      nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
-      ns  += (M1_c[m])*(M1_c[m]);
-    }
+      {
+	nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
+	ns  += (M1_c[m])*(M1_c[m]);
+      }
     printf("Err: %g, sum: %g\n", sqrt(nrm/ns), ns);
- }  
- if(DIRECT)
-   printf("Direct\n");
- if(TAYLOR)
-   printf("Taylor\n");
- if(MPOLE)
-   printf("Mpole\n");
+  }
+ 
+  _mm_mxFree(all_input);
+  _mm_mxFree(M2_c);
 
-
-    free(z_x);
-    free(z_y);
-    free(q);
-    free(M2_c);
-
-    /*Free the last of the allocated memory. (Aligned free)*/
-    _mm_mxFree(double_data);
-   printf("DONE\n");
 }
+    
+void Do_FMM_Ein(double* M1, int n_particles, double alpha,
+		double* z_x, double* z_y, double* q, 
+		double tol, 
+		int numthreads, int lev_max){
+  // Input args
+  double *double_data;
+  double *M1_c, *C,*CC;
+  int *int_data,*realloc_data;
+  int *ilist_x,*ilist_y;
+  int n_terms,taylor_threshold,csize,i,j,k;
+  int current_level,nside,maxparticles_in_box;
+  
+  TIME.STOP = 0.0;
+  
+  /*Warn user if lev_max is larger than 16.*/
+  if(lev_max > 16) {
+    lev_max = 16;
+  }
+  /*We need at least 3 levels.*/
+  if(lev_max < 3) {
+    lev_max = 3;
+  }
+  
+  /* start timing */
+  double start = gettime();
+  
+  /*The number of terms required in the multipole expansion to get
+   *an accuracy of tol. Actually, this formula is a bit pessimistic,
+   *to get a relative error around machine epsilon it suffices to
+   *specify tol = 1e-13.*/
+  n_terms = -(int)ceil(log(tol)/LOG2/4);
+  
+  if( (n_terms%2) != 2)
+    n_terms ++;
+  
+  /*We set the minimum number of taylro terms to 4 
+   *for simplicity of computing the taylor and mpole
+   *coeffs in compute_mpole_coeff function.*/
+  if(n_terms<4)
+    n_terms = 4;
+  
+  /*The breakpoint in terms of number of particles in a box deciding
+   *if to use summed up local taylor expansions or direct evaluated
+   *multipole expansions.*/
+  taylor_threshold = n_terms*4;
+  
+  /*The main double data vector. It is aligned on a 32 byte boundary
+   *to allow for SSE instructions. Contains:
+   * M1_c[n_particles]               Output field. Real. Read/Write. Mutexed
+   * CC[n_terms*n_terms]             Binomial matrix. Real. Read-only
+   * --- One for each thread --- 
+   * mpole_c[n_terms*n_terms]        Temp data. Separated from other threads
+   * taylorexp_c[4*n_terms*n_terms]  Temp data. Separated from other threads
+   * temp_c[n_particles]             Temp data. Separated from other threads
+   */
+  int ddsz = n_particles+n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
+  int ddth = n_particles+5*n_terms*n_terms+(32-((n_terms*n_terms)&0xf));
+  double_data = _mm_mxMalloc((ddsz + numthreads*ddth)*sizeof(double),32);
+  M1_c = &double_data[M1_C_OFFSET];
+  CC = &double_data[CC_OFFSET];
+  
+  /*Clear the output*/
+  for(j=0;j<n_particles;j++)
+    M1_c[j] = 0;
+  
+  /*Compute a matrix containing binomial numbers. It is used when
+   *converting from multipole to taylor expansions.*/
+  csize = 2*n_terms-1;
+  C = calloc(csize*csize,sizeof(double));
+  
+  for(i = 0;i<csize;i++)
+    C[i] = 1;
+  
+  for(i = 2;i<=csize;i++)
+    for(j=2;j<=i;j++)
+      C[(j-1)*csize +i-1] = C[(j-2)*csize +i-2]+C[(j-1)*csize +i-2];
+  k = 1;
+  for(i = 1;i<=n_terms;i++) {
+    for (j = 1;j<=n_terms;j++)
+      CC[(j-1)*n_terms+i-1]=k*C[(i-1)*csize+j+i-2];
+    k*=-1;
+  }
+  free(C);
+  
+  /*We start with a level-2 grid, that is 4x4 boxes. On coarser grids
+   *the interaction list is empty, so a bit of work would be wasted
+   *setting up for these cases.*/
+  current_level = 2;
+  nside = 4;
+  
+  /*int_data. Contains data which is read-only in the threads. Contains:
+   *
+   *in_box[n_particles]           The box point j is assigned to
+   *particle_offsets[n_particles] The addresses of the particles in each 
+   *                              box.
+   *ilist_x[108]                  x-coordinates of the boxes in the 
+   *                              interaction list.
+   *ilist_y[108]                  y-coordinates of the boxes in the 
+   *                              interaction list.
+   *interactionlist[108]          interaction list in terms of relative
+   *                              box numbers.
+   */
+  int_data = calloc((2*n_particles+3*108),sizeof(int));
+  
+  ilist_x = &int_data[ILIST_X_OFFSET];
+  ilist_y = &int_data[ILIST_Y_OFFSET];
+  /*Initialize the interaction list. See mex_FMM.h.*/
+  Intlist(ilist_x,ilist_y);
+  
+  /*Set up the mutexes. output_mutex[] and localexp_mutex[] are mutexes 
+   *protecting the output and localexp_c arrays.*/
+  if(numthreads <= 2)
+    num_mutexes = 64;
+  else
+    num_mutexes = 4*512;
+  
+  output_mutex = malloc(num_mutexes*sizeof(MUTEX_TYPE));
+  localexp_mutex = malloc(num_mutexes*sizeof(MUTEX_TYPE));
+  for(i=0;i<num_mutexes;i++) {
+    INIT_MUTEX(&output_mutex[i]);
+    INIT_MUTEX(&localexp_mutex[i]);
+  }
+  INIT_MUTEX(&mpoleSqTblmutex);
+  INIT_MUTEX(&directSqTblmutex);
+  
+  /*The realloc_data array contains read-only data shared by the 
+   *threads. The array is realloc'd each level in the hierarchy since
+   *it contains members that depend on the number of sides of the current
+   *grid. Calloc-ing this once and for all would be bad since for 
+   *uneven distributions of particles many layers may be needed to 
+   *resolve tight clusters of particles. A safe size would thus be 
+   *prohibitively large. Instead we use a more moderate initial size and
+   *start reallocing when this memory is no longer sufficient. 
+   *
+   *The array contains: 
+   *box_offsets[nside*nside+1]          The addresses of the boxes in 
+   *                                    particle_offsets
+   *nparticles_in_box[nside*nside]      The number of particles in each 
+   *                                    box
+   *particlenum_in_box[nside*nside+1]   Temporary array in Assign
+   *taylor_boxes[nside*nside]           Contains the boxes with more than 
+   *                                    taylor_threshold particles. 
+   *taylor_box_nbr[nside*nside]         contains the "local numbering" of 
+   *                                    the taylor boxes*/
+  realloc_data = calloc((5*PREALLOCNSIDE*PREALLOCNSIDE+2),sizeof(int));
+
+  maxparticles_in_box = n_terms+1;
+  /*This is the main loop. Work our way down finer grids until the 
+   *maximum number of particles in a box is less than a threshold, or  
+   *until the maximum number of refinements is reached, in 
+   *which case we break and compute the rest of the interactions via  
+   *direct evaluation.*/
+  while(current_level < lev_max && maxparticles_in_box > n_terms) {
+ 
+    if(nside > PREALLOCNSIDE)
+      realloc_data = realloc(realloc_data,(5*nside*nside+2)*sizeof(int));
+
+    Assign(z_x,z_y,n_particles,nside,
+	   &maxparticles_in_box,int_data,realloc_data);
+    Mpoles(z_x,z_y,q,double_data,int_data,realloc_data,
+	   n_terms,nside,taylor_threshold,n_particles,numthreads);
+
+    current_level++;
+    nside *= 2;
+        
+  }
+  nside /=2;
+  /*Compute the last interactions via direct evaluation.*/
+  Direct(z_x,z_y,q,double_data,int_data,realloc_data,nside,n_particles,numthreads);
+    
+  /*Clean up mutexes*/
+  for(i=0;i<num_mutexes;i++) {
+    DESTROY_MUTEX(&output_mutex[i]);
+    DESTROY_MUTEX(&localexp_mutex[i]);
+  }
+  DESTROY_MUTEX(&mpoleSqTblmutex);
+  DESTROY_MUTEX(&directSqTblmutex);
+    
+  /*Free some of the allocated memory*/
+  free(output_mutex);
+  free(localexp_mutex);
+  free(int_data);
+  free(realloc_data);
+    
+  /* stop timing */
+  double stop = gettime();
+  print_log();
+  printf("Timing with %d threads: %f\n",numthreads, stop-start);
+
+  /* Copy the result to the output vector */
+  for (i=0; i<n_particles; i++)
+    M1[i] = M1_c[i];
+    
+  if(verbose)
+    {
+      if(DIRECT)
+	printf("Direct\n");
+      if(TAYLOR)
+	printf("Taylor\n");
+      if(MPOLE)
+	printf("Mpole\n");
+    }
+    
+  /*Free the last of the allocated memory. (Aligned free)*/
+  _mm_mxFree(double_data);
+  printf("DONE\n");
+}
+
 /*------------------------------------------------------------------------
  *The main multipole driver function.
  *The function spawns threads that:
@@ -1313,7 +1309,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
  *------------------------------------------------------------------------
  */
 void Assign(double *z_x, double *z_y, int n_particles, int nside,
-            int *maxparticles_in_box, int *int_data, int *realloc_data, double box_size) {
+            int *maxparticles_in_box, int *int_data, int *realloc_data) {
             
     /*The offsets of the particles in the arrays. Sorted by box.*/
     int* particle_offsets = &int_data[PARTICLE_OFFSETS_OFFSET];

@@ -23,6 +23,10 @@
 #include <pthread.h>
 #endif
 
+#ifndef verbose
+#define verbose 0
+#endif
+
 /*Only needed to compute the required number of multipole terms*/
 #define LOG2 0.69314718055994529
 
