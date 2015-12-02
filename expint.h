@@ -10,6 +10,13 @@
 #define EULER  0.577215664901532860606512090082402431042
 #define INFTY   1.0e308
 
+/* sum up 4 elements in a vector, used for SIMD op.*/
+double sum4(double*p){
+  /*Unexpected behaviour if p has more or less
+   *elements than 4 */
+  return (p[0]+p[1]+p[2]+p[3]);
+}
+
 double polyval(double *p, double x)
 {
   int i;
@@ -101,78 +108,13 @@ double expint(double x)
  */
 double expint_log_euler(double x)
 {
-  int j;
-  double am1,am2,bm1,bm2,f,oldf,pterm,term,y,polyv,egamma,a,b,alpha,beta;
-  double INF = 1.e308;
-  double p[] = {-3.602693626336023e-09, -4.819538452140960e-07, -2.569498322115933e-05,
-		-6.973790859534190e-04, -1.019573529845792e-02, -7.811863559248197e-02,
-		-3.012432892762715e-01, -7.773807325735529e-01,  8.267661952366478e+00};
-
-  polyv = polyval(p,x);
-  if(polyv>=0)
-    {
-      egamma=0.57721566490153286061;
-      y = 0;
-      j = 1;
-      pterm = x;
-      term = x;
-      
-      while(fabs(term)>EPS)
-	  {
-	    y += term;
-	    j ++;
-	    pterm = -x*pterm/j;
-	    term  = pterm/j;
-  	  }
-    }
+  double egamma = 0.57721566490153286061;
+  if(fabs(x)<1.0e-16)
+    printf("WTF\n");
+  if(fabs(x)<1.0e-16)
+    return 0.0;
   else
-    {
-      am2 = 0.;bm2 = 1.; 
-      am1 = 1.;bm1 = x;
-      
-      f    = am1 / bm1;
-      oldf = INF;
-      j    = 2;
-
-      while( fabs(f-oldf) > 100.*EPS*fabs(f))
-	{
-	  alpha = j/2.;
-	  
-	  /* calculate A(j), B(j), and f(j)*/
-	  a = am1 + alpha * am2;
-	  b = bm1 + alpha * bm2;
-   
-	  /* save new normalized variables for next pass through the loop
-	   * note: normalization to avoid overflow or underflow*/
-	  am2 = am1 / b;
-	  bm2 = bm1 / b;
-	  am1 = a   / b;
-	  bm1 = 1;
-	  
-	  f = am1;
-	  j++;
-   
-	  /* calculate the coefficients for j odd*/
-	  alpha = (j-1)/2.;
-	  beta = x;
-	  a = beta  * am1 + alpha * am2;
-	  b = beta  * bm1 + alpha * bm2;
-	  am2 = am1 / b;
-	  bm2 = bm1 / b;
-	  am1 = a   / b;
-	  bm1 = 1;
-	  oldf= f;
-	  f   = am1;
-	  j++;
-	} /* end of while loop*/
-      
-      y = exp(-x)*f;
-
-      egamma=0.57721566490153286061;
-      y =  + egamma + log(x) - y;
-    }
-
-  return y;
+    return expint(x)+log(x)+egamma;
 }
 
 
@@ -241,19 +183,36 @@ bool any_greater_eps(double p[], double a)
     return 0;
 }
 
+/*An extra test should be added for a more general 
+ *routine to check whether any of the double precision
+ *elements are zero or not. This can be done by comparing 
+ *against EPS and setting zero values to EPS. e.g.,
+ *Y = _mm256_cmp_pd(Z,EPS,_CMP_LE_OQ);
+ *Z = _mm256_add_pd(_mm256_and_pd(ONE16,Y),Z);
+ *We are safe since we do not use this routine for 
+ *computing the direct interactions of the particles 
+ *in the same box.*/
+/*This routine can compute each pack of 4 double precision
+ *values in 1e-7sec.*/
 __m256d _mm256_ein_pd(__m256d Z)
 {
   int MAXITER = 25;
   __m256d GAMMA          = _mm256_set1_pd(0.57721566490153286061);
   __m256d C0_BRANCH_PRED = _mm256_set1_pd(3.0162691827353);
-
+  __m256d XEPS           = _mm256_set1_pd(EPS);
+  __m256d NXEPS          = _mm256_set1_pd(-EPS);
+  __m256d X100EPS        = _mm256_set1_pd(100.0*EPS);
+  __m256d NX100EPS       = _mm256_set1_pd(-100.0*EPS);
+  __m256d ONE            = _mm256_set1_pd(1.0);
+  __m256d ERR;
+  
   /* branch prediction */
   __m256d C1 = _mm256_cmp_pd(Z,C0_BRANCH_PRED,_CMP_LT_OQ);
   
   double s[4] MEM_ALIGN;
-
+  
   /*If polyv >=0, Z < 3.0162691827353.*/
-  bool term = 1;
+  bool term = true,term2=true;
   int j = 1;
   
   __m256d Y     = _mm256_set1_pd(0.0);
@@ -261,13 +220,26 @@ __m256d _mm256_ein_pd(__m256d Z)
   __m256d TERM  = Z;
   
   /* The output will be in Y.*/
-  while (term && j<MAXITER){
+  while (term2 && j<MAXITER){
     Y     = _mm256_add_pd(Y, TERM);
     j++;
     PTERM = _mm256_mul_pd(Z,_mm256_mul_pd(PTERM,_mm256_set1_pd(-1.0/j)));
     TERM  = _mm256_mul_pd(PTERM,_mm256_set1_pd(1.0/j));
-    _mm256_store_pd(s,TERM);
-    term  = any_greater_eps(s,1.0);
+    /*since all x are positive*/
+    ERR   = _mm256_or_pd(_mm256_cmp_pd(TERM,XEPS,_CMP_GE_OQ),_mm256_cmp_pd(TERM,NXEPS,_CMP_LE_OQ));
+    ERR   = _mm256_and_pd(ONE, ERR);
+    _mm256_store_pd(s,ERR);
+    term2 = (sum4(s)>0);
+    /* printf("%d ",term2); */
+    /* _mm256_store_pd(s,TERM); */
+    /* term  = any_greater_eps(s,1.0); */
+    /* printf("%d \n",term); */
+    /* if(term!=term2) */
+    /*   { */
+    /* 	_mm256_store_pd(s,TERM); */
+    /* 	printf("%f %f %f %f\n",s[0],s[1],s[2],s[3]); */
+    /*   } */
+
   }
 
   if(j<MAXITER)
@@ -278,7 +250,6 @@ __m256d _mm256_ein_pd(__m256d Z)
   j = 2;
   double alpha;
   bool err = 1;
-  __m256d ONE  = _mm256_set1_pd(1.0);
   __m256d MINUS= _mm256_set1_pd(-1.0);
   __m256d AM2 = _mm256_set1_pd(0.0);
   __m256d BM2 = ONE;
@@ -288,7 +259,6 @@ __m256d _mm256_ein_pd(__m256d Z)
   __m256d OLDF= _mm256_set1_pd(INFTY);
   __m256d ALPHA, A, B, INVB, BETA;
 
- 
   while (err && j<MAXITER*2){
     /* calculate the coefficients of the recursion formulas for j even*/
     alpha = j/2.0;
@@ -325,8 +295,14 @@ __m256d _mm256_ein_pd(__m256d Z)
     OLDF = F;
     F    = AM1;
     j++;
-    _mm256_store_pd(s,_mm256_mul_pd(_mm256_sub_pd(F,OLDF),se_mm256_inv_pd(F)));
-    err = any_greater_eps(s,100.0);
+    /* _mm256_store_pd(s,_mm256_mul_pd(_mm256_sub_pd(F,OLDF),se_mm256_inv_pd(F))); */
+    /* err = any_greater_eps(s,100.0); */
+    ERR = _mm256_mul_pd(_mm256_sub_pd(F,OLDF),se_mm256_inv_pd(F));
+    ERR   = _mm256_or_pd(_mm256_cmp_pd(ERR,X100EPS,_CMP_GE_OQ),_mm256_cmp_pd(ERR,NX100EPS,_CMP_LE_OQ));
+    ERR   = _mm256_and_pd(ONE, ERR);
+
+    _mm256_store_pd(s,ERR);
+    err = (sum4(s)>0);
   }
 
   F = _mm256_mul_pd(F, se_mm256_exp_pd(_mm256_mul_pd(MINUS,Z)));
@@ -353,6 +329,12 @@ __m128d _mm_ein_pd(__m128d Z)
   int MAXITER = 25;
   __m128d GAMMA          = _mm_set1_pd(0.57721566490153286061);
   __m128d C0_BRANCH_PRED = _mm_set1_pd(3.0162691827353);
+  __m128d ONE            = _mm_set1_pd(1.0);
+  __m128d XEPS           = _mm_set1_pd(EPS);
+  __m128d NXEPS          = _mm_set1_pd(-EPS);
+  __m128d X100EPS        = _mm_set1_pd(100.0*EPS);
+  __m128d NX100EPS       = _mm_set1_pd(-100.0*EPS);
+  __m128d ERR;
 
   /* branch prediction */
   __m128d C1 = _mm_cmp_pd(Z,C0_BRANCH_PRED,_CMP_LT_OQ);
@@ -373,8 +355,11 @@ __m128d _mm_ein_pd(__m128d Z)
     j++;
     PTERM = _mm_mul_pd(Z,_mm_mul_pd(PTERM,_mm_set1_pd(-1.0/j)));
     TERM  = _mm_mul_pd(PTERM,_mm_set1_pd(1.0/j));
-    _mm_store_pd(s,TERM);
-    term  = any_greater_eps(s,1.0);
+    /*since all x are positive*/
+    ERR   = _mm_or_pd(_mm_cmp_pd(TERM,XEPS,_CMP_GE_OQ),_mm_cmp_pd(TERM,NXEPS,_CMP_LE_OQ));
+    ERR   = _mm_and_pd(ONE, ERR);
+    _mm_store_pd(s,ERR);
+    term = (sum4(s)>0);
   }
 
   if(j<MAXITER)
@@ -385,7 +370,6 @@ __m128d _mm_ein_pd(__m128d Z)
   j = 2;
   double alpha;
   bool err = 1;
-  __m128d ONE  = _mm_set1_pd(1.0);
   __m128d MINUS= _mm_set1_pd(-1.0);
   __m128d AM2 = _mm_set1_pd(0.0);
   __m128d BM2 = ONE;
@@ -431,8 +415,13 @@ __m128d _mm_ein_pd(__m128d Z)
     OLDF = F;
     F    = AM1;
     j++;
-    _mm_store_pd(s,_mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F)));
-    err = any_greater_eps(s,100.0);
+    /* _mm_store_pd(s,_mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F))); */
+    /* err = any_greater_eps(s,100.0); */
+    ERR = _mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F));
+    ERR   = _mm_or_pd(_mm_cmp_pd(ERR,X100EPS,_CMP_GE_OQ),_mm_cmp_pd(ERR,NX100EPS,_CMP_LE_OQ));
+    ERR   = _mm_and_pd(ONE, ERR);
+    _mm_store_pd(s,ERR);
+    err = (sum4(s)>0);
   }
 
   F = _mm_mul_pd(F, se_mm_exp_pd(_mm_mul_pd(MINUS,Z)));

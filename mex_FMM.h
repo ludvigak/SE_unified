@@ -198,10 +198,4 @@ void print_log()
 }
 
 
-/* sum up 4 elements in a vector, used for SIMD op.*/
-double sum4(double *p)
-{
-  return (p[0]+p[1]+p[2]+p[3]);
-}
-
 #endif
