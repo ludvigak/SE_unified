@@ -226,6 +226,7 @@ __m256d _mm256_ein_pd(__m256d Z)
     _mm256_store_pd(s,ERR);
     term = (sum4(s)>0);
   }
+
   /* add the contribution of the log end euler constant */
   Y = _mm256_add_pd( LOG_P_EULER, Y);
 
@@ -293,8 +294,10 @@ __m256d _mm256_ein_pd(__m256d Z)
   F = _mm256_mul_pd(F, se_mm256_exp_pd(_mm256_mul_pd(MINUS,Z)));
 
   /* The output is in F*/
-  /* Return the corresponding answer */
+  /* add the contribution of the log end euler constant */
   F = _mm256_add_pd( LOG_P_EULER, F);
+
+  /* Return the corresponding answer */
   Y = _mm256_or_pd( _mm256_and_pd(C1,Y),_mm256_andnot_pd(C1,F) );
 
   return Y;
@@ -314,6 +317,7 @@ __m128d _mm_ein_pd(__m128d Z)
   __m128d NXEPS          = _mm_set1_pd(-EPS);
   __m128d X100EPS        = _mm_set1_pd(100.0*EPS);
   __m128d NX100EPS       = _mm_set1_pd(-100.0*EPS);
+  __m128d LOG_P_EULER    = _mm_add_pd(_mm_log_pd(Z),GAMMA);
   __m128d ERR;
 
   /* branch prediction */
@@ -342,6 +346,8 @@ __m128d _mm_ein_pd(__m128d Z)
     term = (sum4(s)>0);
   }
 
+  /* add the contribution of log and Euler constant*/
+  Y = _mm_add_pd( LOG_P_EULER, Y);
   if(j<MAXITER)
     return Y;
   
@@ -406,9 +412,12 @@ __m128d _mm_ein_pd(__m128d Z)
   F = _mm_sub_pd( _mm_add_pd(_mm_log_pd(Z),GAMMA), F);
 
   /* The output is in F*/
+  /* add the contribution of log and Euler constant*/
+  F = _mm_add_pd( LOG_P_EULER, F);
+
   /* Return the corresponding answer */
   Y = _mm_or_pd( _mm_and_pd(C1,Y),_mm_andnot_pd(C1,F) );
-  Y = _mm_add_pd( _mm_add_pd(_mm_log_pd(Z),GAMMA), Y);
+
   return Y;
 }
 #endif //AVX

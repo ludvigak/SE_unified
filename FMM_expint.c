@@ -944,8 +944,8 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
             }/*Box is inside the computational domain.*/
         }/*Interaction list loop.*/
     }/*Box loop.*/
-     _mm_mxFree(mpole_v);
-     _mm_mxFree(zx_pow);_mm_mxFree(zy_pow);
+    _mm_mxFree(mpole_v);
+    _mm_mxFree(zx_pow);_mm_mxFree(zy_pow);
     THREAD_EXIT();
 }
 /*------------------------------------------------------------------------
