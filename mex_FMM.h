@@ -11,6 +11,9 @@
 /*Required to utilize SSE-intrinsics*/
 #include <immintrin.h>
 
+/*Required for memset*/
+#include <string.h>
+
 /*Contains functions to allocate aligned memory using Matlabs
  *mxMalloc and mxCalloc*/
 #include "mm_mxmalloc.h"

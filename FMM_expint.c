@@ -176,10 +176,10 @@ int main() {
   int lev_max,n_particles, numthreads;  
   
   /*Get some constants*/
-  n_particles = 800;
-  scale       = 4.0;
-  tol         = 1e-25;
-  lev_max     = ceil(pow(n_particles,.25));
+  n_particles = 100;
+  scale       = 8.0;
+  tol         = 1e-15;
+  lev_max     = ceil(pow(n_particles,.25));lev_max=6;printf("%d\n",lev_max);
   numthreads  = 8;
   
   /*Get the positions of the particles.*/
@@ -226,14 +226,15 @@ int main() {
 	  }
       }
     double nrm = 0, ns=0;
-    for (int m=0; m<n_particles; m++)
-      {
-	nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
-	ns  += (M1_c[m])*(M1_c[m]);
-      }
+    for (int m=0; m<n_particles; m++){
+      nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
+      ns  += (M1_c[m])*(M1_c[m]);
+    }
     printf("Err: %g, sum: %g\n", sqrt(nrm/ns), ns);
   }
- 
+
+  M2_c = NULL;
+  all_input = NULL;
   _mm_mxFree(all_input);
   _mm_mxFree(M2_c);
 
@@ -266,9 +267,7 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
   double start = gettime();
   
   /*The number of terms required in the multipole expansion to get
-   *an accuracy of tol. Actually, this formula is a bit pessimistic,
-   *to get a relative error around machine epsilon it suffices to
-   *specify tol = 1e-13.*/
+   *an accuracy of tol.*/
   n_terms = -(int)ceil(log(tol)/LOG2/4);
   
   if( (n_terms%2) != 2)
@@ -408,6 +407,10 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
   nside /=2;
   /*Compute the last interactions via direct evaluation.*/
   Direct(z_x,z_y,q,scale,double_data,int_data,realloc_data,nside,n_particles,numthreads);
+
+  /* stop timing */
+  double stop = gettime();
+  print_log();
     
   /*Clean up mutexes*/
   for(i=0;i<num_mutexes;i++) {
@@ -423,9 +426,7 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
   free(int_data);
   free(realloc_data);
     
-  /* stop timing */
-  double stop = gettime();
-  print_log();
+
   printf("Timing with %d threads: %f\n",numthreads, stop-start);
 
   /* Copy the result to the output vector */
@@ -763,7 +764,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                     
                 }else if(nparticles_in_box[target_box] > 0) {
 
-		  if(nparticles_in_box[current_box] < 26) {
+		  if(nparticles_in_box[current_box] < 32) {
   		        DIRECT = 1;
 		        /*There are relatively few particles in the target
                          *box, and if there are few particles in the 
@@ -969,7 +970,6 @@ THREAD_FUNC_TYPE MpolesWorkerSum(void* argument) {
     /*Pointers to particle positions.*/
     double *z_x = arg->z_x,*z_y = arg->z_y;
     double scale = arg->scale;
-    double scale2= scale*scale;
     /*Pointer to matrix of Taylor series for boxes with enough particles.*/
     double *localexp_c = arg->localexp;
     /*Pointer to the output data.*/
@@ -1401,6 +1401,8 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
 
   double* mpole_b = _mm_mxMalloc(nt*nt*sizeof(double),32);
 
+  /*If x2y2<34 expint(x2y2)<eps therefore we only need the log*/
+  if(x2y2<34){
   /* compute mpole_b coeffs*/
   mpole_b[0*nt+0] =  exp2;
   mpole_b[1*nt+0] = -2.0*t_x*exp2;
@@ -1418,13 +1420,13 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   if(nt>=4){
     /* for (k1=2; k1<nt; k1++) */
     /*   for (k2=2; k2<nt; k2++){ */
-    for (int n=4; n<nt; n++)
+    for (n=4; n<nt; n++)
       for(k1=2;k1<=(n-2); k1++){
 	k2 = n-k1;
 	double Neg_Two_k2 = -2./(double) k2;
 	mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] );
       }
-  }     
+  }
     /* This accounts for the presence of the log term */
   mpole_b[0*nt+0] += x2y2;
   mpole_b[1*nt+0] += 2.0*t_x;
@@ -1432,6 +1434,16 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   mpole_b[1*nt+1] += 0.0;
   mpole_b[2*nt+0] += 1.0;
   mpole_b[0*nt+2] += 1.0;
+  }
+  else{
+    memset(mpole_b,0.0,nt*nt);
+    mpole_b[0*nt+0] += x2y2;
+    mpole_b[1*nt+0] += 2.0*t_x;
+    mpole_b[0*nt+1] += 2.0*t_y;
+    mpole_b[1*nt+1] += 0.0;
+    mpole_b[2*nt+0] += 1.0;
+    mpole_b[0*nt+2] += 1.0;    
+  }
 
   /* compute mpole_a coeffs*/
   mpole_c[0*nt+0] = expint_log_euler(x2y2);
@@ -1457,7 +1469,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   if(nt>=4){
   /* for (k1=2; k1<nt; k1++) */
   /*   for (k2=2; k2<nt; k2++){ */
-    for (int n=4; n<nt; n++){
+    for (n=4; n<nt; n++){
       for(k1=2;k1<=(n-2); k1++){
 	k2 = n-k1;
 	s = (double) k1+k2;
