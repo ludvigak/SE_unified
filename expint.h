@@ -8,7 +8,7 @@
 
 #define EPS    1.110223024625157e-16
 #define EULER  0.577215664901532860606512090082402431042
-#define INFTY   1.0e308
+#define INFTY  1.0e308
 
 /* sum up 4 elements in a vector, used for SIMD op.*/
 double sum4(double*p){
@@ -175,13 +175,6 @@ double expints(int n, double x)
 
 #ifdef __AVX__
 #include "math_x86.h"
-bool any_greater_eps(double p[], double a)
-{
-  if (fabs(p[0]) > a*EPS ||  fabs(p[1]) > a*EPS || fabs(p[2]) > a*EPS || fabs(p[3]) > a*EPS)
-    return 1;
-  else
-    return 0;
-}
 
 /*An extra test should be added for a more general 
  *routine to check whether any of the double precision
@@ -204,6 +197,8 @@ __m256d _mm256_ein_pd(__m256d Z)
   __m256d X100EPS        = _mm256_set1_pd(100.0*EPS);
   __m256d NX100EPS       = _mm256_set1_pd(-100.0*EPS);
   __m256d ONE            = _mm256_set1_pd(1.0);
+  __m256d ZERO           = _mm256_setzero_pd();
+  __m256d LOG_P_EULER    = _mm256_add_pd(se_mm256_log_pd(Z),GAMMA);
   __m256d ERR;
   
   /* branch prediction */
@@ -212,46 +207,38 @@ __m256d _mm256_ein_pd(__m256d Z)
   double s[4] MEM_ALIGN;
   
   /*If polyv >=0, Z < 3.0162691827353.*/
-  bool term = true,term2=true;
+  bool term = true;
   int j = 1;
   
-  __m256d Y     = _mm256_set1_pd(0.0);
+  __m256d Y = _mm256_sub_pd(ZERO,_mm256_add_pd(GAMMA,se_mm256_log_pd(Z)));
   __m256d PTERM = Z;
   __m256d TERM  = Z;
   
   /* The output will be in Y.*/
-  while (term2 && j<MAXITER){
+  while (term && j<MAXITER){
     Y     = _mm256_add_pd(Y, TERM);
     j++;
     PTERM = _mm256_mul_pd(Z,_mm256_mul_pd(PTERM,_mm256_set1_pd(-1.0/j)));
     TERM  = _mm256_mul_pd(PTERM,_mm256_set1_pd(1.0/j));
-    /*since all x are positive*/
+
     ERR   = _mm256_or_pd(_mm256_cmp_pd(TERM,XEPS,_CMP_GE_OQ),_mm256_cmp_pd(TERM,NXEPS,_CMP_LE_OQ));
     ERR   = _mm256_and_pd(ONE, ERR);
     _mm256_store_pd(s,ERR);
-    term2 = (sum4(s)>0);
-    /* printf("%d ",term2); */
-    /* _mm256_store_pd(s,TERM); */
-    /* term  = any_greater_eps(s,1.0); */
-    /* printf("%d \n",term); */
-    /* if(term!=term2) */
-    /*   { */
-    /* 	_mm256_store_pd(s,TERM); */
-    /* 	printf("%f %f %f %f\n",s[0],s[1],s[2],s[3]); */
-    /*   } */
-
+    term = (sum4(s)>0);
   }
+  /* add the contribution of the log end euler constant */
+  Y = _mm256_add_pd( LOG_P_EULER, Y);
 
   if(j<MAXITER)
     return Y;
-  
+
   /* If polyv <0, Z >= 3.0162691827353. 
    *This is the continued fraction.  */
   j = 2;
   double alpha;
   bool err = 1;
   __m256d MINUS= _mm256_set1_pd(-1.0);
-  __m256d AM2 = _mm256_set1_pd(0.0);
+  __m256d AM2 = ZERO;
   __m256d BM2 = ONE;
   __m256d AM1 = ONE;
   __m256d BM1 = Z;
@@ -295,8 +282,6 @@ __m256d _mm256_ein_pd(__m256d Z)
     OLDF = F;
     F    = AM1;
     j++;
-    /* _mm256_store_pd(s,_mm256_mul_pd(_mm256_sub_pd(F,OLDF),se_mm256_inv_pd(F))); */
-    /* err = any_greater_eps(s,100.0); */
     ERR = _mm256_mul_pd(_mm256_sub_pd(F,OLDF),se_mm256_inv_pd(F));
     ERR   = _mm256_or_pd(_mm256_cmp_pd(ERR,X100EPS,_CMP_GE_OQ),_mm256_cmp_pd(ERR,NX100EPS,_CMP_LE_OQ));
     ERR   = _mm256_and_pd(ONE, ERR);
@@ -306,23 +291,17 @@ __m256d _mm256_ein_pd(__m256d Z)
   }
 
   F = _mm256_mul_pd(F, se_mm256_exp_pd(_mm256_mul_pd(MINUS,Z)));
-  F = _mm256_sub_pd( _mm256_add_pd(se_mm256_log_pd(Z),GAMMA), F);
 
   /* The output is in F*/
   /* Return the corresponding answer */
+  F = _mm256_add_pd( LOG_P_EULER, F);
   Y = _mm256_or_pd( _mm256_and_pd(C1,Y),_mm256_andnot_pd(C1,F) );
+
   return Y;
 }
 
 #elif defined __SSE4_2__
 #include "math_x86.h"
-bool any_greater_eps(double p[], double a)
-{
-  if (fabs(p[0]) > a*EPS ||  fabs(p[1]) > a*EPS)
-    return 1;
-  else
-    return 0;
-}
 
 __m128d _mm_ein_pd(__m128d Z)
 {
@@ -330,6 +309,7 @@ __m128d _mm_ein_pd(__m128d Z)
   __m128d GAMMA          = _mm_set1_pd(0.57721566490153286061);
   __m128d C0_BRANCH_PRED = _mm_set1_pd(3.0162691827353);
   __m128d ONE            = _mm_set1_pd(1.0);
+  __m128d ZERO           = _mm_setzero_pd();
   __m128d XEPS           = _mm_set1_pd(EPS);
   __m128d NXEPS          = _mm_set1_pd(-EPS);
   __m128d X100EPS        = _mm_set1_pd(100.0*EPS);
@@ -345,7 +325,7 @@ __m128d _mm_ein_pd(__m128d Z)
   bool term = 1;
   int j = 1;
   
-  __m128d Y     = _mm_set1_pd(0.0);
+  __m128d Y = _mm_sub_pd(ZERO,_mm_add_pd(GAMMA,_mm_log_pd(Z)));
   __m128d PTERM = Z;
   __m128d TERM  = Z;
   
@@ -371,7 +351,7 @@ __m128d _mm_ein_pd(__m128d Z)
   double alpha;
   bool err = 1;
   __m128d MINUS= _mm_set1_pd(-1.0);
-  __m128d AM2 = _mm_set1_pd(0.0);
+  __m128d AM2 = ZERO;
   __m128d BM2 = ONE;
   __m128d AM1 = ONE;
   __m128d BM1 = Z;
@@ -415,8 +395,6 @@ __m128d _mm_ein_pd(__m128d Z)
     OLDF = F;
     F    = AM1;
     j++;
-    /* _mm_store_pd(s,_mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F))); */
-    /* err = any_greater_eps(s,100.0); */
     ERR = _mm_mul_pd(_mm_sub_pd(F,OLDF),se_mm_inv_pd(F));
     ERR   = _mm_or_pd(_mm_cmp_pd(ERR,X100EPS,_CMP_GE_OQ),_mm_cmp_pd(ERR,NX100EPS,_CMP_LE_OQ));
     ERR   = _mm_and_pd(ONE, ERR);
@@ -424,15 +402,14 @@ __m128d _mm_ein_pd(__m128d Z)
     err = (sum4(s)>0);
   }
 
-  F = _mm_mul_pd(F, se_mm_exp_pd(_mm_mul_pd(MINUS,Z)));
-  F = _mm_sub_pd( _mm_add_pd(se_mm_log_pd(Z),GAMMA), F);
+  F = _mm_mul_pd(F, _mm_exp_pd(_mm_mul_pd(MINUS,Z)));
+  F = _mm_sub_pd( _mm_add_pd(_mm_log_pd(Z),GAMMA), F);
 
   /* The output is in F*/
   /* Return the corresponding answer */
   Y = _mm_or_pd( _mm_and_pd(C1,Y),_mm_andnot_pd(C1,F) );
+  Y = _mm_add_pd( _mm_add_pd(_mm_log_pd(Z),GAMMA), Y);
   return Y;
 }
-
-#endif
-
-#endif
+#endif //AVX
+#endif //EXPINT_H_

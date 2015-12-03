@@ -176,7 +176,7 @@ int main() {
   int lev_max,n_particles, numthreads;  
   
   /*Get some constants*/
-  n_particles = 400;
+  n_particles = 800;
   scale       = 4.0;
   tol         = 1e-25;
   lev_max     = ceil(pow(n_particles,.25));
@@ -692,7 +692,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 	     *This loop accounts for 10% of the runtime.*/    
 	    for (k1=0; k1<n_terms; k1++){
 	      sx = qj*zx_pow[k1];
-	      for (k2=0; k2<n_terms; k2++){
+	      for (k2=0; k2<n_terms-k1; k2++){
 		sy = zy_pow[k2];
 		mpole_v[k1*n_terms+k2] += sx*sy;
 	      }
@@ -748,10 +748,10 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
                      *matrix as possible.*/
                     LOCK_MUTEX(&localexp_mutex[target_box&(num_mutexes-1)]);
 		    for (l1=0; l1<n_terms; l1++)
-		      for (l2=0; l2<n_terms; l2++){
+		      for (l2=0; l2<n_terms-l1; l2++){
 			double tmp=0;
 			  for (k1=0; k1<n_terms; k1++)
-			    for (k2=0; k2<n_terms; k2++){
+			    for (k2=0; k2<n_terms-k1; k2++){
 			      double cc1 = CC[k1*n_terms+l1];
 			      double cc2 = CC[k2*n_terms+l2];
 			      tmp += cc1*cc2*taylorexp_c[(k1+l1)*twon_terms+(k2+l2)]*mpole_v[k1*n_terms+k2];
@@ -784,14 +784,14 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  double tz_x, tz_y;
 			  double cz_x = z_x[tptr2[k]];
 			  double cz_y = z_y[tptr2[k]];
-			  /*
 #ifdef __AVX__
-			__m256d SCALE2 = _mm256_set1_pd(scale2);
 			  double resv[4] MEM_ALIGN;
+			  __m256d ZX,ZY,Ql,V;
+			  __m256d SCALE2 = _mm256_set1_pd(scale2);
 			  __m256d RESV = _mm256_setzero_pd();
 			  __m256d CZX = _mm256_set1_pd(cz_x);
 			  __m256d CZY = _mm256_set1_pd(cz_y);
-			  __m256d ZX,ZY,Ql, V;
+
 			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/8*8;l+=8) {
 			    ZX = _mm256_set_pd(z_x[tptr[l+3]],z_x[tptr[l+2]],z_x[tptr[l+1]],z_x[tptr[l]]);
 			    ZY = _mm256_set_pd(z_y[tptr[l+3]],z_y[tptr[l+2]],z_y[tptr[l+1]],z_y[tptr[l]]);
@@ -841,12 +841,12 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  _mm256_store_pd(resv,RESV);
 			  res += sum4(resv);
 #elif defined __SSE4_2__
-			  __m128d SCALE2 = _mm_set1_pd(scale2);
 			  double resv[2] MEM_ALIGN;
+			  __m128d ZX,ZY,Ql, V;
+			  __m128d SCALE2 = _mm_set1_pd(scale2);
 			  __m128d RESV = _mm_setzero_pd();
 			  __m128d CZX = _mm_set1_pd(cz_x);
 			  __m128d CZY = _mm_set1_pd(cz_y);
-			  __m128d ZX,ZY,Ql, V;
 			  for(l=0;l<(unsigned int)nparticles_in_box[current_box]/4*4;l+=4) {
 			    ZX = _mm_set_pd(z_x[tptr[l+1]],z_x[tptr[l]]);
 			    ZY = _mm_set_pd(z_y[tptr[l+1]],z_y[tptr[l]]);
@@ -881,13 +881,13 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 			  }
 			  _mm_store_pd(resv,RESV);
 			  res += resv[0]+resv[1];
-			  #else*/
+#else
 			  for(l=0;l<(unsigned int)nparticles_in_box[current_box];l++) {
 			    tz_x = (cz_x-z_x[tptr[l]])*(cz_x-z_x[tptr[l]]);
 			    tz_y = (cz_y-z_y[tptr[l]])*(cz_y-z_y[tptr[l]]);
 			    res += q[tptr[l]]*expint_log_euler(scale2*(tz_x+tz_y));
 			  }
-			  //#endif
+#endif
 			  M1_c[tptr2[k]] += res;
 			}
 			UNLOCK_MUTEX(&output_mutex[target_box&(num_mutexes-1)]);
@@ -1206,15 +1206,15 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 		    double tz_x, tz_y;
 		    double cz_x = z_x[tptr[k]];
 		    double cz_y = z_y[tptr[k]];
-		    /*
-#ifdef __AVX__
-		    __m256d SCALE2 = _mm256_set1_pd(scale2);
-		    double resv[4] __attribute__((aligned(32)));
-		    __m256d RESV = _mm256_setzero_pd();
-		    __m256d CZX = _mm256_set1_pd(cz_x);
-		    __m256d CZY = _mm256_set1_pd(cz_y);
-		    __m256d ZX,ZY,Ql, V;
 		    
+#ifdef __AVX__
+		    double resv[4] __attribute__((aligned(32)));
+		    __m256d ZX,ZY,Ql, V;
+		    __m256d SCALE2 = _mm256_set1_pd(scale2);
+		    __m256d RESV   = _mm256_setzero_pd();
+		    __m256d CZX    = _mm256_set1_pd(cz_x);
+		    __m256d CZY    = _mm256_set1_pd(cz_y);
+	    
 		    for(l=0;l<nparticles_in_box[source_box]/8*8;l+=8) {
 		      ZX = _mm256_set_pd(z_x[tptr2[l+3]],z_x[tptr2[l+2]],z_x[tptr2[l+1]],z_x[tptr2[l]]);
 		      ZY = _mm256_set_pd(z_y[tptr2[l+3]],z_y[tptr2[l+2]],z_y[tptr2[l+1]],z_y[tptr2[l]]);
@@ -1240,7 +1240,7 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 		      V = _mm256_ein_pd(_mm256_mul_pd(SCALE2,_mm256_add_pd(ZX,ZY)));
 		      V = _mm256_mul_pd(Ql,V);
 		      RESV = _mm256_add_pd(RESV, V);
-		    }
+		      }
 		    l0 = l;
 		    for(l=l0;l<nparticles_in_box[source_box]/4*4;l+=4) {
 		      ZX = _mm256_set_pd(z_x[tptr2[l+3]],z_x[tptr2[l+2]],z_x[tptr2[l+1]],z_x[tptr2[l]]);
@@ -1265,13 +1265,14 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 		  
 		    _mm256_store_pd(resv,RESV);
 		    res += sum4(resv);
+
 #elif defined __SSE4_2__
-		    __m128d SCALE2 = _mm_set1_pd(scale2);
 		    double resv[2] MEM_ALIGN;
+		    __m128d ZX,ZY,Ql, V;
+		    __m128d SCALE2 = _mm_set1_pd(scale2);
 		    __m128d RESV = _mm_setzero_pd();
 		    __m128d CZX = _mm_set1_pd(cz_x);
 		    __m128d CZY = _mm_set1_pd(cz_y);
-		    __m128d ZX,ZY,Ql, V;
 		    for(l=0;l<nparticles_in_box[source_box]/4*4;l+=4) {
 		      ZX = _mm_set_pd(z_x[tptr2[l+1]],z_x[tptr2[l]]);
 		      ZY = _mm_set_pd(z_y[tptr2[l+1]],z_y[tptr2[l]]);
@@ -1308,14 +1309,15 @@ THREAD_FUNC_TYPE DirectWorker(void* in_struct) {
 		    
 		    _mm_store_pd(resv,RESV);
 		    res += resv[0]+resv[1];
-		    #else*/
-		  for (l=0; l<nparticles_in_box[source_box];l++){
-		    tz_x = (z_x[tptr2[l]]-cz_x)*(z_x[tptr2[l]]-cz_x);
-		    tz_y = (z_y[tptr2[l]]-cz_y)*(z_y[tptr2[l]]-cz_y);
-		    res += q[tptr2[l]]*expint_log_euler( scale2*(tz_x+tz_y) );
-		  }
-		  //#endif
-		  M1_c[tptr[k]] += res;
+#else
+
+		    for (l=0; l<nparticles_in_box[source_box];l++){
+		      tz_x = (z_x[tptr2[l]]-cz_x)*(z_x[tptr2[l]]-cz_x);
+		      tz_y = (z_y[tptr2[l]]-cz_y)*(z_y[tptr2[l]]-cz_y);
+		      res += q[tptr2[l]]*expint_log_euler( scale2*(tz_x+tz_y) );
+		    }
+#endif
+		    M1_c[tptr[k]] += res;
 		  }
 		}
 	    }
@@ -1413,13 +1415,17 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
     mpole_b[1*nt+k1] = Neg_Two_k1 *( t_y*mpole_b[1*nt+(k1-1)] + mpole_b[1*nt+(k1-2)] );
   }
 		    
-  for (k1=2; k1<nt; k1++)
-    for (k2=2; k2<nt; k2++){
-      double Neg_Two_k2 = -2./(double) k2;
-      mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] );
-    }
-                            
-  /* This accounts for the presence of the log term */
+  if(nt>=4){
+    /* for (k1=2; k1<nt; k1++) */
+    /*   for (k2=2; k2<nt; k2++){ */
+    for (int n=4; n<nt; n++)
+      for(k1=2;k1<=(n-2); k1++){
+	k2 = n-k1;
+	double Neg_Two_k2 = -2./(double) k2;
+	mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] );
+      }
+  }     
+    /* This accounts for the presence of the log term */
   mpole_b[0*nt+0] += x2y2;
   mpole_b[1*nt+0] += 2.0*t_x;
   mpole_b[0*nt+1] += 2.0*t_y;
@@ -1447,12 +1453,19 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
 			 -(s-2.)*mpole_c[k2*nt+(k1-2)] + mpole_b[k2*nt+k1]*s)/s/x2y2;
   }
 
-  for (k1=2; k1<nt; k1++)
-    for (k2=2; k2<nt; k2++){
-      s = (double) k1+k2;
-      mpole_c[k1*nt+k2] = (-2.*(s-1.) * (t_x*mpole_c[(k1-1)*nt+k2]+t_y*mpole_c[k1*nt+(k2-1)])
-			   -(s-2.) * (    mpole_c[(k1-2)*nt+k2]+    mpole_c[k1*nt+(k2-2)])
-			   + s     *      mpole_b[k1*nt+k2]   )/s/x2y2;
+
+  if(nt>=4){
+  /* for (k1=2; k1<nt; k1++) */
+  /*   for (k2=2; k2<nt; k2++){ */
+    for (int n=4; n<nt; n++){
+      for(k1=2;k1<=(n-2); k1++){
+	k2 = n-k1;
+	s = (double) k1+k2;
+	mpole_c[k1*nt+k2] = (-2.*(s-1.) * (t_x*mpole_c[(k1-1)*nt+k2]+t_y*mpole_c[k1*nt+(k2-1)])
+			     -(s-2.) * (    mpole_c[(k1-2)*nt+k2]+    mpole_c[k1*nt+(k2-2)])
+			     + s     *      mpole_b[k1*nt+k2]   )/s/x2y2;
+      }
     }
+  }
   _mm_mxFree(mpole_b);
 }
