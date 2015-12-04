@@ -176,7 +176,7 @@ int main() {
   int lev_max,n_particles, numthreads;  
   
   /*Get some constants*/
-  n_particles = 100;
+  n_particles = 400;
   scale       = 8.0;
   tol         = 1e-15;
   lev_max     = ceil(pow(n_particles,.25));lev_max=6;printf("%d\n",lev_max);
@@ -1401,8 +1401,6 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
 
   double* mpole_b = _mm_mxMalloc(nt*nt*sizeof(double),32);
 
-  /*If x2y2<34 expint(x2y2)<eps therefore we only need the log*/
-  if(x2y2<34){
   /* compute mpole_b coeffs*/
   mpole_b[0*nt+0] =  exp2;
   mpole_b[1*nt+0] = -2.0*t_x*exp2;
@@ -1416,7 +1414,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
     mpole_b[0*nt+k1] = Neg_Two_k1 *( t_y*mpole_b[0*nt+(k1-1)] + mpole_b[0*nt+(k1-2)] );
     mpole_b[1*nt+k1] = Neg_Two_k1 *( t_y*mpole_b[1*nt+(k1-1)] + mpole_b[1*nt+(k1-2)] );
   }
-		    
+
   if(nt>=4){
     /* for (k1=2; k1<nt; k1++) */
     /*   for (k2=2; k2<nt; k2++){ */
@@ -1434,17 +1432,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   mpole_b[1*nt+1] += 0.0;
   mpole_b[2*nt+0] += 1.0;
   mpole_b[0*nt+2] += 1.0;
-  }
-  else{
-    memset(mpole_b,0.0,nt*nt);
-    mpole_b[0*nt+0] += x2y2;
-    mpole_b[1*nt+0] += 2.0*t_x;
-    mpole_b[0*nt+1] += 2.0*t_y;
-    mpole_b[1*nt+1] += 0.0;
-    mpole_b[2*nt+0] += 1.0;
-    mpole_b[0*nt+2] += 1.0;    
-  }
-
+  
   /* compute mpole_a coeffs*/
   mpole_c[0*nt+0] = expint_log_euler(x2y2);
   mpole_c[1*nt+0] = 2.0*t_x*(1.0-exp2)/x2y2;
