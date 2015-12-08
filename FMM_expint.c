@@ -167,7 +167,7 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
 /*-----------------------------------------
  *The main entry function
  *-----------------------------------------*/
-int main() {
+int main(int argc, char* argv[]) {
   // Input args
   int k;
   double *q,*z_x,*z_y, *all_input;
@@ -175,11 +175,17 @@ int main() {
   double tol, scale;  /*scale is the ewald parameter*box size*/
   int lev_max,n_particles, numthreads;  
   
+  if(argc!=5){
+    printf("Error! Input arguments are not provided; N scale tol lev_max.\n");
+    exit(EXIT_FAILURE);
+  }
+
   /*Get some constants*/
-  n_particles = 400;
-  scale       = 8.0;
-  tol         = 1e-15;
-  lev_max     = ceil(pow(n_particles,.25));lev_max=6;printf("%d\n",lev_max);
+  n_particles = atoi(argv[1]);
+  scale       = atof(argv[2]);
+  tol         = atof(argv[3]);
+  lev_max     = ceil(pow(n_particles,.25)); // lev_max=6; //This shows a better performance
+  lev_max     = atoi(argv[4]);
   numthreads  = 8;
   
   /*Get the positions of the particles.*/
