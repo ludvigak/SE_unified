@@ -200,9 +200,6 @@ int main(int argc, char* argv[]) {
   for (int i=0; i<n_particles;i++){
     z_x[i] = (double) rand()/RAND_MAX-0.5;
     z_y[i] = (double) rand()/RAND_MAX-0.5;
-    z_x[i] = floor(z_x[i]*1000.0)/1000.0;
-    z_y[i] = floor(z_y[i]*1000.0)/1000.0;
-    printf("%f %f\n",z_x[i],z_y[i]);
     q[i] = k;
     k = -k;
   }
@@ -288,11 +285,11 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
    *coeffs in compute_mpole_coeff function.*/
   if(n_terms<4)
     n_terms = 4;
-  printf("n_terms: %d\n",n_terms);
+
   /*The breakpoint in terms of number of particles in a box deciding
    *if to use summed up local taylor expansions or direct evaluated
    *multipole expansions.*/
-  taylor_threshold = n_terms*4000;
+  taylor_threshold = n_terms*4;
   
   /*The main double data vector. It is aligned on a 32 byte boundary
    *to allow for SSE instructions. Contains:
@@ -774,7 +771,7 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 
                     
                 }else if(nparticles_in_box[target_box] > 0) {
-		  if(nparticles_in_box[current_box] < -32) {
+		  if(nparticles_in_box[current_box] < 32) {
   		        DIRECT = 1;
 		        /*There are relatively few particles in the target
                          *box, and if there are few particles in the 
@@ -1425,17 +1422,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
     mpole_b[1*nt+k1] = Neg_Two_k1 *( t_y*mpole_b[1*nt+(k1-1)] + mpole_b[1*nt+(k1-2)] );
   }
 
-  /* if(nt>=4){ */
-  /*   /\* for (k1=2; k1<nt; k1++) *\/ */
-  /*   /\*   for (k2=2; k2<nt; k2++){ *\/ */
-  /*   for (n=4; n<nt; n++) */
-  /*     for(k1=2;k1<=(n-2); k1++){ */
-  /* 	k2 = n-k1; */
-  /* 	double Neg_Two_k2 = -2./(double) k2; */
-  /* 	mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] ); */
-  /*     } */
-  /* } */
-    /* This accounts for the presence of the log term */
+  /* This accounts for the presence of the log term */
   mpole_b[0*nt+0] += x2y2;
   mpole_b[1*nt+0] += 2.0*t_x;
   mpole_b[0*nt+1] += 2.0*t_y;
@@ -1476,31 +1463,6 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   	mpole_c[k1*nt+k2-1] = (k2/t_y)*(t_x/k1*mpole_c[(k1-1)*nt+k2]+1.0/k1*mpole_c[(k1-2)*nt+k2]
   					-1.0/k2*mpole_c[k1*nt+(k2-2)]);
   }
-
-
-  /* if(nt>=4){ */
-  /* /\* for (k1=2; k1<nt; k1++) *\/ */
-  /* /\*   for (k2=2; k2<nt; k2++){ *\/ */
-  /*   for (n=4; n<nt; n++){ */
-  /*     for(k1=2;k1<=(n-2); k1++){ */
-  /* 	k2 = n-k1; */
-  /* 	s = (double) k1+k2; */
-  /* 	mpole_c[k1*nt+k2] = (-2.*(s-1.) * (t_x*mpole_c[(k1-1)*nt+k2]+ t_y*mpole_c[k1*nt+(k2-1)]) */
-  /* 			     -(s-2.) * (    mpole_c[(k1-2)*nt+k2]+    mpole_c[k1*nt+(k2-2)]) */
-  /* 			     + s     *   mpole_b[k1*nt+k2]   )/s/x2y2; */
-  /*     } */
-  /*   } */
-  /* } */
-
-  FILE *fp = fopen("val2.m","a+");
-  fprintf(fp,"B=[\n");
-  for (k1=0; k1<nt; k1++)
-    for (k2=0; k2<nt; k2++)
-      {
-	fprintf(fp,"%.18f\n",mpole_c[k1*nt+k2]);
-      }
-  fprintf(fp,"];\n");
-  fclose(fp);
 
   _mm_mxFree(mpole_b);
 }

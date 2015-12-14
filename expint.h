@@ -7,7 +7,6 @@
 #include "stdbool.h"
 #include "float.h"
 
-//#define EPS    1.110223024625157e-16
 #define EPS     FLT_EPSILON * FLT_MIN
 #define EULER   0.577215664901532860606512090082402431042
 #define INFTY   INFINITY
