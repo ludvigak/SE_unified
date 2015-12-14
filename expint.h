@@ -5,10 +5,12 @@
  *------------------------------------------------------------------------
  */
 #include "stdbool.h"
+#include "float.h"
 
-#define EPS    1.110223024625157e-16
-#define EULER  0.577215664901532860606512090082402431042
-#define INFTY  1.0e308
+//#define EPS    1.110223024625157e-16
+#define EPS     FLT_EPSILON * FLT_MIN
+#define EULER   0.577215664901532860606512090082402431042
+#define INFTY   INFINITY
 
 /* sum up 4 elements in a vector, used for SIMD op.*/
 double sum4(double*p){
@@ -32,7 +34,7 @@ double expint(double x)
 {
   int j;
   double am1,am2,bm1,bm2,f,oldf,pterm,term,y,polyv,egamma,a,b,alpha,beta;
-  double INF = 1.e308;
+  double INF = INFINITY;
   double p[] = {-3.602693626336023e-09, -4.819538452140960e-07, -2.569498322115933e-05,
 		-6.973790859534190e-04, -1.019573529845792e-02, -7.811863559248197e-02,
 		-3.012432892762715e-01, -7.773807325735529e-01,  8.267661952366478e+00};
@@ -40,7 +42,7 @@ double expint(double x)
   polyv = polyval(p,x);
   if(polyv>=0)
     {
-      egamma=0.57721566490153286061;
+      egamma=EULER;
       y = -egamma-log(x);
       j = 1;
       pterm = x;
@@ -109,69 +111,14 @@ double expint(double x)
 double expint_log_euler(double x)
 {
   double egamma = 0.57721566490153286061;
-  if(fabs(x)<1.0e-16)
+  if(fabs(x)<EPS)
     printf("WTF\n");
-  if(fabs(x)<1.0e-16)
+  if(fabs(x)<EPS)
     return 0.0;
   else
     return expint(x)+log(x)+egamma;
 }
 
-
-double expints(int n, double x)
-{
-  int i,ii,nm1, MAXIT = 300;
-  double a,b,c,d,del,fact,h,psi,ans=0;
-  double FPMIN = 1.e-308;
-
-  nm1=n-1;
-  if (n < 0 || x < 0.0 || (fabs(x)<1e-18 && (n==0 || n==1)))
-    {printf("bad arguments in expint %f\n",x);return -1;}
-  else {
-    if (n == 0) ans=exp(-x)/x;
-    else {
-      if (x == 0.0) ans=1.0/nm1;
-
-      else {
-	if (x > 1.0) {
-	  b=x+n;
-	  c=1.0/FPMIN;
-	  d=1.0/b;
-	  h=d;
-	  for (i=1;i<=MAXIT;i++) {
-	    a = -i*(nm1+i);
-	    b += 2.0;
-	    d=1.0/(a*d+b);
-	    c=b+a/c;
-	    del=c*d;
-	    h *= del;
-	    if (fabs(del-1.0) < 2.*EPS) {
-	      ans=h*exp(-x);
-	      return ans;
-	    }
-	  }
-	  printf("continued fraction failed in expint");
-	} else {
-	  ans = (nm1!=0 ? 1.0/nm1 : -log(x)-EULER);
-	  fact=1.0;
-	  for (i=1;i<=MAXIT;i++) {
-	    fact *= -x/i;
-	    if (i != nm1) del = -fact/(i-nm1);
-	    else {
-	      psi = -EULER;
-	      for (ii=1;ii<=nm1;ii++) psi += 1.0/ii;
-	      del=fact*(-log(x)+psi);
-	    }
-	    ans += del;
-	    if (fabs(del) < fabs(ans)*EPS) return ans;
-	  }
-	  printf("series failed in expint");
-	}
-      }
-    }
-  }
-  return ans;
-}
 
 #ifdef __AVX__
 #include "math_x86.h"
@@ -190,7 +137,7 @@ double expints(int n, double x)
 __m256d _mm256_ein_pd(__m256d Z)
 {
   int MAXITER = 25;
-  __m256d GAMMA          = _mm256_set1_pd(0.57721566490153286061);
+  __m256d GAMMA          = _mm256_set1_pd(EULER);
   __m256d C0_BRANCH_PRED = _mm256_set1_pd(3.0162691827353);
   __m256d XEPS           = _mm256_set1_pd(EPS);
   __m256d NXEPS          = _mm256_set1_pd(-EPS);
@@ -309,7 +256,7 @@ __m256d _mm256_ein_pd(__m256d Z)
 __m128d _mm_ein_pd(__m128d Z)
 {
   int MAXITER = 25;
-  __m128d GAMMA          = _mm_set1_pd(0.57721566490153286061);
+  __m128d GAMMA          = _mm_set1_pd(EULER);
   __m128d C0_BRANCH_PRED = _mm_set1_pd(3.0162691827353);
   __m128d ONE            = _mm_set1_pd(1.0);
   __m128d ZERO           = _mm_setzero_pd();

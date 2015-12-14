@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
   tol         = atof(argv[3]);
   lev_max     = ceil(pow(n_particles,.25)); // lev_max=6; //This shows a better performance
   lev_max     = atoi(argv[4]);
-  numthreads  = 8;
+  numthreads  = 1;
   
   /*Get the positions of the particles.*/
   all_input = (double*) _mm_malloc(ALL_DATA_SZ*sizeof(double),32);
@@ -196,13 +196,17 @@ int main(int argc, char* argv[]) {
   
   /* Fill the matrix */
   k = 1;
-  //    srand(time(NULL));
+  srand(time(NULL));
   for (int i=0; i<n_particles;i++){
     z_x[i] = (double) rand()/RAND_MAX-0.5;
     z_y[i] = (double) rand()/RAND_MAX-0.5;
+    z_x[i] = floor(z_x[i]*1000.0)/1000.0;
+    z_y[i] = floor(z_y[i]*1000.0)/1000.0;
+    printf("%f %f\n",z_x[i],z_y[i]);
     q[i] = k;
     k = -k;
   }
+
   
   /*Create the output vector for direct*/
   M1_c = &all_input[OUTPUT_OFFSET];
@@ -234,7 +238,7 @@ int main(int argc, char* argv[]) {
     double nrm = 0, ns=0;
     for (int m=0; m<n_particles; m++){
       nrm += (M1_c[m]-M2_c[m])*(M1_c[m]-M2_c[m]);
-      ns  += (M1_c[m])*(M1_c[m]);
+      ns  += (M2_c[m])*(M2_c[m]);
     }
     printf("Err: %g, sum: %g\n", sqrt(nrm/ns), ns);
   }
@@ -284,11 +288,11 @@ void Do_FMM_Ein(double* M1, int n_particles, double scale,
    *coeffs in compute_mpole_coeff function.*/
   if(n_terms<4)
     n_terms = 4;
-  
+  printf("n_terms: %d\n",n_terms);
   /*The breakpoint in terms of number of particles in a box deciding
    *if to use summed up local taylor expansions or direct evaluated
    *multipole expansions.*/
-  taylor_threshold = n_terms*4;
+  taylor_threshold = n_terms*4000;
   
   /*The main double data vector. It is aligned on a 32 byte boundary
    *to allow for SSE instructions. Contains:
@@ -757,20 +761,20 @@ THREAD_FUNC_TYPE MpolesWorker(void *argument) {
 		    for (l1=0; l1<n_terms; l1++)
 		      for (l2=0; l2<n_terms-l1; l2++){
 			double tmp=0;
-			  for (k1=0; k1<n_terms; k1++)
-			    for (k2=0; k2<n_terms-k1; k2++){
-			      double cc1 = CC[k1*n_terms+l1];
+			for (k1=0; k1<n_terms; k1++){
+			  double cc1 = CC[k1*n_terms+l1];
+			  for (k2=0; k2<n_terms-k1; k2++){
 			      double cc2 = CC[k2*n_terms+l2];
 			      tmp += cc1*cc2*taylorexp_c[(k1+l1)*twon_terms+(k2+l2)]*mpole_v[k1*n_terms+k2];
 			    }
+			}
 			  tptr2[l1*n_terms+l2] += tmp;
 		      }
                     UNLOCK_MUTEX(&localexp_mutex[target_box&(num_mutexes-1)]);
 
                     
                 }else if(nparticles_in_box[target_box] > 0) {
-
-		  if(nparticles_in_box[current_box] < 32) {
+		  if(nparticles_in_box[current_box] < -32) {
   		        DIRECT = 1;
 		        /*There are relatively few particles in the target
                          *box, and if there are few particles in the 
@@ -1421,16 +1425,16 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
     mpole_b[1*nt+k1] = Neg_Two_k1 *( t_y*mpole_b[1*nt+(k1-1)] + mpole_b[1*nt+(k1-2)] );
   }
 
-  if(nt>=4){
-    /* for (k1=2; k1<nt; k1++) */
-    /*   for (k2=2; k2<nt; k2++){ */
-    for (n=4; n<nt; n++)
-      for(k1=2;k1<=(n-2); k1++){
-	k2 = n-k1;
-	double Neg_Two_k2 = -2./(double) k2;
-	mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] );
-      }
-  }
+  /* if(nt>=4){ */
+  /*   /\* for (k1=2; k1<nt; k1++) *\/ */
+  /*   /\*   for (k2=2; k2<nt; k2++){ *\/ */
+  /*   for (n=4; n<nt; n++) */
+  /*     for(k1=2;k1<=(n-2); k1++){ */
+  /* 	k2 = n-k1; */
+  /* 	double Neg_Two_k2 = -2./(double) k2; */
+  /* 	mpole_b[k1*nt+k2] = Neg_Two_k2 * ( t_y*mpole_b[k1*nt+(k2-1)] + mpole_b[k1*nt+(k2-2)] ); */
+  /*     } */
+  /* } */
     /* This accounts for the presence of the log term */
   mpole_b[0*nt+0] += x2y2;
   mpole_b[1*nt+0] += 2.0*t_x;
@@ -1444,7 +1448,7 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   mpole_c[1*nt+0] = 2.0*t_x*(1.0-exp2)/x2y2;
   mpole_c[0*nt+1] = 2.0*t_y*(1.0-exp2)/x2y2;
   mpole_c[1*nt+1] = 4.0*t_x*t_y*(exp2*(x2y2+1.0) - 1.0)/(x2y2*x2y2);
-                            
+
   /*compute the rest of mpole_a coeffs and add up to form mpole_c*/
   for (k1=2; k1<nt; k1++){
     k2 = 0; s = (double) k1+k2;
@@ -1460,18 +1464,43 @@ void compute_mpole_c(double* mpole_c, int nt, double t_x, double t_y)
   }
 
 
-  if(nt>=4){
-  /* for (k1=2; k1<nt; k1++) */
-  /*   for (k2=2; k2<nt; k2++){ */
-    for (n=4; n<nt; n++){
-      for(k1=2;k1<=(n-2); k1++){
-	k2 = n-k1;
-	s = (double) k1+k2;
-	mpole_c[k1*nt+k2] = (-2.*(s-1.) * (t_x*mpole_c[(k1-1)*nt+k2]+t_y*mpole_c[k1*nt+(k2-1)])
-			     -(s-2.) * (    mpole_c[(k1-2)*nt+k2]+    mpole_c[k1*nt+(k2-2)])
-			     + s     *      mpole_b[k1*nt+k2]   )/s/x2y2;
-      }
-    }
+  if(fabs(t_x)>fabs(t_y)){
+    for (k2=2; k2<nt; k2++)
+      for (k1=3; k1<nt-k2+1; k1++)
+  	  mpole_c[(k1-1)*nt+k2] = (k1/t_x)*(t_y/k2*mpole_c[k1*nt+k2-1]+1.0/k2*mpole_c[k1*nt+k2-2]
+  					    -1.0/k1*mpole_c[(k1-2)*nt+k2]);
   }
+  else{
+    for (k1=2; k1<nt; k1++)
+      for (k2=3; k2<nt-k1+1; k2++)
+  	mpole_c[k1*nt+k2-1] = (k2/t_y)*(t_x/k1*mpole_c[(k1-1)*nt+k2]+1.0/k1*mpole_c[(k1-2)*nt+k2]
+  					-1.0/k2*mpole_c[k1*nt+(k2-2)]);
+  }
+
+
+  /* if(nt>=4){ */
+  /* /\* for (k1=2; k1<nt; k1++) *\/ */
+  /* /\*   for (k2=2; k2<nt; k2++){ *\/ */
+  /*   for (n=4; n<nt; n++){ */
+  /*     for(k1=2;k1<=(n-2); k1++){ */
+  /* 	k2 = n-k1; */
+  /* 	s = (double) k1+k2; */
+  /* 	mpole_c[k1*nt+k2] = (-2.*(s-1.) * (t_x*mpole_c[(k1-1)*nt+k2]+ t_y*mpole_c[k1*nt+(k2-1)]) */
+  /* 			     -(s-2.) * (    mpole_c[(k1-2)*nt+k2]+    mpole_c[k1*nt+(k2-2)]) */
+  /* 			     + s     *   mpole_b[k1*nt+k2]   )/s/x2y2; */
+  /*     } */
+  /*   } */
+  /* } */
+
+  FILE *fp = fopen("val2.m","a+");
+  fprintf(fp,"B=[\n");
+  for (k1=0; k1<nt; k1++)
+    for (k2=0; k2<nt; k2++)
+      {
+	fprintf(fp,"%.18f\n",mpole_c[k1*nt+k2]);
+      }
+  fprintf(fp,"];\n");
+  fclose(fp);
+
   _mm_mxFree(mpole_b);
 }
