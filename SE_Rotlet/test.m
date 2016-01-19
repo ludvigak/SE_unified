@@ -2,7 +2,7 @@
 
 rng(1);
 
-N = 2;
+N = 20;
 x = rand(N,3);
 t = rand(N,3);
 %t(1,:) = 0
@@ -14,8 +14,8 @@ shells = 15;
 k_shells = 15;
 
 
-xi1 = 1;
-xi2 = 1.2;
+xi1 = 5;
+xi2 = xi1+1;
 
 %ud = rotlet_direct_sum(idx, x, t, box, shells, 1e-2)
 
@@ -34,9 +34,9 @@ opt.P = 24;
 opt.M = 31*box;
 opt.box = box;
 
-opt.M = 21*box;
+opt.M = 25*box;
 ukSE1 = SE_Rotlet(idx, x, t, xi1, opt);
-opt.M = 20*box;
+opt.M = 26*box;
 ukSE2 = SE_Rotlet(idx, x, t, xi1, opt);
 
 err1 = ukSE1-ukSE2

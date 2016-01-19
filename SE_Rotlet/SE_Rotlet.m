@@ -1,6 +1,6 @@
 function u  = SE_Rotlet(eval_idx,x,f,xi,opt)
 
-verb = true;
+verb = false;
 
 % parameters and constants
 opt = parse_params(opt);
@@ -21,33 +21,21 @@ H1 = fftshift( fftn(H1) );
 H2 = fftshift( fftn(H2) );
 H3 = fftshift( fftn(H3) );
 
-% multiply with modified greens function
-%[G1 G2 G3] = fast_k_scaling(G1,G2,G3,xi,opt.box,eta);
-
-% k-vectors
+% Scale
 [k1 k2 k3] = k_vec(M,opt.box); 
 [K1 K2 K3] = ndgrid(k1,k2,k3);
-
 Ksq = K1.^2 + K2.^2 + K3.^2;
-tmp = 1i*4*pi*cross([H1(:) H2(:) H3(:)], -[K1(:) K2(:) K3(:)], 2);
-
-B = exp(-(1-eta)*Ksq/(4*xi^2))./Ksq;
-B(Ksq==0) = 0;
-
-H1(:) = tmp(:,1).*B(:);
-H2(:) = tmp(:,2).*B(:);
-H3(:) = tmp(:,3).*B(:);
-
-% scale
-%k2 = K1.^2 + K2.^2 + K3.^2;
-%Z = exp(-(1-eta)*k2/(4*xi^2))./k2;
-%Z(1,1,1) = 0;
-%H = H.*Z;
+B = exp(-(1-eta)*Ksq/(4*xi^2))./Ksq; % keep it real
+B(k1==0, k2==0, k3==0) = 0;
+% G = B*(HxK)
+G1 = -1i*4*pi*B.*(H2.*K3 - H3.*K2);
+G2 = -1i*4*pi*B.*(H3.*K1 - H1.*K3);
+G3 = -1i*4*pi*B.*(H1.*K2 - H2.*K1);
 
 % inverse shift and inverse transform
-F1 = real( ifftn( ifftshift( H1 )));
-F2 = real( ifftn( ifftshift( H2 )));
-F3 = real( ifftn( ifftshift( H3 )));
+F1 = real( ifftn( ifftshift( G1 )));
+F2 = real( ifftn( ifftshift( G2 )));
+F3 = real( ifftn( ifftshift( G3 )));
 
 u = zeros(length(eval_idx),3);
 u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
