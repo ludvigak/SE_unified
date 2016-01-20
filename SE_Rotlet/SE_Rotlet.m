@@ -32,6 +32,11 @@ G1 = -1i*4*pi*B.*(H2.*K3 - H3.*K2);
 G2 = -1i*4*pi*B.*(H3.*K1 - H1.*K3);
 G3 = -1i*4*pi*B.*(H1.*K2 - H2.*K1);
 
+%G1 = -1i*4*pi*B.*K1.*H1;
+%G2 = -1i*4*pi*B.*K2.*H1;
+%G3 = -1i*4*pi*B.*K3.*H1;
+
+
 % inverse shift and inverse transform
 F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
