@@ -22,7 +22,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 		 int nrhs, const mxArray *prhs[] )
 {
 
-    const int N = mxGetM(X);
+    const int N = mxGetM(ZX);
     const double* H_per = mxGetPr(HH);
 
     SE_FGG_params params;
