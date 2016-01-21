@@ -9,7 +9,7 @@ L = 1*s;
 M_max = 80/s;
 xi = 28/s;
 
-N = 200;
+N = 500;
 t = 1-2*rand(N,3);
 
 box = L*[1 1 1];
@@ -57,8 +57,9 @@ for i=1:3
     % original force (Kolafa)
     %semilogy(K, sqrt(16*xi^2*Q./(pi*V*K)) .* exp(-K.^2/4/xi^2) / ref_max,'--')
 
-    semilogy(Mlist, sqrt(4*xi^2*Q./(pi*V*K)) .* exp(-K.^2/4/xi^2) / ref_max,'-')
-
+    %semilogy(Mlist, sqrt(2/3)*sqrt(4*xi^2*Q./(pi*V*K)) .* exp(-K.^2/4/xi^2) / ref_max,'-')
+    semilogy(Mlist, sqrt(8*xi^2*Q./(3*pi*V*K)) .* exp(-K.^2/4/xi^2) / ref_max,'-')
+    
     ylim([1e-16 1])
     grid on
     xlabel('$M = K/\xi$','interpreter','latex')

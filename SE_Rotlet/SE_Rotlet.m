@@ -1,4 +1,4 @@
-function u  = SE_Rotlet(eval_idx,x,f,xi,opt)
+function u  = SE_Rotlet(eval_idx,x,f,xi,opt,varargin)
 
 verb = false;
 
@@ -7,11 +7,37 @@ opt = parse_params(opt);
 [w m M P] = unpack_params(opt);
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
+N = size(x, 1);
+
+% Use vectorized code
+if ~isempty(varargin)
+    S = varargin{1};
+else
+    S = SE_FGG_precomp(x,xi,opt);
+end
+grid_fcn = @(f) SE_fg_grid_split_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
+                                     S.idx);
+
+% TODO: Add functionality for external eval, because that is what we actually need
+%if numel(eval_idx)==N && all(eval_idx==1:N)
+%    int_fcn = @(F) SE_fg_int_split_mex(x,F,opt,S.zs,S.zx,S.zy,S.zz,S.idx);
+%else
+xe = x(eval_idx,:);
+SI = SE_FGG_precomp(xe,xi,opt);
+xe = xe(SI.perm,:)*0;
+%xe = xe(SI.iperm,:);
+iperm = @(u) u(SI.iperm(eval_idx),:);
+int_fcn = @(F) iperm(SE_fg_int_split_mex(0,F,opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
+    %end
+
+% Uncomment for direct code
+%grid_fcn = @(f) SE_fg_grid_mex(x,f,opt);
+%int_fcn = @(f) SE_fg_int_mex(x(eval_idx,:),f,opt);
 
 % to grid function
-H1 = SE_fg_grid_mex(x,f(:,1), opt);
-H2 = SE_fg_grid_mex(x,f(:,2), opt);
-H3 = SE_fg_grid_mex(x,f(:,3), opt);
+H1 = grid_fcn(f(:,1));
+H2 = grid_fcn(f(:,2));
+H3 = grid_fcn(f(:,3));
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
@@ -32,20 +58,17 @@ G1 = -1i*4*pi*B.*(H2.*K3 - H3.*K2);
 G2 = -1i*4*pi*B.*(H3.*K1 - H1.*K3);
 G3 = -1i*4*pi*B.*(H1.*K2 - H2.*K1);
 
-%G1 = -1i*4*pi*B.*K1.*H1;
-%G2 = -1i*4*pi*B.*K2.*H1;
-%G3 = -1i*4*pi*B.*K3.*H1;
-
 
 % inverse shift and inverse transform
 F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
 F3 = real( ifftn( ifftshift( G3 )));
 
-u = zeros(length(eval_idx),3);
-u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
-u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
-u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
+u = zeros(numel(eval_idx),3);
+u(:,1) = int_fcn(F1);
+u(:,2) = int_fcn(F2);
+u(:,3) = int_fcn(F3);
+
 
 % ------------------------------------------------------------------------------
 function p = parse_params(opt)

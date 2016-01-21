@@ -1,4 +1,4 @@
-function [phi shellnorms] = rotlet_direct_real( idx, x, f, xi, L, nbox, TOL,varargin)
+function [phi shellnorms] = rotlet_direct_real( idx, x, f, xi, L, varargin)
 % Ewald summation for the stresslet -- Real space part.
 %
 % phi = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL, [eval_x])
@@ -16,65 +16,94 @@ function [phi shellnorms] = rotlet_direct_real( idx, x, f, xi, L, nbox, TOL,vara
 %   stresslet_direct_real(1, x, f, nvec, 2, [1 1 1], 10)
 
 VERBOSE = 0;
-if ~exist('TOL','var')
-    TOL=0;
+
+p = inputParser();
+p.addParameter('mode','layered');
+p.addParameter('layers', 10);
+p.addParameter('tol', 0);
+p.addParameter('rc', inf);
+
+p.parse(varargin{:});
+nbox = p.Results.layers;
+TOL = p.Results.tol;
+rc = p.Results.rc;
+
+switch p.Results.mode
+  case 'layered'
+    % default    
+  case 'cutoff'
+    assert(rc <= min(L), 'rc must be smaller than min(box)');
+    nbox = 1;
+    tol = 0;
+  otherwise
+    error('Unknown mode');
 end
+    
+noeval = length(idx);  
+eval_x = x;
 
 p = -nbox:nbox; %boxes
 [p1 p2 p3] = ndgrid(p,p,p);
-p = [p1(:) p2(:) p3(:)];
-Np = size(p,1);
+p = [p1(:) p2(:) p3(:)];Np = size(p,1);
 
 pshell = max(abs(p'));
 [pshell, I] = sort(pshell);
 pshell = pshell';
 p = p(I,:)*diag(L);
 cprintf(VERBOSE,'\tComputing real space sum. Periodic images: %d\n', Np);
-if numel(varargin)>0
-    eval_x = varargin{1};
-    noeval = size(eval_x,1);
-    idx = 1:noeval;
-else
-    noeval = length(idx);  
-    eval_x = x;
-end
 phi=zeros(noeval,3); 
 shellnorms=zeros(nbox+1,noeval);
-parfor ii=1:noeval
-  m=idx(ii); 
-  converged=0;
-  shell_no=0;
-  for jj=1:nbox+1    
-    shell_no = jj-1;
-    tmp = [0 0 0];
-    shell_indices = find(pshell==shell_no);
-    for j = shell_indices'
-%     for j = 1:Np
-      for n = 1:size(x,1) % particles
-        if all(p(j,:)==0) && n==m % remove self interaction
-          continue
+rc2 = rc^2;
+Npart = size(x,1);
+
+perm = randperm(Npart);
+x(perm,:) = x;
+eval_x(perm,:) = eval_x;
+f(perm,:) = f;
+idx = perm(idx);
+
+for ii=1:noeval
+    m=idx(ii); 
+    converged=0;
+    shell_no=0;
+    for jj=1:nbox+1    
+        shell_no = jj-1;
+        tmp = [0 0 0];
+        shell_indices = find(pshell==shell_no);
+        for j = shell_indices'            
+            mask = true(Npart, 1); % interaction mask
+            if all(p(j,:)==0) 
+                mask(m) = false; % remove self interaction
+            end
+            r = bsxfun(@minus, eval_x(m,:) + p(j,:), x);
+            r2 = sum(r.^2, 2);
+            mask = mask & (r2 <= rc2);            
+            r2 = r2(mask);
+            rn = sqrt(r2);
+            fxr = cross(f(mask,:), r(mask,:), 2);
+            A = ( erfc(xi*rn)./rn + 2*xi*exp(-xi^2*r2)/sqrt(pi) )./r2;            
+            tmp = tmp + sum( bsxfun(@times, fxr, A), 1);
         end
-        r=eval_x(m,:)-x(n,:);
-        tmp = tmp + cross(f(n,:), rotlet_op_real(r + p(j,:), xi));
-      end
-    %    cprintf(mod(j,1000)==0,'\t%3d \t %5.2f%% \r',j, 100*j/Np);
+        phi(ii,:) = phi(ii,:) + tmp;
+        shellnorm = norm(tmp);
+        shellnorms(jj,ii)=shellnorm;
+        cprintf(VERBOSE,'Shell %d: contrib=%g\n',shell_no,shellnorm);
+        if shellnorm<TOL && shell_no>1
+            converged=1;
+            break
+        end
     end
-    phi(ii,:) = phi(ii,:) + tmp;
-    shellnorm = norm(tmp);
-    shellnorms(jj,ii)=shellnorm;
-    cprintf(VERBOSE,'Shell %d: contrib=%g\n',shell_no,shellnorm);
-    if shellnorm<TOL && shell_no>3
-        converged=1;
-        break
+    if isinf(rc)
+        if converged==1
+            cprintf(VERBOSE,'Real sum converged TOL=%g at shell %g\n',TOL,shell_no);
+        else
+            cprintf(VERBOSE,'Real sum did not converge!\n')
+            %disp('Real sum did not converge!')
+        end
     end
-  end
-  if converged==1
-      cprintf(VERBOSE,'Real sum converged TOL=%g at shell %g\n',TOL,shell_no);
-  else
-      %cprintf(VERBOSE,'Real sum did not converge!\n')
-      disp('Real sum did not converge!\n')
-  end
 end
+
+
 cprintf(VERBOSE,'\n')
 end
 

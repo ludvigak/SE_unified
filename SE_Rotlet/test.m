@@ -2,14 +2,14 @@
 
 rng(1);
 
-N = 20;
+N = 20/5;
 x = rand(N,3);
 t = rand(N,3);
 %t(1,:) = 0
 
 box = [1 1 1];
 TOL = 1e-13;
-idx = 1:2;
+idx = 1:N;
 shells = 15;
 k_shells = 15;
 
@@ -19,11 +19,11 @@ xi2 = xi1+1;
 
 %ud = rotlet_direct_sum(idx, x, t, box, shells, 1e-2)
 
-ur1 = rotlet_direct_real(idx, x, t, xi1, box, shells, TOL);
+ur1 = rotlet_direct_real(idx, x, t, xi1, box, 'layers',shells, 'tol', TOL);
 uk1 = rotlet_direct_fd(idx, x, t, xi1, box, k_shells);
 u1 = uk1+ur1
 
-ur2 = rotlet_direct_real(idx, x, t, xi2, box, shells, TOL);
+ur2 = rotlet_direct_real(idx, x, t, xi2, box, 'layers', shells, 'tol', TOL);
 uk2 = rotlet_direct_fd(idx, x, t, xi2, box, k_shells);
 u2 = uk2+ur2
 
