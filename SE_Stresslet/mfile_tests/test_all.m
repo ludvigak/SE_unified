@@ -2,10 +2,6 @@ function test_all
 clc
 disp('Running all tests...')
 
-if matlabpool('size')==0
-    matlabpool('open')
-end
-
 d = dir('mfile_tests/test_*.m');
 tests = {};
 results = [];

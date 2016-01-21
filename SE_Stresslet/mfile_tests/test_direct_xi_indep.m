@@ -3,9 +3,6 @@ function status = test_direct_xi_indep()
 format long e
 rand('state',1)
 
-if matlabpool('size')==0
-    matlabpool('open')
-end
 
 N=10; 
 TOL_r=1e-20;
