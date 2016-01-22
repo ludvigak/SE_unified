@@ -78,6 +78,9 @@ for ii=1:noeval
             r = bsxfun(@minus, eval_x(m,:) + p(j,:), x);
             r2 = sum(r.^2, 2);
             mask = mask & (r2 <= rc2);            
+            if ~any(mask)
+                continue
+            end                       
             r2 = r2(mask);
             rn = sqrt(r2);
             fxr = cross(f(mask,:), r(mask,:), 2);
