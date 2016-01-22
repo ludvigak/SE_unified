@@ -32,6 +32,7 @@ semilogy(xi*rc, rotlet_est_real(t, box, rc, xi) / ref_max);
 semilogy(xi*rc, rotlet_est_real_long(t, box, rc, xi) / ref_max, '--')
 ylim([min(err_rms(err_rms>0))/2 1]);
 xlim([0 max(xi*rc)]);
+grid on
 ylabel('Real space RMS error (rel.)')
 xlabel('$\xi r_c$','interpreter','latex');
 legend('Measured','Estimate (simple)','Estimate (full)')
