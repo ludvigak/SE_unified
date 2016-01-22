@@ -1,4 +1,7 @@
-function u  = SE_Rotlet(eval_idx,x,f,xi,opt,varargin)
+function u = SE_Rotlet(xe,x,f,xi,opt)
+% u = SE_Rotlet(x_targets, x_sources, f_sources, xi, opt)
+
+% TODO: Add possibility of passing precomputed structures
 
 verb = false;
 
@@ -10,25 +13,14 @@ opt.c = 2*xi^2/eta;
 N = size(x, 1);
 
 % Use vectorized code
-if ~isempty(varargin)
-    S = varargin{1};
-else
-    S = SE_FGG_precomp(x,xi,opt);
-end
+% Gridder
+S = SE_FGG_precomp(x,xi,opt);
 grid_fcn = @(f) SE_fg_grid_split_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
                                      S.idx);
-
-% TODO: Add functionality for external eval, because that is what we actually need
-%if numel(eval_idx)==N && all(eval_idx==1:N)
-%    int_fcn = @(F) SE_fg_int_split_mex(x,F,opt,S.zs,S.zx,S.zy,S.zz,S.idx);
-%else
-xe = x(eval_idx,:);
+% Integrator
 SI = SE_FGG_precomp(xe,xi,opt);
-xe = xe(SI.perm,:)*0;
-%xe = xe(SI.iperm,:);
-iperm = @(u) u(SI.iperm(eval_idx),:);
+iperm = @(u) u(SI.iperm,:);
 int_fcn = @(F) iperm(SE_fg_int_split_mex(0,F,opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
-    %end
 
 % Uncomment for direct code
 %grid_fcn = @(f) SE_fg_grid_mex(x,f,opt);
@@ -48,7 +40,7 @@ H2 = fftshift( fftn(H2) );
 H3 = fftshift( fftn(H3) );
 
 % Scale
-[k1 k2 k3] = k_vec(M,opt.box); 
+[k1 k2 k3] = k_vectors(M,opt.box); 
 [K1 K2 K3] = ndgrid(k1,k2,k3);
 Ksq = K1.^2 + K2.^2 + K3.^2;
 B = exp(-(1-eta)*Ksq/(4*xi^2))./Ksq; % keep it real
@@ -64,7 +56,7 @@ F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
 F3 = real( ifftn( ifftshift( G3 )));
 
-u = zeros(numel(eval_idx),3);
+u = zeros(size(xe));
 u(:,1) = int_fcn(F1);
 u(:,2) = int_fcn(F2);
 u(:,3) = int_fcn(F3);
@@ -109,18 +101,19 @@ M = opt.M;
 P = opt.P;
 
 % ------------------------------------------------------------------------------
-function [k1 k2 k3] = k_vec(M,box)
-if (all(mod(M,2)==0))
+function [k] = k_vec(M,L)
+if mod(M,2)==0
     MM = M/2;
-    k1 = (2*pi/box(1))*[-MM(1):(MM(1)-1)];
-    k2 = (2*pi/box(2))*[-MM(2):(MM(2)-1)];
-    k3 = (2*pi/box(3))*[-MM(3):(MM(3)-1)];
-
-elseif(all(mod(M-1,2)==0))
+    k = (2*pi/L)*[-MM:(MM-1)];
+elseif mod(M-1,2)==0
     MM = (M-1)/2;
-    k1 = (2*pi/box(1))*[-MM(1):MM(1)];
-    k2 = (2*pi/box(2))*[-MM(2):MM(2)];
-    k3 = (2*pi/box(3))*[-MM(3):MM(3)];
-
-else error('k-vectors not computed (FIXME)');
+    k = (2*pi/L)*[-MM:MM];
+else error('k-vectors not computed');
 end
+
+% ------------------------------------------------------------------------------
+function [k1 k2 k3] = k_vectors(M,box)
+k1 = k_vec(M(1), box(1));
+k2 = k_vec(M(2), box(2));
+k3 = k_vec(M(3), box(3));
+

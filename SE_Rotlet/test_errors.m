@@ -14,8 +14,9 @@ t = 1-2*rand(N,3);
 
 box = L*[1 1 1];
 x = L*rand(N,3);
+xe = L*rand(N,3);
 
-idx = 1:N;
+
 shells = 15;
 k_shells = 15;
 
@@ -33,16 +34,17 @@ set(gca,'LineStyleOrder','.-|o-|*-')
 set(gca,'yscale','log');
 for i=1:3
     opt.M = (M_max+20)*box;
-    ref = SE_Rotlet(idx, x, t, xi, opt);
+    ref = SE_Rotlet(xe, x, t, xi, opt);
     ref_max = norm(ref(:), inf);
 
     Mlist = 2:2:M_max;
+    %Mlist = 4:4:M_max;
     err_inf = [];
     err_rms = [];
     for i=1:numel(Mlist)
         this_opt = opt;
         this_opt.M = Mlist(i)*box;    
-        uk = SE_Rotlet(idx, x, t, xi, this_opt);
+        uk = SE_Rotlet(xe, x, t, xi, this_opt);
         err = uk - ref;
         err_inf(i) = norm(err(:), inf) / ref_max;
         err_rms(i) = sqrt(1/N*sum(err(:).^2)) / ref_max;
