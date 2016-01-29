@@ -34,7 +34,7 @@ for i = 1:length(m)
         % for Gaussian support, P
         
         SE_opt.P = P(j);
-        u = SE_stokes(1:N,x,f,xi,SE_opt);
+        u = SE_Stokes(1:N,x,f,xi,SE_opt);
 
         % compute RMS error (first vector component)
         e = (u - ref).^2; 
