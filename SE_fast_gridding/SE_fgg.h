@@ -17,11 +17,13 @@
 #ifdef THREE_PERIODIC
 #define __FGG_EXPA fgg_expansion_3p
 #define __FGG_EXPA_FORCE fgg_expansion_3p_force
+#define __FGG_INDEX fgg_index_3p
 #define PER_STR "3P"
 #endif
 
 #ifdef TWO_PERIODIC
 #define __FGG_EXPA fgg_expansion_2p
+#define __FGG_INDEX fgg_index_2p
 #define PER_STR "2P"
 #endif
 

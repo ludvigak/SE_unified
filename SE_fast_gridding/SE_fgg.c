@@ -3,6 +3,9 @@
 #include "string.h"
 #include "malloc.h"
 
+#include "fgg_thrd.h"
+#include "fgg_thrd.c"
+
 // Dag Lindbo, dag@kth.se
 // Core of SE is written by Dag Lindbo. The routines are modified
 // to calculate forces.
@@ -456,24 +459,17 @@ void SE_FGG_base_gaussian(SE_FGG_work* work, const SE_FGG_params* params)
 
 // -----------------------------------------------------------------------------
 #ifdef THREE_PERIODIC
-static 
-int fgg_expansion_3p(const double x[3], const double q,
-		     const SE_FGG_params* params,
-		     double z2_0[P_MAX], 
-		     double z2_1[P_MAX], 
-		     double z2_2[P_MAX])
+
+static inline 
+void fgg_offset_3p(const double x[3],
+		   const SE_FGG_params* params,
+		   double t0[3],
+		   int idx_from[3])
 {
-    // unpack params
     const int p = params->P;
     const int p_half = params->P_half;
     const double h = params->h;
-    const double c=params->c;
-    
-    double t0[3];
     int idx;
-    int idx_from[3];
-
-    // compute index range and centering
     if(is_odd(p))
     {
 	for(int j=0; j<3; j++)
@@ -492,6 +488,26 @@ int fgg_expansion_3p(const double x[3], const double q,
 	    t0[j] = x[j]-h*idx;
 	}
     }
+}
+
+static inline
+int fgg_expansion_3p(const double x[3], const double q,
+		     const SE_FGG_params* params,
+		     double z2_0[P_MAX], 
+		     double z2_1[P_MAX], 
+		     double z2_2[P_MAX])
+{
+    // unpack params
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double c=params->c;
+    
+    double t0[3];
+    int idx_from[3];
+
+    // compute index range and centering
+    fgg_offset_3p(x, params, t0, idx_from);
 
     // compute third factor 
     double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
@@ -641,11 +657,25 @@ int fgg_expansion_3p_force(const double x[3], const double q,
 		       params->npdims[1], params->npdims[2]);
 }
 
+static inline
+int fgg_index_3p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p_half = params->P_half;
+    double t0[3];
+    int idx_from[3];
+    fgg_offset_3p(x, params, t0, idx_from);
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
+		       idx_from[1]+p_half, 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+
 #endif
 // -----------------------------------------------------------------------------
 #ifdef TWO_PERIODIC
 // -----------------------------------------------------------------------------
-static 
+static inline
 int fgg_expansion_2p(const double x[3], const double q,
 		     const SE_FGG_params* params,
 		     double z2_0[P_MAX], 
@@ -739,6 +769,49 @@ int fgg_expansion_2p(const double x[3], const double q,
 		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
+
+static inline
+int fgg_index_2p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double a=params->a;
+
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round(x[0]/h);
+	idx_from[0] = idx - p_half;
+	
+	idx = (int) round(x[1]/h);
+	idx_from[1] = idx - p_half;
+
+	idx = (int) round((x[2]-(a+h/2))/h);
+	idx_from[2] = idx - p_half;
+    }
+    else
+    {
+	idx = (int) floor(x[0]/h);
+	idx_from[0] = idx - (p_half-1);
+
+	idx = (int) floor(x[1]/h);
+	idx_from[1] = idx - (p_half-1);
+
+	idx = (int) floor((x[2]-(a+h/2))/h);
+	idx_from[2] = idx - (p_half-1);
+    }
+
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
+		       idx_from[1]+p_half, 
+		       idx_from[2], 
+		       params->npdims[1], params->npdims[2]);
+}
+
 #endif
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
@@ -3703,22 +3776,24 @@ void SE_FGG_grid(SE_FGG_work* work, const SE_state* st,
     double cij0;
     double xn[3];
     double qn;
-    int idx0, zidx, i,j,k;
+    int idx0, zidx, i,j,k, i_end;
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
 	// compute index and expansion vectors
 	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
-	qn = st->q[n];
-	
-	idx0 = __FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
-	zidx = 0;
-	for(i = 0; i<p; i++)
+	idx0 = __FGG_INDEX(xn, params);
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	qn = st->q[n];		
+	__FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
+	for(; i < i_end; i++)
 	{
 	    for(j = 0; j<p; j++)
 	    {
@@ -3818,21 +3893,22 @@ void SE_FGG_grid_split(SE_FGG_work* work, const SE_state* st,
 
     double cij0;
     double qn;
-    int idx0, zidx, idxzz, i, j, k;
+    int idx0, zidx, idxzz, i, j, k, i_end;
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
+    
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
 
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
-
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	qn = st->q[n];
 	// inline vanilla loop
-	zidx = 0;
-	for(i = 0; i<p; i++)
+	for(; i < i_end; i++)
 	{
 	    for(j = 0; j<p; j++)
 	    {
@@ -3871,15 +3947,21 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
     __m128d rH0, rH1, rH2, rH3;
     __m128d rC, rZS0;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
-
 	idx = work->idx[n];
-	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
+	qn = st->q[n];
 
         rZZ0 = _mm_load_pd(zz + n*16     );
         rZZ1 = _mm_load_pd(zz + n*16 + 2 );
@@ -3892,7 +3974,7 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
 
 	if(idx%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -3952,7 +4034,7 @@ void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4039,19 +4121,25 @@ void SE_FGG_grid_split_SSE_u8(SE_FGG_work* work, const SE_state* st,
     __m128d rH2, rZZ2, rZS2;
     __m128d rH3, rZZ3, rZS3;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
-
 	idx0 = work->idx[n];
-	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
 
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4096,7 +4184,7 @@ void SE_FGG_grid_split_SSE_u8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4163,15 +4251,23 @@ void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st,
 
     __m128d rH0, rZZ0, rZS0, rC;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4200,7 +4296,7 @@ void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4238,9 +4334,14 @@ void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st,
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
 
 #ifdef AVX_FMA
-    __DISPATCHER_MSG("[FGG GRID AVX-FMA] ");
+    __DISPATCHER_MSG("[FGG GRID AVX-FMA");
 #else
-    __DISPATCHER_MSG("[FGG GRID AV] ");
+    __DISPATCHER_MSG("[FGG GRID AVX");
+#endif
+#ifdef FGG_THRD
+    __DISPATCHER_MSG(" THRD] ");
+#else
+    __DISPATCHER_MSG("] ");
 #endif
 
 #if 0
@@ -4329,15 +4430,24 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
     const int incrj = params->npdims[2]-p; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+
 	if(idx0%4 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4367,7 +4477,7 @@ void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -4422,11 +4532,20 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
     const int incrj = params->npdims[2]-16; // middle increment
     const int incri = params->npdims[2]*(params->npdims[1]-16);// outer increment
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
 	idx_zs = 0;
+
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 
         rZZ0 = _mm256_load_pd(zz + n*16     );
         rZZ1 = _mm256_load_pd(zz + n*16 + 4 );
@@ -4435,7 +4554,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4474,7 +4593,7 @@ void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -4535,18 +4654,26 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
     __m256d rH0, rH1;
     __m256d rC, rZS0, rZS1;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 8);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
         rZZ0 = _mm256_load_pd(zz + n*8     );
         rZZ1 = _mm256_load_pd(zz + n*8 + 4 );
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
@@ -4575,7 +4702,7 @@ void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
@@ -4627,15 +4754,24 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
     __m256d rH0, rZZ0, rZS0, rC;
     __m256d rH1, rZZ1, rZS1;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+
 	if(idx0%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -4673,7 +4809,7 @@ void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
