@@ -1,14 +1,13 @@
 function [res A varargout] = stresslet_real_rc( x, q, nvec, xi, box, rc, varargin)
-    % Stresslet real space summation with truncation radius rc
-    % Usage: 
-    % [res]      = stresslet_real_rc( x, f, nvec, xi, box, rc);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, [],   sing_sub, ns_quad_mtrx);
-    % [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT, sing_sub, ns_quad_mtrx);
-    % [res AMAT R C V PER] 
-    %            = stresslet_real_rc( x, f, nvec, xi, box, rc);
-    %
-    % sing_sub = singularity subtraction, default 0. Only for matrix comp.
-    % rc = cutoff radius, must be <= min(box)/2
+% Stresslet real space summation with truncation radius rc
+% Usage: 
+% [res]      = stresslet_real_rc( x, f, nvec, xi, box, rc);
+% [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, [],   sing_sub, ns_quad_mtrx);
+% [res AMAT] = stresslet_real_rc( x, f, nvec, xi, box, rc, AMAT, sing_sub, ns_quad_mtrx);
+% [res AMAT R C V PER] = stresslet_real_rc( x, f, nvec, xi, box, rc);
+%
+% sing_sub = singularity subtraction, default 0. Only for matrix comp.
+% rc = cutoff radius, must be <= min(box)/2
     
     VERBOSE = 0;
     

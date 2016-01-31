@@ -5,6 +5,7 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc,
 %
 % [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, 
 %                                       [A, sing_sub, ns_quad_mtrx])
+%
 %        Evaluate potential, phi, at points x(idx). 
 %        x    --  positions          N-by-3
 %        f    --  source strengths   N-by-3
@@ -16,7 +17,8 @@ function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc,
 %        A    --  Precomputed matrix
 %        sing_sub -- Use singularity subtraction
 %        ns_quad_mtrx -- Correction matrices for nearly singular quadrature
-VERBOSE = 0;
+
+    VERBOSE = 0;
 
 nosrc=size(f,1);
 noeval=length(idx);  
