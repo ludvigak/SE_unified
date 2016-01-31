@@ -50,6 +50,8 @@ The package also contains:
 * ``SE_fast_gridding``: C implementation of fast Gaussian gridding (below)
 * ``SE_direct``: C-code for direct Ewald sums for Laplace 2P/3P
 * ``SE_Stokes_direct``: C-code for direct Ewald sums for Stokes 2P/P3
+* ``SE_leftovers``: Spectral Ewald, fast real-space and k=0 codes for Laplace and
+  Stokes. These are unmaintained, but might prove useful.
 
 The FGG and direct summation C implementations (which are substantial)
 are better than any other versions scattered in the original

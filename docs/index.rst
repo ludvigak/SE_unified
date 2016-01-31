@@ -19,7 +19,8 @@ Contents
    rst/matlab_reference.rst
    rst/cinterface.rst
 
-Index
------
+Indices
+-------
 
 * :ref:`genindex`
+* :ref:`modindex`
