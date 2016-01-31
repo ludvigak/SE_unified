@@ -10,5 +10,7 @@ domains.
 
 The documentation is hosted on [Read the Docs](http://spectralewald.readthedocs.org)
 
-## License This package is released under the MIT License, see the [LICENSE](./LICENSE)
-file for details.
+## License 
+
+This package is released under the MIT License, see the [LICENSE](./LICENSE) file for
+details.
