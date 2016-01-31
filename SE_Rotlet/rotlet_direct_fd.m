@@ -1,14 +1,12 @@
 function phi = rotlet_direct_fd(xe, x, f, xi, L, kmax)
-% Ewald summation for Stokes rotlet --  k-space part.
+% Direct summation of rotlet k-space part.
 %
-% phi = rotlet_direct_fd(xe, x, f, xi, L, kmax)
-%        Evaluate potential, phi, at points x(idx,:). 
-%        xe   --  target positions    M-by-3
-%        x    --  source positions    N-by-3
-%        f    --  source strengths    N-by-3
-%        xi   --  Ewald parameter
-%        L    --  box size            1-by-3
-%        kmax --  k-space truncation
+% :param xe: target positions,    M-by-3
+% :param x: source positions,    N-by-3
+% :param f: source strengths,    N-by-3
+% :param xi: Ewald parameter,
+% :param L: box size,      1-by-3
+% :param kmax: k-space truncation
 %
 
 k = 2*pi*(-kmax:kmax); %modes

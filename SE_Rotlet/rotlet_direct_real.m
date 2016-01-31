@@ -1,19 +1,11 @@
 function [phi shellnorms] = rotlet_direct_real( idx, x, f, xi, L, varargin)
-% Ewald summation for the stresslet -- Real space part.
+% Direct summation of rotlet real space part
 %
-% phi = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL, [eval_x])
-%        Evaluate potential, phi, at points x(idx) or eval_x. 
-%        x    --  positions          N-by-3
-%        nvec --  normal vectors   N-by-3
-%        f    --  source strengths   N-by-3
-%        xi   --  Ewald parameter
-%        nbox --  periodic repications
-%        TOL  -- desired tolerance
-%        eval_x -- evaluate at points eval_x
-%
-% Example:
-%   [x f] = generate_state(100,[1 1 1]);
-%   stresslet_direct_real(1, x, f, nvec, 2, [1 1 1], 10)
+% phi = rotlet_direct_real(idx, x, t, xi, box, 'layers', M, 'tol', TOL);
+%   Compute interactions from all particles within M layers, stop at tolerance TOL.
+%   
+% phi = rotlet_direct_real(idx, x, t, xi, box, 'mode','cutoff', 'rc', rc);
+%   Compute interactions from all particles within cutoff radius rc.
 
 VERBOSE = 0;
 

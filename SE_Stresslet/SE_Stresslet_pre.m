@@ -1,4 +1,7 @@
 function SE_static  = SE_Stresslet_pre(x,xi,opt)
+% Precompute data for fast Gaussian gridding to enable optimized kernels
+%
+% :returns: **SE_static**
 
 verb = false;
 

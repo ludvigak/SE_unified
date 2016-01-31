@@ -10,6 +10,7 @@ function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 % :param opt.M: grid size (M1, M2, M3)
 % :param opt.P: Gaussian width
 % :param opt.box: Box size (L1, L2, L3)
+% :param varargin=SE_static: Precomputations from SE_Stresslet_pre() to use SIMD FGG code.
 % :returns: **phi** -- Fourier space potential
 
 ttic = tic;
