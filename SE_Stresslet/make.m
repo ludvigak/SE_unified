@@ -67,4 +67,4 @@ eval([mex_string ' -DBEENAKKER mex/stresslet_fast_k_scaling.c'])
 eval([mex_string ' -DBEENAKKER mex/stresslet_direct_real_mexcore.c'])
 eval([mex_string ' -largeArrayDims -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_mex.c -output stresslet_real_rc_mex'])
 eval([mex_string ' -largeArrayDims -DBEENAKKER mex/stresslet_real_rc.c mex/cell_list.c mex/stresslet_real_rc_nomatrix_mex.c -output stresslet_real_rc_nomatrix_mex'])
-eval([mex_string ' -DTHREE_PERIODIC mex/stresslet_fg_grid_mex.c -I../SE_fast_gridding/ ../SE_fast_gridding/SE_fgg.c ../SE_fast_gridding/SE_fgg_MEX_params.c'])
+
