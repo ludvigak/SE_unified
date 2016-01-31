@@ -1,4 +1,4 @@
-function [H1 H2 H3] = k_scaling(G,xi,box,eta)
+function [H1 H2 H3] = stresslet_k_scaling(G,xi,box,eta)
 
 M = size(G);
 [H1 H2 H3] = deal(zeros(M(2:4)));
