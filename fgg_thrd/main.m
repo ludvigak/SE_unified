@@ -1,6 +1,6 @@
 function main(P, N)
     addpath('bin');
-    addpath('../SE_Stresslet')
+    addpath('../SE_fast_gridding')
 
     
     rng(1)
