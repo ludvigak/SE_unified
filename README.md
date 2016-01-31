@@ -1,23 +1,35 @@
-This package unites five spectrally accurate fast Ewald methods:
+# The Spectral Ewald unified package
+
+This is a Matlab package unites six spectrally accurate fast Ewald methods:
 
      - SE:          3-periodic Laplace (electrostatics)
      - SE2P:        2-periodic Laplace (electrostatics)
      - SE_Stokes    3-periodic Stokeslet (viscous flow)
      - SE2P_Stokes  2-periodic Stokeslet (viscous flow)	
      - SE_Stresslet 3-periodic Stresslet (viscous flow)
+     - SE_Rotlet    3-periodic Rotlet    (viscous flow)	
 
+## Getting started
 Each directory contains an m-file that implements the method, and a
 basic accuracy/convergence script that shows how to use it. From any
 one of these directories, do: 
 
-> init          % sets up paths 
-> make          % builds all necessary mex C code 
-> test_accuracy % should see plot of spectral convergence
+```matlab
+init    % sets up paths 
+make    % builds all necessary mex C code 
+```
+then depending on directory you can do
+```matlab
+test_accuracy    % should see plot of spectral convergence
+```
+or
+```matlab
+test_all    % run a larger test suite
+```
 
-The SE_Stresslet directory contains more work than the others, and also includes
-several routines related to the computation of the real-space sum. Instead of
-'test_accuracy', the script 'test_all' runs a suite of tests.
+Most recent development has focused on 3P Stokes flow, so the directories related to that are more developed.
 
+## Additional files
 The package also contains:
     1) 'util' Common functions
     2) 'SE_fast_gridding' C implementation of fast Gaussian gridding (below)
@@ -34,7 +46,7 @@ be integrated before they work. Original implementations include
 Matlab-implementations of FGG and direct summation, which are not
 part of this package.
 
-Notes on fast Gaussian gridding: 
+## Notes on fast Gaussian gridding
 
     1) Common mex wrappers are included, compiled from application
        makefiles (above) or from the matlab verification tests found in
