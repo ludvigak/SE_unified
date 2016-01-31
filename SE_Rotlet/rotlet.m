@@ -2,7 +2,7 @@ function u = rotlet(x, y, t)
 % u = rotlet(x, y, t(y))
 %
 % Compute rotlet potential
-% u_j = (t x r)_i / r^3
+% :math:`u_j = (t \times r)_i / r^3`
 
 r = bsxfun(@minus, x, y);
 ri3 = sum(r.^2, 2).^(-3/2);

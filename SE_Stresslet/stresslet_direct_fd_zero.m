@@ -1,13 +1,13 @@
 function phi = stresslet_direct_fd_zero( idx, xvec, fvec, nvec, L)
-% Ewald summation for Stokes --  k=0 of k-space part.
-%
-% phi = stresslet_direct_fd( idx, x, f, nvec, L)
-%        Evaluate potential, phi, at points x(idx).
-%        x    --  positions           N-by-3
-%        f    --  source strengths    N-by-3
-%        nvec --  normal vectors   N-by-3
-%        xi   --  Ewald parameter
-%        L    --  box size            1-by-3
+% k=0 part of Stresslet k-space summation.
+%    
+% :param idx: index of target positions (Nx1)
+% :param xvec: source positions (Nx3)
+% :param fvec: source strengths (Nx3)
+% :param nvec: normal vectors (Nx3)
+% :param L: box size (1x3)
+% :returns: **phi_k0**  -- (Nx3)
+
 
 VERBOSE = 0;
 

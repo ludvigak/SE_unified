@@ -1,4 +1,16 @@
 function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
+% Compute Fourier space part of Ewald sum for periodic stresslet potential.
+%
+% :param eval_idx: index of source locations where potential should be evaluated
+% :param x: source locations (Nx3)
+% :param f: source strengths (Nx3)
+% :param n: source normals (Nx3)
+% :param xi: Ewald paramter
+% :param opt: Ewald options:
+% :param opt.M: grid size (M1, M2, M3)
+% :param opt.P: Gaussian width
+% :param opt.box: Box size (L1, L2, L3)
+% :returns: **phi** -- Fourier space potential
 
 ttic = tic;
 

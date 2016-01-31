@@ -4,22 +4,19 @@ function phi  = spectral_ewald(eval_idx,x,q,xi,opt)
 %
 % phi = spectral_ewald(idx, x, q, xi, box, opt)
 %
-% Arguments:
-%    idx: evaluation indices (particle indices)
-%    x:   particle positions (N-by-3)
-%    q:   particle charge (N-by-1)
-%    xi:  Ewald parameter
-
-%    opt: options
+% :return: **phi** -- k-space part of periodic potential
 %
-% Options:
-%    opt.M:           grid size, eg. [31 31 31] (required)
-%    opt.P:           Gaussian support    (required)
-%    opt.box:         Periodic cell, eg. [1 1 1]
-%    opt.m:           Gaussian shape function (default: m=m(P))
-%    opt.w:           Gaussian width (default: w=h*P/2)
+% :param idx: evaluation indices (particle indices)
+% :param x:   particle positions (N-by-3)
+% :param q:   particle charge (N-by-1)
+% :param xi:  Ewald parameter
+% :param opt: Options:
+% :param opt.M:           grid size, eg. [31 31 31] (required)
+% :param opt.P:           Gaussian support    (required)
+% :param opt.box:         Periodic cell, eg. [1 1 1]
+% :param opt.m:           Gaussian shape function (default: m=m(P))
+% :param opt.w:           Gaussian width (default: w=h*P/2)
 %
-% Dag Lindbo, dag@kth.se, Sept. 2010
 
 verb = true;
 

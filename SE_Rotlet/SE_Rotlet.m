@@ -1,6 +1,6 @@
 function u = SE_Rotlet(xe,x,f,xi,opt)
 % u = SE_Rotlet(x_targets, x_sources, f_sources, xi, opt)
-
+%
 % TODO: Add possibility of passing precomputed structures
 
 verb = false;
