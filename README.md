@@ -1,4 +1,4 @@
-[![Documentation Status](https://readthedocs.org/projects/spectralewald/badge/?version=latest)](http://spectralewald.readthedocs.org/en/latest/?badge=latest)
+[![Documentation Status](http://readthedocs.org/projects/spectralewald/badge/?version=latest)](http://spectralewald.readthedocs.org/en/latest/?badge=latest)
 
 # The Spectral Ewald Unified package
 
