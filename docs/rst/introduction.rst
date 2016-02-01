@@ -38,6 +38,15 @@ or
 
    test_accuracy    % should display plot of spectral convergence
 
+Example:
+
+.. code-block:: matlab
+   
+   cd SE_Rotlet
+   init
+   make
+   demo
+
 Most recent development has focused on 3P Stokes flow, so the directories related to that (SE_Stokes, SE_Rotlet, SE_Stresslet) are more developed.
 
 Code examples for various are kernels can be found by looking at the tests, located in the
