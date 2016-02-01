@@ -1,2 +1,2 @@
-r=runtests('mfile_tests');
+r=runtests('tests');
 disp(table(r))
