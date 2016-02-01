@@ -1,4 +1,4 @@
-function status = test_eval_external()
+clear
 
 rand('state',1)
 
@@ -28,11 +28,7 @@ res = max(abs(u - u_ext))
 
 if res<1e-10
     fprintf('\n********** EVAL EXTERNAL: OK **********\n\n')
-    status = 1;
 else
-    warning('EVAL EXTERNAL: FAILED')
-    status = 0;
+    error('EVAL EXTERNAL: FAILED')
 end
 
-
-status = 1;

@@ -1,4 +1,4 @@
-function status = test_rs_sing_sub()
+clear
 
 N = 1000;
 box = [1 1 1];
@@ -35,9 +35,7 @@ fprintf('e_rsrc = %.2e\ne_direct = %.2e\n',e1_inf,e2_inf);
 e_inf = max(e1_inf,e2_inf);
 
 if e_inf>1e-12
-    warning('Test:RSSingularitySubtraction','Real space singularity subtraction failed.');
-    status = 0;
+    error('Test:RSSingularitySubtraction','Real space singularity subtraction failed.');
 else
     disp('Real space singularity subtraction OK');
-    status = 1;
 end

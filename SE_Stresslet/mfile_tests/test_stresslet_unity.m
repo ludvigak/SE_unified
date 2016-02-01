@@ -1,4 +1,4 @@
-function status = test_stresslet_unity()
+clear
 
 % Test integrating unity constant stresslet distribution over closed body
 
@@ -101,9 +101,7 @@ format short
 k
 err_k = abs(k - [2 1 2])
 if any(err_k>0.05)
-    warning('Test:StressletUnity','Integration of stresslet unity failed.');
-    status = 0;
+    error('Test:StressletUnity','Integration of stresslet unity failed.');
 else
     disp('Integration of stresslet unity OK.');
-    status = 1;
 end

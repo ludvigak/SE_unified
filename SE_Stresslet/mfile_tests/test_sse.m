@@ -1,4 +1,4 @@
-function status = test_sse()
+clear
 
 format short
 
@@ -45,6 +45,5 @@ if maxe<1e-10
     fprintf('\n********** SSE CODE: OK **********\n\n')
     status = 1;
 else
-    warning('SSE CODE: FAILED')
-    status = 0;
+    error('SSE CODE: FAILED')
 end
