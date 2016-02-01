@@ -1,4 +1,4 @@
-function status = test_est_k()
+clear
 
 L = 1;
 xi = 15;
@@ -30,8 +30,6 @@ end
 q=abs(1-abs(est./err_rms));
 if q < .5
     fprintf('\n********** EST K: OK **********\n\n')
-    status = 1;
 else
-    warning('EST K: FAILED')
-    status = 0;
+    error('EST K: FAILED')
 end    

@@ -1,4 +1,4 @@
-function status = test_fast_kspace()
+clear
 
 N = 10;
 
@@ -23,8 +23,6 @@ end
 
 if max(results(:,3)) < -10
     fprintf('\n********** FAST K-SPACE: OK **********\n\n')
-    status = 1;
 else
-    warning('FAST K-SPACE: FAILED')
-    status = 0;
+    error('FAST K-SPACE: FAILED')
 end
