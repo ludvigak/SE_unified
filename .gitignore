@@ -1,1 +1,5 @@
 .dropbox.attr
+*~
+*.log
+a.out
+
