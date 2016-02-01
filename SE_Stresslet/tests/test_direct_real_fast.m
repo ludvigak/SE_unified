@@ -1,4 +1,4 @@
-function status=test_direct_real_fast()
+clear
 
 format long e
 rand('state',1)
@@ -49,10 +49,8 @@ fprintf('Max diff: %g\n', max(res2(:)));
 
 if max(res2(:))>1e-10
     maxres2 = max(res2(:))
-    warning('EWALD FAST RS: FAILED')
-    status = 0;
+    error('EWALD FAST RS: FAILED')
 else
-    status = 1;
     fprintf('\n********** EWALD FAST RS: OK **********\n\n')
 end
 

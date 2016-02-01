@@ -1,13 +1,14 @@
-function [x f nvec] = generate_state(N,L, varargin)
-%%Returning x: Nx3 matrix with coords inside box L, 
-%%f: Nx3 matrix with point forces.
-%%nvec: Nx3 matrix with associated normal vectors.
+function [x f nvec] = generate_state(N, L, varargin)
+% Returning x: Nx3 matrix with coords inside box L, 
+% f: Nx3 matrix with point forces.
+% nvec: Nx3 matrix with associated normal vectors.
 x = repmat(L,N,1).*rand(N,3);
 f = 2*rand( N, 3) - 1;
 nvec=rand( N, 3) - 0.5;
 nabs=sqrt(nvec(:,1).^2+nvec(:,2).^2+nvec(:,3).^2); 
 nvec=nvec./(nabs*ones(1,3));
-%%Need to normalize normal vecs to length 1. 
+
+% Need to normalize normal vecs to length 1. 
 
 if nargin==3 && strcmp(varargin{1},'neutral')
     % Charge neutral

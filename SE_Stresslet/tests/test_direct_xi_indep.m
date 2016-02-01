@@ -1,8 +1,9 @@
-function status = test_direct_xi_indep()
+clear
 
 format long e
 rand('state',1)
 
+PLOTTING = false;
 
 N=10; 
 TOL_r=1e-20;
@@ -20,14 +21,17 @@ ur=zeros(nxi,3);
 uk=zeros(nxi,3);
 utot=zeros(nxi,3);
 
+if PLOTTING
+    clf, leglist={};
+end
+
 tic
-clf, leglist={};
 for i = 1:nxi
     uk(i,:)=stresslet_direct_fd  (idx, x, f, nvec, xi(i),  box, NOL_k)';
     [rtemp conv]=stresslet_direct_real(idx, x, f, nvec, xi(i),  box, NOL_r,TOL_r);
     ur(i,:) = rtemp';
     utot(i,:)=ur(i,:)+uk(i,:);
-    %%No self interaction term for stresslet. 
+    % No self interaction term for stresslet. 
     
     disp(['idx= ' num2str(idx) ', xi=' num2str(xi(i)) '.']); 
     disp('ur= ');
@@ -36,13 +40,15 @@ for i = 1:nxi
     disp(uk(i,:))
     disp('utot');
     disp(utot(i,:))
-    
-    semilogy(conv,'.-'), hold all
-    leglist{end+1}=['\xi=' num2str(xi(i))];
+    if PLOTTING
+        semilogy(conv,'.-'), hold all
+        leglist{end+1}=['\xi=' num2str(xi(i))];
+    end
 end;
-
-legend(leglist), ylabel('Real space layer contrib.'), xlabel('Layer'), grid on
 toc
+if PLOTTING
+    legend(leglist), ylabel('Real space layer contrib.'), xlabel('Layer'), grid on
+end
 
 utot
 xi
@@ -55,6 +61,6 @@ if max(res(:))<1e-10
     fprintf('\n********** EWALD XI INDEPENDENCE: OK **********\n\n')
 else
     status = 0;
-    warning('EWALD XI INDEPENDENCE: FAILED')
+    error('EWALD XI INDEPENDENCE: FAILED')
 end
 

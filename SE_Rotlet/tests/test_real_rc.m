@@ -1,4 +1,4 @@
-function status = test_real_rc()
+clear
 
 N = 100;
 
@@ -16,8 +16,6 @@ max_err = norm(ref(:)-ur(:), inf) ./ norm(ref(:), inf);
 
 if max_err < 1e-14
     fprintf('\n********** REAL RC: OK **********\n\n')
-    status = 1;
 else
-    warning('REAL RC: FAILED')
-    status = 0;
+    error('REAL RC: FAILED')
 end

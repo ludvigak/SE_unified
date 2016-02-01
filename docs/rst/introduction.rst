@@ -43,6 +43,24 @@ Most recent development has focused on 3P Stokes flow, so the directories relate
 Code examples for various are kernels can be found by looking at the tests, located in the
 folder ``mfile_tests`` or ``tests`` in the folder for the respective kernel.
 
+Testing
+-------
+
+Some directory contain a ``tests`` folder with unit tests. To run the full test suite in that folder simply execute
+
+.. code-block:: matlab
+
+    init
+    run_unit_tests
+
+To run a all full suite with all available tests, go to the root directory and run
+
+.. code-block:: matlab
+
+    run_unit_tests
+
+This is recommended to do after building or before committing changes.
+
 Additional files
 ----------------
 The package also contains:

@@ -12,7 +12,7 @@ box = [2 2 2];
 generate_ref_state = false;
 generate_ref_solutions = generate_ref_state;
 
-filename_state = 'mfile_tests/refmat/test_error_rc_ref_state.mat';
+filename_state = 'tests/refmat/test_error_rc_ref_state.mat';
 if generate_ref_state
     disp('Generating reference state...')
     [x f nvec] = generate_state(N,box);
@@ -27,7 +27,7 @@ end
 
 if generate_ref_solutions
     for xi=xilist
-        filename_sol = sprintf('mfile_tests/refmat/test_error_rc_ref_sol_xi=%.3f.mat',xi);    
+        filename_sol = sprintf('tests/refmat/test_error_rc_ref_sol_xi=%.3f.mat',xi);    
         NOL_ref = 1;
         rc_ref = NOL_ref*max(box)*10;
         UREF = stresslet_direct_real_fast(idx, x, f, nvec, xi,  box, NOL_ref, rc_ref);
@@ -44,7 +44,7 @@ figure(3),clf,publication_fig
 kvot = [];
 
 for xi=xilist
-    filename_sol = sprintf('mfile_tests/refmat/test_error_rc_ref_sol_xi=%.3f.mat',xi);  
+    filename_sol = sprintf('tests/refmat/test_error_rc_ref_sol_xi=%.3f.mat',xi);  
     load(filename_sol)
     NOL = 1;
     

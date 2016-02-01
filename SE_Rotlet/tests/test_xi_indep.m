@@ -1,4 +1,3 @@
-function status = test_xi_indep()
 
 N = 100;
 
@@ -21,8 +20,6 @@ max_err = norm(err(:), inf) / norm(u{1}(:), inf);
 
 if max_err < 1e-14
     fprintf('\n********** XI INDEPENDENCE: OK **********\n\n')
-    status = 1;
 else
-    warning('XI INDEPENDENCE: FAILED')
-    status = 0;
+    error('XI INDEPENDENCE: FAILED')
 end

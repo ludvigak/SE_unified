@@ -1,4 +1,4 @@
-function status = test_est_real();
+clear
 
 L = 1;
 xi = 6;
@@ -30,12 +30,10 @@ err_short = max(abs(1-abs(err_rms ./ est_short)));
 err_long = max(abs(1-abs(err_rms ./ est_long)));
 
 short_passed = err_short < 0.3;
-long_passed = err_long < 0.1;
+long_passed = err_long < 0.15;
 
 if short_passed && long_passed
     fprintf('\n********** EST REAL: OK **********\n\n')
-    status = 1;
 else
-    warning('EST REAL: FAILED')
-    status = 0;
+    error('EST REAL: FAILED')
 end    

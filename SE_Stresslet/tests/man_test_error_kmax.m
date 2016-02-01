@@ -1,6 +1,6 @@
 clear
 
-savedir = '~/workspace/biepaper/fig/';
+savedir = 'fig/';
 
 cases = [1 2 3 4 5];
 cases = 2;
@@ -52,7 +52,7 @@ boxstr = sprintf('box(%g,%g,%g)',box(1),box(2),box(3));
 SE_opt.box = box;
 ubox = box/min(box);
 
-filename_state = ['mfile_tests/refmat/test_error_kmax_ref_state_' boxstr '.mat'];
+filename_state = ['tests/refmat/test_error_kmax_ref_state_' boxstr '.mat'];
 if generate_ref_state
     disp('Generating reference state...')
     [x f nvec] = generate_state(N,box);
@@ -67,7 +67,7 @@ end
 
 if generate_ref_solutions
     for xi=xilist
-        filename_sol = sprintf('mfile_tests/refmat/test_error_kmax_ref_sol_%s_xi=%.3f.mat',boxstr,xi);    
+        filename_sol = sprintf('tests/refmat/test_error_kmax_ref_sol_%s_xi=%.3f.mat',boxstr,xi);    
         SE_opt.P = 32;
         
         SE_opt.M = (2*Mlist(end))*ubox;
@@ -93,9 +93,9 @@ end
 err = [];
 for j=1:numel(xilist);
     xi = xilist(j);
-    filename_sol = sprintf('mfile_tests/refmat/test_error_kmax_ref_sol_%s_xi=%.3f.mat',boxstr,xi);    
+    filename_sol = sprintf('tests/refmat/test_error_kmax_ref_sol_%s_xi=%.3f.mat',boxstr,xi);    
     load(filename_sol)    
-    filename_errs = sprintf('mfile_tests/refmat/test_error_kmax_errs_%s_xi=%.3f.mat',boxstr,xi);  
+    filename_errs = sprintf('tests/refmat/test_error_kmax_errs_%s_xi=%.3f.mat',boxstr,xi);  
     if generate_errors
         for i=1:numel(Mlist)
             if i>2
@@ -133,6 +133,7 @@ end
 
 %% Plot
 sfigure(1); clf, publication_fig
+L = min(box);
 K = 2*pi*kmax/L;
 semilogy(K, err,'.-b')
 titlestr=['Truncation error of k-space part (RMS), \xi = '...
@@ -270,12 +271,12 @@ if numel(cases)>1
     [xl,p] = sort(xl);
     yl = yl(p);
     disp('Saving data collapse')
-    save('mfile_tests/refmat/kmax_err_allcollapse.mat','xl','yl')
+    save('tests/refmat/kmax_err_allcollapse.mat','xl','yl')
 end
     
 return
 %%
-load('mfile_tests/refmat/kmax_err_allcollapse.mat')
+load('tests/refmat/kmax_err_allcollapse.mat')
 figure(7), clf, publication_fig
 
 ifit = 0<=xl & xl<=110;
