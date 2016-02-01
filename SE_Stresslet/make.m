@@ -1,7 +1,7 @@
 cc = 'gcc';
 %cc = 'icc';
 
-verbose = true;
+verbose = false;
 openmp = true;
 
 

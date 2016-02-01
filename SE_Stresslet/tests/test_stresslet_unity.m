@@ -89,7 +89,8 @@ for iN = 1:numel(Nlist)
     err = [err; ewres(:,jj)'-Ifree]; % +8*pi*conc
     
 end
-%%
+
+%
 format long
 err=abs(err)
 k = [0 0 0];
