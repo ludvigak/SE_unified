@@ -29,13 +29,14 @@ then depending on directory you can do
 
 .. code-block:: matlab
 
-   test_accuracy    % should display plot of spectral convergence
+   demo    % Runs demo of spectral convergence + error estimates
+           % for both real and Fourier space sums.
 
 or
 
 .. code-block:: matlab
 
-   test_all    % run a larger test suite
+   test_accuracy    % should display plot of spectral convergence
 
 Most recent development has focused on 3P Stokes flow, so the directories related to that (SE_Stokes, SE_Rotlet, SE_Stresslet) are more developed.
 
