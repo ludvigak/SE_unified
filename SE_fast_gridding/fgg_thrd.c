@@ -1,3 +1,4 @@
+#include "stdbool.h"
 
 static void inline grid_thrd_setup(grid_thrd_ws_t* ws, const int* npdims, int p)
 {

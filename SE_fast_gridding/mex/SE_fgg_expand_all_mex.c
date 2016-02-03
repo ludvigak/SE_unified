@@ -1,5 +1,5 @@
 #include "mex.h"
-#include "../SE_fgg.h"
+#include "SE_fgg.h"
 
 void SE_FGG_MEX_params(SE_FGG_params*, const mxArray*, int);
 
@@ -31,7 +31,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     ZZ = mxCreateDoubleMatrix(N,params.P,mxREAL);
 
     // output
-    const int dims[2] = {N,1};
+    const size_t dims[2] = {N,1};
     IDX = mxCreateNumericArray(2,dims,mxINT32_CLASS,mxREAL);
 
     // wrap in SE_work struct

@@ -82,12 +82,12 @@
 #define __DISPATCHER_MSG(s) {}
 #endif
 
-inline int is_odd(int p)
+static inline int is_odd(int p)
 // test if interger is odd or even
 {
     return p&1;
 }
-inline int isnot_div_by_4(int p)
+static inline int isnot_div_by_4(int p)
 {
    return p&3;
 }
@@ -95,7 +95,7 @@ inline int isnot_div_by_4(int p)
 // Return half of gaussian width:
 //    q = (p-1)/2 if p is odd
 //    q =  p/2    if p is even
-inline int half(int p)
+static inline int half(int p)
 {
     return (is_odd(p) ? (p-1)/2 : p/2);
 }

@@ -41,7 +41,8 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     work.idx = (int*)mxGetData(IDX);
     
     // allocate output array
-    H_OUT = mxCreateNumericArray(3, params.dims, mxDOUBLE_CLASS, mxREAL);
+    size_t dims[3] = {params.dims[0], params.dims[1], params.dims[2]};
+    H_OUT = mxCreateNumericArray(3, dims, mxDOUBLE_CLASS, mxREAL);
     double* H_per = mxGetPr(H_OUT);
     SE_fp_set_zero(H_per, SE_prod3(params.dims));
 

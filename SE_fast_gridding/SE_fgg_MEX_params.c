@@ -1,4 +1,5 @@
 #include "SE_fgg.h"
+#include "mex.h" 
 
 // Get field s from matlab struct p. abort if field is missing
 void* get_arg(const mxArray* p, const char* s)
