@@ -30,7 +30,9 @@ matlab_src_dir = os.path.abspath('..')
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['breathe', 'sphinx.ext.mathjax', 'sphinx.ext.autodoc', 'sphinxcontrib.matlab']
+extensions = ['sphinx.ext.mathjax', 
+              'sphinx.ext.autodoc', 
+              'sphinxcontrib.matlab']
 
 primary_domain = 'mat'
 

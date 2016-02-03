@@ -1,19 +1,7 @@
 function phi = stresslet_direct_fd( idx, x, f, nvec, xi, L, kmax)
-% Ewald summation for Stokes --  k-space part.
+% Fourier space Ewald sum for stresslet, using (very slow) direct summation.
 %
-% phi = stresslet_direct_fd( m, x, f, nvec, xi, L, kmax)
-%        Evaluate potential, phi, at points x(idx). 
-%        x    --  positions           N-by-3
-%        f    --  source strengths    N-by-3
-%        nvec --  normal vectors   N-by-3
-%        xi   --  Ewald parameter
-%        L    --  box size            1-by-3
-%        kmax --  k-space truncation
-%
-% Example:
-%   [x f] = generate_state(100,[1 1 1]);
-%   stresslet_direct_fd(2,x,f,nvec,xi, [1 1 1], 10)
-%
+% :param kmax: Fourier space truncation
 
 k = 2*pi*(-kmax:kmax); %modes
 [k1 k2 k3] = ndgrid(k/L(1),k/L(2),k/L(3));

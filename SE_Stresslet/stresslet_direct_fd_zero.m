@@ -1,5 +1,5 @@
 function phi = stresslet_direct_fd_zero( idx, xvec, fvec, nvec, L)
-% k=0 part of Stresslet k-space summation.
+% Component for :math:`k=0` of stresslet Fourier sum.
 %    
 % :param idx: index of target positions (Nx1)
 % :param xvec: source positions (Nx3)

@@ -1,20 +1,10 @@
 function [phi shellnorms] = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL,varargin)
-% Ewald summation for the stresslet -- Real space part.
+% Real space Ewald sum for stresslet, using (very slow) direct summation.
 %
-% phi = stresslet_direct_real( idx, x, f, nvec, xi, L, nbox, TOL, [eval_x])
-%        Evaluate potential, phi, at points x(idx) or eval_x. 
-%        x    --  positions          N-by-3
-%        nvec --  normal vectors   N-by-3
-%        f    --  source strengths   N-by-3
-%        xi   --  Ewald parameter
-%        nbox --  periodic repications
-%        TOL  -- desired tolerance
-%        eval_x -- evaluate at points eval_x
-%
-% Example:
-%   [x f] = generate_state(100,[1 1 1]);
-%   stresslet_direct_real(1, x, f, nvec, 2, [1 1 1], 10)
-
+% :param nbox: Number of periodic replications in each direction.
+% :param TOL: Break when truncation error < TOL.
+% :param varargin=eval_x: Evaluate at eval_x instead of x(idx,:)
+    
 VERBOSE = 0;
 if ~exist('TOL','var')
     TOL=0;
