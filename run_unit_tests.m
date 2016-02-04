@@ -40,6 +40,6 @@ else
         end
     end    
     disp('===================================')
-    error('There where failed tests.')
+    error('There were failed tests.')
 end
 
