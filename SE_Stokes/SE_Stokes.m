@@ -33,7 +33,7 @@ G2 = fftshift( fftn(H2) );
 G3 = fftshift( fftn(H3) );
 
 % multiply with modified greens function
-[G1 G2 G3] = fast_k_scaling(G1,G2,G3,xi,opt.box,eta);
+[G1 G2 G3] = stokeslet_fast_k_scaling(G1,G2,G3,xi,opt.box,eta);
 
 % inverse shift and inverse transform
 F1 = real( ifftn( ifftshift( G1 )));

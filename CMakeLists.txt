@@ -28,6 +28,7 @@ include_directories(
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_fast_gridding")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes_direct/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes/mex")
 
 # Enable running Matlab test suite through ctest
 enable_testing()

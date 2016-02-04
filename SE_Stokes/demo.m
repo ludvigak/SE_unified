@@ -45,7 +45,7 @@ end
 
 % same thing for m = m(P)
 SE_opt = rmfield(SE_opt,'m')
-leg{i+1} = sprintf('m(P)')
+leg{i+1} = sprintf('m(P)');
 for j = 1:length(P)
     SE_opt.P = P(j);
     u = SE_Stokes(1:N,x,f,xi,SE_opt);
@@ -53,13 +53,13 @@ for j = 1:length(P)
     err(i+1,j) = sqrt( sum(e(:,1))/N );
 end
 
-sty = {'.-','*-','+-','r'}
+sty = {'.-','*-','+-','r'};
 hold on
 for i = 1:size(err,1)
     plot(P,err(i,:),sty{i})
 end
 
-publication_fig
+%publication_fig
 set(gca,'YScale','log')
 set(gca,'YTick',[1e-15 1e-10 1e-5 1e-0])
 xlabel('P')
@@ -67,5 +67,6 @@ ylabel('e_{rms}')
 grid on
 axis([P(1) P(end) 1e-16 1e2])
 legend(leg,'Location','Best')
+title('Stokeslet Spectral Ewald accuracy')
 fname = sprintf('output/SE_accuracy_xi%d_M%d',xi,SE_opt.M(1));
-write_fig(1,fname);
+%write_fig(1,fname);
