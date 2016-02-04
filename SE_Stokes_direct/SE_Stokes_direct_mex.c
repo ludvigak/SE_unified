@@ -130,7 +130,10 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     index_translation(idx, idx_d, num_eval);
 #endif
 
+
+#ifndef EWALD_SELF
     const double* x = mxGetPr(X);
+#endif
     const double* f = mxGetPr(F);
 
     U = mxCreateDoubleMatrix(num_eval, 3, mxREAL); // the result
