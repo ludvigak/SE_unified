@@ -1,7 +1,9 @@
 clear
 
 module_folders = {'SE_Rotlet', ...
-                  'SE_Stresslet'};
+                  'SE_Stresslet', ...
+                  'SE_Stokes_direct'
+                 };
 
 % Run all unit tests that we have
 results = cell(size(module_folders));
