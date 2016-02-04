@@ -11,7 +11,7 @@ function u  = SE_Stokes(eval_idx,x,f,xi,opt)
 % :param opt.box: Box size (L1, L2, L3)
 % :returns: **phi** -- Fourier space potential
 
-verb = true;
+verb = false;
 
 % parameters and constants
 opt = parse_params(opt);

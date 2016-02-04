@@ -1,7 +1,7 @@
 function u  = SE_Stokes_par(eval_idx,x,f,xi,opt)
 % parfor:ed version
 
-verb = true;
+verb = false;
 
 % parameters and constants
 opt = parse_params(opt);
