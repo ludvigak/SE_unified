@@ -53,6 +53,14 @@ matlab_add_mex(
 )
 target_compile_definitions(SE3P_Stokes_direct_rsrc_mex PUBLIC THREE_PERIODIC EWALD_RSRC)
 
+# 3P rsrc ext
+matlab_add_mex(
+  NAME SE3P_Stokes_direct_rsrc_ext_mex
+  SRC SE3P_Stokes_direct.c SE_Stokes_direct_mex.c
+)
+target_compile_definitions(SE3P_Stokes_direct_rsrc_ext_mex PUBLIC THREE_PERIODIC EWALD_RSRC EXTERNAL)
+
+
 # 3P fd
 matlab_add_mex(
   NAME SE3P_Stokes_direct_fd_mex
