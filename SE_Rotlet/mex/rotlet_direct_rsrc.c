@@ -33,16 +33,22 @@ void rotlet_direct_rsrc(double* restrict u,
 	xm[1] = xt[m+Nt  ];
 	xm[2] = xt[m+2*Nt];
 
-	for(i1 = -nbox; i1<=nbox; i1++) // image boxes
-	    for(i2 = -nbox; i2<=nbox; i2++)
-		for(i3 = -nbox; i3<=nbox; i3++)
-		{
-		    for(n=0; n<N; n++) // for all particles
+	for(n=0; n<N; n++) // for all particles
+	{
+	    double xmn[3] = {xm[0]-x[n    ],
+			     xm[1]-x[n+  N],
+			     xm[2]-x[n+2*N]};
+	    double f0 = f[n];
+	    double f1 = f[n+N];
+	    double f2 = f[n+2*N];
+	    for(i1 = -nbox; i1<=nbox; i1++) // image boxes
+		for(i2 = -nbox; i2<=nbox; i2++)
+		    for(i3 = -nbox; i3<=nbox; i3++)
 		    {
 			// Assuming that r != 0 in home box
-			r[0] = xm[0]-x[n    ]+opt.box[0]*i1;
-			r[1] = xm[1]-x[n+  N]+opt.box[1]*i2;
-			r[2] = xm[2]-x[n+2*N]+opt.box[2]*i3;
+			r[0] = xmn[0]+opt.box[0]*i1;
+			r[1] = xmn[1]+opt.box[1]*i2;
+			r[2] = xmn[2]+opt.box[2]*i3;
 			double r2 = r[0]*r[0] + r[1]*r[1] + r[2]*r[2];
 			if(r2 > rc2)
 			    continue; // skip outside rc
@@ -51,15 +57,11 @@ void rotlet_direct_rsrc(double* restrict u,
 			double A = (erfc(rxi)/rnorm + 
 				    2*xi*exp(-rxi*rxi)/sqrt(PI) 
 				    ) / r2;            
-
-			double f0 = f[n];
-			double f1 = f[n+N];
-			double f2 = f[n+2*N];
 			um[0] += A*(f1*r[2] - f2*r[1]);
 			um[1] += A*(f2*r[0] - f0*r[2]);
 			um[2] += A*(f0*r[1] - f1*r[0]);
 		    }
-		}
+	}
 	u[m     ] = um[0];
 	u[m+Nt  ] = um[1];
 	u[m+2*Nt] = um[2];
