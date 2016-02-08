@@ -1,4 +1,4 @@
-function u = rotlet_direct_rsrc(xe, x, t, opt);
+function u = rotlet_direct_rsrc(xe, x, t, opt)
 % Rotlet real space direct summation with cutoff radius, MEX implementation.
 %
 % :param xe: target locations
