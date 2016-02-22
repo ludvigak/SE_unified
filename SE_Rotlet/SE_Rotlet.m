@@ -1,15 +1,29 @@
-function u = SE_Rotlet(xe,x,f,xi,opt)
+function varargout = SE_Rotlet(xe,x,f,xi,opt)
 % u = SE_Rotlet(x_targets, x_sources, f_sources, xi, opt)
+%   Returns the rotlet potential
+%
+% [U1, U2, U3] = SE_Rotlet(x_targets, x_sources, f_sources, xi, opt)
+%   Returns the grid with Fourier coefficients, 
+%   :math:`U_i\in\mathbb{C}^{M_1\times M_2 \times M_3}`
+%
+% To compute u from U1,U2,U3:
+%
+% .. code:: matlab
+%
+%  F{1} = real( ifftn( ifftshift( U1 )));
+%  F{2} = real( ifftn( ifftshift( U2 )));
+%  F{3} = real( ifftn( ifftshift( U3 )));
+%  u = SE_fg_int(xe, F, opt);
+% 
+% opt must be identical to that passed to SE_Rotlet
 %
 % TODO: Add possibility of passing precomputed structures
 
 verb = false;
 
 % parameters and constants
+opt.xi = xi;
 opt = parse_params(opt);
-[w m M P] = unpack_params(opt);
-eta = (2*w*xi/m)^2;
-opt.c = 2*xi^2/eta;
 N = size(x, 1);
 
 % Use vectorized code
@@ -31,25 +45,28 @@ H1 = grid_fcn(f(:,1));
 H2 = grid_fcn(f(:,2));
 H3 = grid_fcn(f(:,3));
 
-cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
-cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
-
 % transform and shift
 H1 = fftshift( fftn(H1) );
 H2 = fftshift( fftn(H2) );
 H3 = fftshift( fftn(H3) );
 
 % Scale
-[k1 k2 k3] = k_vectors(M,opt.box); 
+[k1 k2 k3] = k_vectors(opt.M, opt.box); 
 [K1 K2 K3] = ndgrid(k1,k2,k3);
 Ksq = K1.^2 + K2.^2 + K3.^2;
-B = exp(-(1-eta)*Ksq/(4*xi^2))./Ksq; % keep it real
+B = exp(-(1-opt.eta)*Ksq/(4*xi^2))./Ksq; % keep it real
 B(k1==0, k2==0, k3==0) = 0;
 % G = B*(HxK)
 G1 = -1i*4*pi*B.*(H2.*K3 - H3.*K2);
 G2 = -1i*4*pi*B.*(H3.*K1 - H1.*K3);
 G3 = -1i*4*pi*B.*(H1.*K2 - H2.*K1);
 
+if nargout > 1
+    varargout{1} = G1;
+    varargout{2} = G2;
+    varargout{3} = G3;
+    return
+end
 
 % inverse shift and inverse transform
 F1 = real( ifftn( ifftshift( G1 )));
@@ -61,44 +78,7 @@ u(:,1) = int_fcn(F1);
 u(:,2) = int_fcn(F2);
 u(:,3) = int_fcn(F3);
 
-
-% ------------------------------------------------------------------------------
-function p = parse_params(opt)
-
-% check that we have all mandatory options
-assert(isfield(opt,'M'))
-assert(isfield(opt,'P'))
-assert(isfield(opt,'box'))
-
-% verify all assumptions on parameters
-
-% step size
-L = opt.box(1);
-h = L/opt.M(1);
-assert(abs(opt.box(2)/opt.M(2) - opt.box(1)/opt.M(1)) < eps)
-assert(abs(opt.box(3)/opt.M(3) - opt.box(2)/opt.M(2)) < eps)
-
-% Gaussian
-P = opt.P;
-if( isfield(opt,'m')), m = opt.m; else m = 0.9*sqrt(pi*P); end;
-w = h*(P-1)/2;
-
-% collect
-p.M=opt.M;
-p.P = P;
-p.w = w;
-p.m = m;
-p.box = opt.box;
-p.L = L;
-p.h = h;
-
-
-% ------------------------------------------------------------------------------
-function [w m M P] = unpack_params(opt)
-w = opt.w;
-m = opt.m;
-M = opt.M;
-P = opt.P;
+varargout{1} = u;
 
 % ------------------------------------------------------------------------------
 function [k] = k_vec(M,L)

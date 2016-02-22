@@ -6,9 +6,6 @@ verb = false;
 
 % get parameters
 opt=parse_params(opt);
-eta=(2*opt.w*xi/opt.m)^2;
-opt.c = 2*xi^2/eta;
-opt.box=opt.box;
 
 [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
 
