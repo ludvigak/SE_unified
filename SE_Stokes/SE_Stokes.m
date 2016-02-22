@@ -39,7 +39,7 @@ G2 = fftshift( fftn(H2) );
 G3 = fftshift( fftn(H3) );
 
 % multiply with modified greens function
-if isreal(G1)
+if isreal(G1) || isreal(G2) || isreal(G3)
     G1 = complex(G1);
     G2 = complex(G2);
     G3 = complex(G3);
