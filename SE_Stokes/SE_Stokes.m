@@ -1,5 +1,11 @@
-function u  = SE_Stokes(eval_idx,x,f,xi,opt)
+function varargout  = SE_Stokes(eval_idx,x,f,xi,opt)
 % Compute Fourier space part of Ewald sum for periodic stokeslet potential.
+%
+% u = SE_Stokes(eval_idx,x,f,xi,opt)
+%   Return potential
+%
+% [U1, U2, U3] = SE_Stokes(eval_idx,x,f,xi,opt)
+%   Return Fourier coefficients
 %
 % :param eval_idx: index of source locations where potential should be evaluated
 % :param x: source locations (Nx3)
@@ -10,6 +16,7 @@ function u  = SE_Stokes(eval_idx,x,f,xi,opt)
 % :param opt.P: Gaussian width
 % :param opt.box: Box size (L1, L2, L3)
 % :returns: **phi** -- Fourier space potential
+% :returns: **U1,U2,U3** -- Fourier space potential
 
 verb = false;
 
@@ -35,6 +42,13 @@ G3 = fftshift( fftn(H3) );
 % multiply with modified greens function
 [G1 G2 G3] = stokeslet_fast_k_scaling(G1,G2,G3,xi,opt.box,eta);
 
+if nargout > 1
+    varargout{1} = G1;
+    varargout{2} = G2;
+    varargout{3} = G3;
+    return
+end
+
 % inverse shift and inverse transform
 F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
@@ -44,6 +58,8 @@ u = zeros(length(eval_idx),3);
 u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
 u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
 u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
+
+varargout{1} = u;
 
 % ------------------------------------------------------------------------------
 function p = parse_params(opt)
