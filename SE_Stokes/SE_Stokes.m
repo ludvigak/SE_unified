@@ -25,7 +25,6 @@ opt = parse_params(opt);
 [w m M P] = unpack_params(opt);
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
-
 % to grid function
 H1 = SE_fg_grid_mex(x,f(:,1), opt);
 H2 = SE_fg_grid_mex(x,f(:,2), opt);
@@ -40,6 +39,11 @@ G2 = fftshift( fftn(H2) );
 G3 = fftshift( fftn(H3) );
 
 % multiply with modified greens function
+if isreal(G1)
+    G1 = complex(G1);
+    G2 = complex(G2);
+    G3 = complex(G3);
+end
 [G1 G2 G3] = stokeslet_fast_k_scaling(G1,G2,G3,xi,opt.box,eta);
 
 if nargout > 1
