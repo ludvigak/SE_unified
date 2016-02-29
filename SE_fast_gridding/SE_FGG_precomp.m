@@ -9,10 +9,11 @@ opt=parse_params(opt);
 
 [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
 
-[~, s] = sort(idx);
+[idx, s] = sort(idx);
 x = x(s,:);
-
-[zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
+zx = zx(:,s);
+zy = zy(:,s);
+zz = zz(:,s);
 zs = SE_fgg_base_gaussian_mex(opt);
 
 SE_static.zs=zs;

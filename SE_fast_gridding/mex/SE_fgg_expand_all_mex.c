@@ -26,9 +26,9 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     SE_FGG_MEX_params(&params, OPT, N);
 
     // allocate output array
-    ZX = mxCreateDoubleMatrix(N,params.P,mxREAL);
-    ZY = mxCreateDoubleMatrix(N,params.P,mxREAL);
-    ZZ = mxCreateDoubleMatrix(N,params.P,mxREAL);
+    ZX = mxCreateDoubleMatrix(params.P,N,mxREAL);
+    ZY = mxCreateDoubleMatrix(params.P,N,mxREAL);
+    ZZ = mxCreateDoubleMatrix(params.P,N,mxREAL);
 
     // output
     const size_t dims[2] = {N,1};
@@ -47,8 +47,12 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     if(VERBOSE)
 	mexPrintf("[SE%s FG(E)] N=%d, P=%d\n",PER_STR,N,params.P);
 
-    // now do the work (COMPLIED FOR 2P OR 3P)
-    SE_FGG_expand_all(&work, &st, &params);
-
+#ifdef _OPENMP
+#pragma omp parallel default(shared)
+#endif
+    {
+	// now do the work (COMPLIED FOR 2P OR 3P)
+	SE_FGG_expand_all(&work, &st, &params);
+    }
     // done
 }
