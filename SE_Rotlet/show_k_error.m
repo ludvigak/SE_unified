@@ -2,7 +2,7 @@ clear
 
 L = 1;
 xi = 20;
-N = 500;
+N = 1000;
 box = L*[1 1 1];
 [x t xe] = generate_state(N, box);
 M_max = round(14*xi/pi);

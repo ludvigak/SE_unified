@@ -11,12 +11,18 @@ rc_list = xirc/xi;
 [x t] = generate_state(N, box);
 xe = x;
 
-ur_ref = rotlet_real_rc(xe, x, t, xi, box, L);
+opt.xi = xi;
+opt.box = box;
+opt.rc = min(box);
+
+p = randperm(N); % Permute to actually get any round-off errors
+ur_ref = rotlet_direct_rsrc(xe, x(p,:), t(p,:), opt);
 ref_max = norm(ur_ref(:), inf);
 
-parfor i=1:numel(rc_list);
-    rc = rc_list(i);
-    ur = rotlet_real_rc(xe, x, t, xi, box, rc);
+
+for i=1:numel(rc_list);
+    opt.rc = rc_list(i);
+    ur = rotlet_direct_rsrc(xe, x, t, opt);
     err = abs(ur - ur_ref);
     err_rms(i) = sqrt(1/N*sum(err(:).^2));
 end

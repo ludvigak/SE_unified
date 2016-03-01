@@ -12,9 +12,9 @@ function u = rotlet_direct_rsrc(xe, x, t, opt)
 
 assert(opt.rc <= min(opt.box), 'Required: rc <= min(box)')
 assert(opt.xi > 0, 'Required: xi > 0')
-assert(size(xe, 2) == 3);
-assert(size(x, 2) == 3);
-assert(all(size(x) == size(t)));
+assert(size(xe, 2) == 3, 'xe must be Mx3');
+assert(size(x, 2) == 3, 'x must be Nx3');
+assert(all(size(x) == size(t)), 'x and t must have same dimensions');
 
 u = rotlet_direct_rsrc_mex(xe, x, t, opt);
 
