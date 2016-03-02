@@ -45,12 +45,11 @@ void rotlet_direct_rsrc(double* restrict u,
 		for(i2 = -nbox; i2<=nbox; i2++)
 		    for(i3 = -nbox; i3<=nbox; i3++)
 		    {
-			// Assuming that r != 0 in home box
 			r[0] = xmn[0]+opt.box[0]*i1;
 			r[1] = xmn[1]+opt.box[1]*i2;
 			r[2] = xmn[2]+opt.box[2]*i3;
 			double r2 = r[0]*r[0] + r[1]*r[1] + r[2]*r[2];
-			if(r2 > rc2)
+			if(r2 > rc2 || r2 == 0)
 			    continue; // skip outside rc
 			double rnorm = sqrt(r2);
 			double rxi = rnorm*xi;

@@ -823,6 +823,9 @@ void SE_FGG_expand_all(SE_FGG_work* work,
     const int N = params->N;
     const int P = params->P;
 
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
     for(int n=0; n<N; n++)
     {
 	// compute index and expansion vectors

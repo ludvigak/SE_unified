@@ -29,8 +29,8 @@ N = size(x, 1);
 % Use vectorized code
 % Gridder
 S = SE_FGG_precomp(x,xi,opt);
-grid_fcn = @(f) SE_fg_grid_split_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
-                                     S.idx);
+grid_fcn = @(f) SE_fg_grid_split_thrd_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
+                                          S.idx);
 % Integrator
 SI = SE_FGG_precomp(xe,xi,opt);
 iperm = @(u) u(SI.iperm,:);
