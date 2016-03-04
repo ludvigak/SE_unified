@@ -58,3 +58,14 @@ matlab_add_mex(
 )
 target_link_libraries(SE_fg_grid_split_thrd_mex fgg_thrd)
 
+matlab_add_mex(
+  NAME SE_fg_extend_fcn_mex
+  SRC mex/SE_fg_extend_fcn_mex.c
+)
+target_link_libraries(SE_fg_extend_fcn_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_int_extended_split_mex
+  SRC mex/SE_fg_int_extended_split_mex.c
+)
+target_link_libraries(SE_fg_int_extended_split_mex fgg)
