@@ -26,9 +26,12 @@ opt = parse_params(opt);
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
 % to grid function
-H1 = SE_fg_grid_mex(x,f(:,1), opt);
-H2 = SE_fg_grid_mex(x,f(:,2), opt);
-H3 = SE_fg_grid_mex(x,f(:,3), opt);
+S = SE_FGG_precomp(x,xi,opt);
+grid_fcn = @(f) SE_fg_grid_split_thrd_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
+                                          S.idx);
+H1 = grid_fcn(f(:,1));
+H2 = grid_fcn(f(:,2));
+H3 = grid_fcn(f(:,3));
 
 cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
@@ -58,10 +61,18 @@ F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
 F3 = real( ifftn( ifftshift( G3 )));
 
+
+SI = SE_FGG_precomp(x(eval_idx,:),xi,opt);
+iperm = @(u) u(SI.iperm,:);
+int_fcn = @(F) iperm(SE_fg_int_split_mex(0,F,opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
+
 u = zeros(length(eval_idx),3);
-u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
-u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
-u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
+%u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
+%u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
+%u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
+u(:,1) = int_fcn(F1);
+u(:,2) = int_fcn(F2);
+u(:,3) = int_fcn(F3);
 
 varargout{1} = u;
 
