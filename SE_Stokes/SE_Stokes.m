@@ -61,15 +61,11 @@ F1 = real( ifftn( ifftshift( G1 )));
 F2 = real( ifftn( ifftshift( G2 )));
 F3 = real( ifftn( ifftshift( G3 )));
 
-
+% Integrate
 SI = SE_FGG_precomp(x(eval_idx,:),xi,opt);
 iperm = @(u) u(SI.iperm,:);
 int_fcn = @(F) iperm(SE_fg_int_split_mex(0,F,opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
-
 u = zeros(length(eval_idx),3);
-%u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
-%u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
-%u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
 u(:,1) = int_fcn(F1);
 u(:,2) = int_fcn(F2);
 u(:,3) = int_fcn(F3);
