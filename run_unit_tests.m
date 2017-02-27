@@ -1,7 +1,10 @@
 clear
 
 module_folders = {'SE_Rotlet', ...
-                  'SE_Stresslet'};
+                  'SE_Stresslet', ...
+                  'SE_Stokes', ...
+                  'SE_Stokes_direct'
+                 };
 
 % Run all unit tests that we have
 results = cell(size(module_folders));
@@ -40,6 +43,6 @@ else
         end
     end    
     disp('===================================')
-    error('There where failed tests.')
+    error('There were failed tests.')
 end
 

@@ -1,7 +1,7 @@
 function u  = SE_Stokes_par(eval_idx,x,f,xi,opt)
 % parfor:ed version
 
-verb = true;
+verb = false;
 
 % parameters and constants
 opt = parse_params(opt);
@@ -22,7 +22,7 @@ cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
 cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
 
 % multiply with modified greens function
-[G{1:3}] = fast_k_scaling(G{1},G{2},G{3},xi,opt.box,eta);
+[G{1:3}] = stokeslet_fast_k_scaling(G{1},G{2},G{3},xi,opt.box,eta);
 
 parfor i=1:3
     u(:,i) = SE_fg_int_mex(x(eval_idx,:), real( ifftn( ifftshift( G{i} ))) ,opt);

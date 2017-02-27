@@ -21,8 +21,17 @@ assert(abs(opt.box(3)/opt.M(3) - opt.box(2)/opt.M(2)) < eps)
 
 % Gaussian
 P = opt.P;
-if( isfield(opt,'m')), m = opt.m; else m = 0.9*sqrt(pi*P); end;
+if( isfield(opt,'m'))
+    m = opt.m; 
+else 
+    m = 0.9*sqrt(pi*P); 
+end;
 w = h*(P-1)/2;
+
+if isfield(opt, 'xi')
+    opt.eta = (2*w*opt.xi/m)^2;
+    opt.c = 2*opt.xi^2/opt.eta;
+end
 
 % External eval points
 if isfield(opt,'eval_x') && numel(opt.eval_x)
@@ -33,12 +42,14 @@ else
     eval_x = [];
 end
 
+
+% Default is to keep params
+p = opt;
+
 % collect
-p.M=opt.M;
 p.P = P;
 p.w = w;
 p.m = m;
-p.box = opt.box;
 p.L = L;
 p.h = h;
 p.eval_external = eval_external;

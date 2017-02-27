@@ -1,24 +1,30 @@
 clear
 
-L = 2;
-xi = 5;
-N = 200;
+L = 1;
+xi = 20;
+N = 1000;
 ref_shells = 1;
 box = L*[1 1 1];
-rc_list = linspace(0,min(box)*0.75, 50);
+rc_max = 7/xi;
+rc_list = linspace(0,rc_max, 50);
 rc_list = rc_list(2:end);
 [x t] = generate_state(N, box);
 idx = 1:N;
+opt.box = box;
+opt.xi = xi;
 
 tic
-ur_ref = rotlet_direct_real(idx, x, t, xi, box, 'layers', ref_shells, 'tol', 1e-14);
+%ur_ref = rotlet_direct_real(idx, x, t, xi, box, 'layers', ref_shells, 'tol', 1e-14);
+opt.rc = min(box);
+p = randperm(N); % Permute to actually get any round-off errors
+ur_ref = rotlet_direct_rsrc(x(idx,:), x(p,:), t(p,:), opt);
 toc
 ref_max = norm(ur_ref(:), inf);
 
 start = tic();
-parfor i=1:numel(rc_list);
-    rc = rc_list(i);
-    ur = rotlet_real_rc(x(idx,:), x, t, xi, box, rc);
+for i=1:numel(rc_list);
+    opt.rc = rc_list(i);
+    ur = rotlet_direct_rsrc(x(idx,:), x, t, opt);
     err = abs(ur - ur_ref);
     err_rms(i) = sqrt(1/N*sum(err(:).^2)) / ref_max;
 end

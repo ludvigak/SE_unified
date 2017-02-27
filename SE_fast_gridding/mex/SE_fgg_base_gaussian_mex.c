@@ -19,7 +19,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     SE_FGG_MEX_params(&params, OPT, 0);
 
     // allocate output array
-    int dims[3]={params.P, params.P, params.P};
+    size_t dims[3]={params.P, params.P, params.P};
     Z = mxCreateNumericArray(3, dims, mxDOUBLE_CLASS, mxREAL);
     SE_FGG_work work = {.H = NULL,  .zs = mxGetPr(Z)};
 

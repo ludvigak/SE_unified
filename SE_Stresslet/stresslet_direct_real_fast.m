@@ -1,22 +1,19 @@
 function [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, varargin)
-% Ewald summation for the stresslet -- Real space part.
-% Fast: saves interactions as matrix for subsequent iterations
-% Sums over layers
+% Ewald summation for the stresslet -- Real space part. Fast in the sense that it saves
+% interactions as matrix for subsequent iterations Sums over layers
 %
-% [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, 
-%                                       [A, sing_sub, ns_quad_mtrx])
+% * [phi A] = stresslet_direct_real_fast( idx, x, f, nvec, xi, L, nbox, rc, [A, sing_sub, ns_quad_mtrx])
 %
-%        Evaluate potential, phi, at points x(idx). 
-%        x    --  positions          N-by-3
-%        f    --  source strengths   N-by-3
-%        nvec --  normal vectors   N-by-3
-%        xi   --  Ewald parameter
-%        L    --  Box size [3]
-%        nbox --  periodic replications 
-%        rc   --  cutoff radius
-%        A    --  Precomputed matrix
-%        sing_sub -- Use singularity subtraction
-%        ns_quad_mtrx -- Correction matrices for nearly singular quadrature
+% :param x:     positions :param   (N-by-3)
+% :param f:      source strengths   (N-by-3)
+% :param nvec:   normal vectors   (N-by-3)
+% :param xi:     Ewald parameter
+% :param L:      Box size (3)
+% :param nbox:   periodic replications 
+% :param rc:     cutoff radius
+% :param A:      Precomputed matrix
+% :param sing_sub:  Use singularity subtraction
+% :param ns_quad_mtrx:  Correction matrices for nearly singular quadrature
 
     VERBOSE = 0;
 

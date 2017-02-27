@@ -1,5 +1,11 @@
-function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
+function varargout = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 % Compute Fourier space part of Ewald sum for periodic stresslet potential.
+%
+% phi = SE_Stresslet(eval_idx,x,f,n,xi,opt)
+%   Return potential
+%
+% [U1, U2, U3] = SE_Stresslet(eval_idx,x,f,n,xi,opt)
+%   Return Fourier coefficients
 %
 % :param eval_idx: index of source locations where potential should be evaluated
 % :param x: source locations (Nx3)
@@ -12,17 +18,17 @@ function [u stats]  = SE_Stresslet(eval_idx,x,f,n,xi,opt,varargin)
 % :param opt.box: Box size (L1, L2, L3)
 % :param varargin=SE_static: Precomputations from SE_Stresslet_pre() to use SIMD FGG code.
 % :returns: **phi** -- Fourier space potential
+% :returns: **U1,U2,U3** -- Fourier space coefficients
+
 
 ttic = tic;
 
 verb = false;
 
 % parameters and constants
+opt.xi = xi;
 opt = parse_params(opt);
 box = opt.box;
-[w m M P] = unpack_params(opt);
-eta = (2*w*xi/m)^2;
-opt.c = 2*xi^2/eta;
 
 x = recenter_points(x, box);
 
@@ -38,7 +44,7 @@ elseif nargin == 7
 end
 
 % Grid
-G=complex(zeros([M 9]));
+G=complex(zeros([opt.M 9]));
 
 % Indices for outer product
 n_idx = [1 2 3 1 2 3 1 2 3];
@@ -48,8 +54,6 @@ f_idx = [1 1 1 2 2 2 3 3 3];
 gftic = tic;
 [gtime ftime shtime] = deal(zeros(9,1));
 
-% Parfor speeds up split gridding code a little bit,
-% but actually slows down regular gridding
 for i=1:9
     % Grid
     i1 = n_idx(i);
@@ -85,8 +89,8 @@ stats.wtime_grid = wgridfft*gtime/sumtime;
 stats.wtime_fft = wgridfft*ftime/sumtime;
 stats.wtime_shuffle = shtoc();
 
-cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',M,P,m,w);
-cprintf(verb, 'eta = %f\t a=%f\n', eta, pi^2/opt.c);
+cprintf(verb, 'M = [%d %d %d] P = %d m=%d w=%f\n',opt.M,opt.P,opt.m,opt.w);
+cprintf(verb, 'eta = %f\t a=%f\n', opt.eta, pi^2/opt.c);
 
 if isreal(G)
     cprintf(verb,'Forcing G complex.\n');
@@ -95,8 +99,8 @@ end
 
 % Do scaling
 tic;
-[H{1:3}] = stresslet_fast_k_scaling(G,xi,box,eta); % Mex
-% [H{1:3}] = stresslet_k_scaling(G,xi,box,eta); % Matlab
+[H{1:3}] = stresslet_fast_k_scaling(G,xi,box,opt.eta); % Mex
+% [H{1:3}] = stresslet_k_scaling(G,xi,box,opt.eta); % Matlab
 stats.wtime_scale = toc();
 
 if opt.eval_external
@@ -108,6 +112,12 @@ elseif static_fgg
 else
     u = zeros(length(eval_idx),3);
 end
+
+if nargout == 3
+    varargout = H;
+    return
+end
+
 
 % Back transform and gather
 iftic = tic;
@@ -142,10 +152,5 @@ end
 
 stats.wtime_total = toc(ttic);
 
-
-% ------------------------------------------------------------------------------
-function [w m M P] = unpack_params(opt)
-w = opt.w;
-m = opt.m;
-M = opt.M;
-P = opt.P;
+varargout{1} = u;
+varargout{2} = stats;

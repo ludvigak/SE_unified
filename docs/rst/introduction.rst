@@ -1,29 +1,54 @@
 Introduction
 ============
 
-The package provides a Matlab implementation of the Spectral Ewald fast Ewald summation
-method (SE) for six different kernels:
+The package provides a Matlab implementation of the :doc:`Spectral Ewald <math>` method
+(SE) for fast Ewald summation related to six different kernels:
 
-- ``SE``:          3-periodic Laplace (electrostatics)
-- ``SE2P``:        2-periodic Laplace (electrostatics)
-- ``SE_Stokes``:    3-periodic Stokeslet (viscous flow)
-- ``SE2P_Stokes``:  2-periodic Stokeslet (viscous flow)	
-- ``SE_Stresslet``: 3-periodic Stresslet (viscous flow)
-- ``SE_Rotlet``:    3-periodic Rotlet    (viscous flow)	
+- :mod:`SE`:          3-periodic Laplace (electrostatics)
+- :mod:`SE2P`:        2-periodic Laplace (electrostatics)
+- :mod:`SE_Stokes`:    3-periodic Stokeslet (viscous flow)
+- :mod:`SE2P_Stokes`:  2-periodic Stokeslet (viscous flow)	
+- :mod:`SE_Stresslet`: 3-periodic Stresslet (viscous flow)
+- :mod:`SE_Rotlet`:    3-periodic Rotlet    (viscous flow)	
 
-Most of the computational kernels are written in optimized C for speed, and could very
-well be interfaced to another language by mimicking the MEX interface provided.
+The aim of this package is to provide fast routines for computing the Fourier space sums
+for the above kernels. Routines for the real space sums are provided for some kernels.
+
+Most of the computational kernels are written in C, and quite some time has been spent
+optimizing them using explicit SIMD instructions and OpenMP shared-memory parallelism. The
+interfacing MEX layer is generally kept thin, so interfacing to another language than
+Matlab should be quite straightforward.
+
+Building
+--------
+
+Most of the C/MEX code is now built with CMake. To build it open a terminal and do
+
+.. code-block:: shell
+
+   cd build
+   cmake ..
+   make
+
+To run the test suite:
+
+.. code-block:: shell
+
+   make test
+
+Some of the C/MEX code is not yet integrated into CMake, and has to be built using Matlab
+build script. The build script is then called ``make.m`` and is located in the base folder
+for that kernel.
 
 Getting started
 ---------------
-Each directory contains an m-file that implements the method, and a
-basic accuracy/convergence script that shows how to use it. From any
-one of these directories, do: 
+
+Each directory contains the m-files related to that specific kernel. From any of these
+directories do
 
 .. code-block:: matlab
 
    init    % sets up paths 
-   make    % builds all necessary mex C code 
 
 then depending on directory you can do
 
@@ -35,16 +60,16 @@ then depending on directory you can do
 or
 
 .. code-block:: matlab
-
+		
+   make             % build C/MEX code for this directory
    test_accuracy    % should display plot of spectral convergence
 
-Example:
+Example (in Matlab):
 
 .. code-block:: matlab
    
    cd SE_Rotlet
    init
-   make
    demo
 
 Most recent development has focused on 3P Stokes flow, so the directories related to that (SE_Stokes, SE_Rotlet, SE_Stresslet) are more developed.
@@ -55,14 +80,15 @@ folder ``mfile_tests`` or ``tests`` in the folder for the respective kernel.
 Testing
 -------
 
-Some directory contain a ``tests`` folder with unit tests. To run the full test suite in that folder simply execute
+Some directories contain a ``tests`` folder with unit tests. To run that test suite simply
+execute
 
 .. code-block:: matlab
 
     init
     run_unit_tests
 
-To run a all full suite with all available tests, go to the root directory and run
+To run the full suite, go to the root directory and run
 
 .. code-block:: matlab
 
@@ -80,27 +106,3 @@ The package also contains:
 * ``SE_Stokes_direct``: C-code for direct Ewald sums for Stokes 2P/P3
 * ``SE_leftovers``: Spectral Ewald, fast real-space and k=0 codes for Laplace and
   Stokes. These are unmaintained, but might prove useful.
-
-The FGG and direct summation C implementations (which are substantial)
-are better than any other versions scattered in the original
-implementations of the four SE methods. Only bare-bones
-implementations of SE methods included in this package. Associated
-methods for e.g. fast real-space summation are not included. These can
-be found in the original implementation directories, and may need to
-be integrated before they work. Original implementations include
-Matlab-implementations of FGG and direct summation, which are not
-part of this package.
-
-Notes on fast Gaussian gridding
--------------------------------
-
-1. Common mex wrappers are included, compiled from application makefiles (above) or from
-   the matlab verification tests found in 'Xp_matlab_impl'
-
-2. Stand-alone C test code found in 'testing', useful for debugging and checking for memory leaks.
-
-3. The FGG C-code contains comments that are meant to be helpful.
-
-4. By default, manually implemented SSE2 implementations are ENABLED, see comments in  SE_fgg.c
-
-5. There are remnants of OpenMP parallelization to be found throughout.  It is easy to add  appropriate work-sharing loop directives, particularly in the from-grid part. The most  mature OpenMP can be found in the original SE2P implementation (not in this package)

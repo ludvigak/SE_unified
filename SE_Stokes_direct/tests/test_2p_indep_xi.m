@@ -1,4 +1,4 @@
-clear all, close all
+clear all
 
 N = 10;
 opt.layers = 30;
@@ -19,4 +19,8 @@ for j=1:length(xi)
     u4 = SE2P_Stokes_direct_self_mex(idx,x,f,opt);
     u(j,:) = u1+u2+u3+u4;
 end
-u
+
+e = diff(u, 1, 1);
+e_max = norm(e(:), inf);
+assert(e_max < 1e-12, '2P Stokes xi independence failed')
+disp('PASSED')

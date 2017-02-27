@@ -50,7 +50,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     const int N = Xdims[0];
 
     // Output matrices
-    int outDims[2];
+    size_t outDims[2];
     outDims[0] = nidx;
     outDims[1] = N;
     size_t malloc_tot = N*nidx*6*sizeof(double);
