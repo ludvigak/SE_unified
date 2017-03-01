@@ -1,35 +1,52 @@
 cmake_minimum_required(VERSION 2.8)
 project(MEX)
 
+set(CMAKE_MODULE_PATH
+  ${CMAKE_MODULE_PATH}
+  ${PROJECT_SOURCE_DIR}/cmake)
+
 if(CMAKE_VERSION VERSION_LESS "3.3") 
   message(WARNING "CMake version less than 3.3\n"
     "using local FindMatlab module extracted from v3.3")
   # Where we keep FindMatlab module
   set(CMAKE_MODULE_PATH
     ${CMAKE_MODULE_PATH}
-    ${PROJECT_SOURCE_DIR}/cmake)
+    ${PROJECT_SOURCE_DIR}/cmake-compat)
 endif()
 
 find_package(Matlab REQUIRED MAIN_PROGRAM)
 if(NOT Matlab_FOUND)
   message(FATAL_ERROR "MATLAB not found.")
+else()
+  message("MATLAB found.")
 endif()
-
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/")
-
-# Assuming gcc for now
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -ffast-math -march=native -fopenmp")
-
 include_directories(
   ${Matlab_INCLUDE_DIRS}
 )
 
+set(PERIODICITY "THREE_PERIODIC")
+message(STATUS "Compiled with ${PERIODICITY} option")
+
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/")
+
+# Assuming gcc for now
+# -ffast-math is for some reason not working with gcc
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fopenmp")
+
 # Add modules with MEX to be built
-add_subdirectory("${PROJECT_SOURCE_DIR}/SE_fast_gridding")
-add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_direct")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes_direct/mex")
-add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes/mex")
-add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_fast_gridding")
+
+if(PERIODICITY STREQUAL "THREE_PERIODIC")
+  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes/mex")  
+  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
+  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
+elseif(PERIODICITY STREQUAL "TWO_PERIODIC")
+  add_subdirectory("${PROJECT_SOURCE_DIR}/SE2P_Stokes/mex")
+else ()
+  message(FATAL_ERROR "Periodicity has to be provided. THREE_PERIODIC/TWO_PERIODIC")
+endif ()
 
 # Enable running Matlab test suite through ctest
 enable_testing()
