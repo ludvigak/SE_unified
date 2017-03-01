@@ -12,7 +12,6 @@ s = 1:3;
 
 % grid
 SE_opt.M = 31;
-SE_opt.zLim = [-.5 1.5]; % fix z dimensions of domain (rather than \pm w)
 
 % charge-neutral system
 [x f] = SE_charged_system(N,SE_opt.box,'vector');
@@ -48,7 +47,6 @@ for i = 1:size(err,1)
     plot(P,err(i,:),sty{i})
 end
 
-publication_fig
 set(gca,'YScale','log')
 set(gca,'YTick',[1e-15 1e-10 1e-5 1e-0])
 xlabel('P')
@@ -56,5 +54,3 @@ ylabel('e_{rms}')
 grid on
 axis([P(1) P(end) 1e-16 1e2])
 legend(leg,'Location','Best')
-fname = sprintf('output/SE_accuracy_xi%d_M%d',xi,SE_opt.M(1));
-write_fig(1,fname);

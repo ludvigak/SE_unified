@@ -1,3 +1,3 @@
 addpath('../util')
-addpath('./bin')
+addpath('../bin')
 addpath('./mfile_tests')

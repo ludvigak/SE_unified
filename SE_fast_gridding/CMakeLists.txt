@@ -7,13 +7,13 @@ add_library(
   fgg
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
-target_compile_definitions(fgg PUBLIC THREE_PERIODIC)
+target_compile_definitions(fgg PUBLIC ${PERIODICITY})
 
 add_library(
   fgg_thrd
   SE_fgg.c SE_fgg_MEX_params.c
 )
-target_compile_definitions(fgg_thrd PUBLIC THREE_PERIODIC FGG_THRD)
+target_compile_definitions(fgg_thrd PUBLIC ${PERIODICITY} FGG_THRD)
 
 ## MEX functions
 matlab_add_mex(

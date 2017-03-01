@@ -22,6 +22,8 @@ typedef struct
     double rc; 
 } ewald_opts;
 
+void unpack_opt(ewald_opts* opt, const mxArray* mx_opt);
+void index_translation(int* idx, const double* idx_d, int N);
 void SE2P_direct_real(double*, const int*, int,
 		      const double*, const double*, int, 
 		      const ewald_opts);

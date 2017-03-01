@@ -1,4 +1,4 @@
-function [u stats]  = SE2P_Stokes(eval_idx,x,f,xi,opt,varargin)
+function [u walltime]  = SE2P_Stokes(eval_idx,x,f,xi,opt)
 % SPECTRAL EWALD 2DP
 % Fast Ewald method for electrostatic potential calculation, k-space part.
 %
@@ -6,92 +6,77 @@ function [u stats]  = SE2P_Stokes(eval_idx,x,f,xi,opt,varargin)
 %
 % Dag Lindbo, dag@kth.se, Jul. 2011
 
-verb = false;
-
+% initialize time array
+walltime = struct('pre',0,'grid',0,'fft',0,'scale',0,'int',0);
+    
 % parameters and constants
 opt = parse_params(opt);
 [w m M Mz P grid_method spf] = unpack_params(opt);
 eta = (2*w*xi/m)^2;
 opt.c = 2*xi^2/eta;
 opt.a = opt.wbox(3,1);
+fsize = size(f);
+N = fsize(1);
+dim_in = fsize(2:end);
 
-if nargin == 5
-    static_fgg=false;
-elseif nargin == 6
-    static_fgg=true;
-    sdat=varargin{1};
+% === Use vectorized code
+% Gridder
+pre_t = tic;
+S = SE2P_Stokes_pre(x,xi,opt);
+walltime.pre = toc(pre_t);
+grid_fcn = @(f) SE_fg_grid_split_thrd_mex(x(S.perm,:),f(S.perm), ...
+                                          opt,S.zs,S.zx,S.zy,S.zz,S.idx);
+
+% Integrator
+SI = S;
+iperm = @(u) u(SI.iperm,:);
+int_fcn = @(F) iperm(SE_fg_int_split_mex(x(SI.iperm,:),F, ...
+                                         opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
+
+% === Uncomment for direct code
+%grid_fcn = @(f) SE_fg_grid_mex(x,f,opt);
+%int_fcn = @(f) SE_fg_int_mex(x,f,opt);
+
+% grid + FFT
+H = cell([dim_in, 1]); 
+for i=1:prod(dim_in)
+    grid_t = tic;
+    % Grid
+    tmp = grid_fcn(f(:,i));
+    walltime.grid = walltime.grid + toc(grid_t);
+    % transform and shift, let FFT do padding
+    fft_t = tic;
+    H{i} = fftshift( fftn(tmp, [M M Mz*spf]) );
+    walltime.fft = walltime.fft + toc(fft_t);
 end
 
-cprintf(verb,'[ 2DP SPEC EWALD ] ')
-cprintf(verb, 'Grid: [%d %d %d(%d)]\tGaussian: {P = %d, w=%.2f, m=%.1f}\n',...
-        M, M, Mz, spf, P, w, m)
-cprintf(verb,'[ 2DP SPEC EWALD ] Gridding method: %s {eta=%.2f, c=%.2f}\n', ...
-        grid_method, eta, opt.c)
-
-% to grid function
-tic
-if(static_fgg)
-
-    x = x(sdat.perm,:);
-    f = f(sdat.perm,:);
-    
-    H1 = SE_fg_grid_split_mex(x,f(:,1),opt,...
-                              sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-    H2 = SE_fg_grid_split_mex(x,f(:,2),opt,...
-                              sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-    H3 = SE_fg_grid_split_mex(x,f(:,3),opt,...
-                              sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-else
-    H1 = SE_fg_grid_mex(x,f(:,1),opt);
-    H2 = SE_fg_grid_mex(x,f(:,2),opt);
-    H3 = SE_fg_grid_mex(x,f(:,3),opt);
-end
-stats.wtime_grid = toc();
-
-% transform and shift
-tic
-G1 = fftshift( fftn(H1, [M M Mz*spf]) );
-G2 = fftshift( fftn(H2, [M M Mz*spf]) );
-G3 = fftshift( fftn(H3, [M M Mz*spf]) );
-stats.wtime_fft = toc();
-
-% multiply with k-space kernel
-tic
-[G1 G2 G3] = mul_k_space_kernel_mex(G1, G2, G3, opt, xi, eta);
-stats.wtime_poisson = toc();
+% scale
+scale_t = tic;
+[G1 G2 G3] = mul_k_space_kernel_mex(H{1}, H{2}, H{3}, opt, xi, eta);
+walltime.scale = toc(scale_t);
+G{1} = G1;
+G{2} = G2;
+G{3} = G3;
+dim_out = numel(G);
 
 % inverse shift and inverse transform
-tic
-F1 = ifftn( ifftshift( G1 )); 
-F2 = ifftn( ifftshift( G2 )); 
-F3 = ifftn( ifftshift( G3 )); 
-
-F1 = F1(:,:,1:Mz);
-F2 = F2(:,:,1:Mz);
-F3 = F3(:,:,1:Mz);
-stats.wtime_fft = stats.wtime_fft + toc();
+for i=1:dim_out
+    fft_t = tic;
+    G{i} = ifftn( ifftshift(G{i}));
+    walltime.fft = walltime.fft + toc(fft_t);
+end
 
 % integrate
-tic
-u = zeros(length(eval_idx),3);
-if(static_fgg)
-    u(:,1) = SE_fg_int_split_mex(x,F1,opt,...
-                                 sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-    u(:,2) = SE_fg_int_split_mex(x,F2,opt,...
-                                 sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-    u(:,3) = SE_fg_int_split_mex(x,F3,opt,...
-                                 sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
-    u = u(sdat.iperm,:);
-else
-    u(:,1) = SE_fg_int_mex(x(eval_idx,:),F1,opt);
-    u(:,2) = SE_fg_int_mex(x(eval_idx,:),F2,opt);
-    u(:,3) = SE_fg_int_mex(x(eval_idx,:),F3,opt);
+u = zeros(N, dim_out);
+for i=1:dim_out
+    int_t = tic;
+    u(:,i) = int_fcn(G{i}(:, :, 1:Mz));
+    walltime.int = walltime.int + toc(int_t);
 end
-stats.wtime_int = toc();
-stats.wtime_total = stats.wtime_grid + stats.wtime_fft + ...
-    stats.wtime_poisson + stats.wtime_int;
-stats.wtime=[stats.wtime_grid stats.wtime_fft ...
-    stats.wtime_poisson stats.wtime_int];
+if nargout==2
+    walltime.total = sum(struct2array(walltime));
+    varargout{1} = walltime;
+end
 
 % ------------------------------------------------------------------------------
 function [G1 G2 G3] = mul_k_space_kernel(g1, g2, g3, opt, xi, eta, op_B)
@@ -143,13 +128,3 @@ else
 end
 ks = 2*pi*k/(L*q);
 assert(abs(k(idxz))<eps)
-
-% ------------------------------------------------------------------------------
-function st = make_stats(opt,wtime)
-st.wall_time_breakdown = wtime;
-st.wall_time_labels = {'grid','FFT','Poisson','IFFT','int'};
-st.grid_size = [opt.M opt.M opt.Mz];
-st.grid_prod = prod(st.grid_size);
-st.fft_size = [opt.M opt.M opt.Mz*opt.sampling_factor];
-st.fft_prod = prod(st.fft_size);
-

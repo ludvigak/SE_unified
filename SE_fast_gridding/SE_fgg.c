@@ -838,6 +838,7 @@ void SE_FGG_expand_all(SE_FGG_work* work,
     }
 }
 
+#ifdef THREE_PERIODIC
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all_SSE_force(SE_FGG_work* work, 
 				 const SE_state* st, 
@@ -862,7 +863,7 @@ void SE_FGG_expand_all_SSE_force(SE_FGG_work* work,
 					  work->zfz+n*P);
     }
 }
-
+#endif
 
 // -----------------------------------------------------------------------------
 // vanilla grid gather
@@ -919,7 +920,7 @@ void SE_FGG_int(double* restrict phi,
     }
 }
 
-
+#ifdef THREE_PERIODIC
 // -----------------------------------------------------------------------------
 // vanilla grid gather to calculate forces
 void SE_FGG_int_force(double* restrict force,  
@@ -999,6 +1000,7 @@ void SE_FGG_int_force(double* restrict force,
 #endif
     }
 }
+#endif
 
 // -----------------------------------------------------------------------------
 void SE_FGG_int_split_SSE_dispatch(double* restrict phi,  
