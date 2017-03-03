@@ -24,7 +24,15 @@ include_directories(
   ${Matlab_INCLUDE_DIRS}
 )
 
-set(PERIODICITY "THREE_PERIODIC")
+find_package(GSL REQUIRED)
+if(NOT GSL_FOUND)
+  message(FATAL_ERROR "GSL not found.")
+else()
+  message("GSL found.")
+endif()
+
+
+set(PERIODICITY "ONE_PERIODIC")
 message(STATUS "Compiled with ${PERIODICITY} option")
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/")
@@ -44,6 +52,8 @@ if(PERIODICITY STREQUAL "THREE_PERIODIC")
   add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
 elseif(PERIODICITY STREQUAL "TWO_PERIODIC")
   add_subdirectory("${PROJECT_SOURCE_DIR}/SE2P_Stokes/mex")
+elseif(PERIODICITY STREQUAL "ONE_PERIODIC")
+  add_subdirectory("${PROJECT_SOURCE_DIR}/SE1P/mex")
 else ()
   message(FATAL_ERROR "Periodicity has to be provided. THREE_PERIODIC/TWO_PERIODIC")
 endif ()

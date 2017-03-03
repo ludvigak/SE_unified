@@ -82,6 +82,7 @@ void SE_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2,
     params->d = pow(c/PI,1.5);
     params->h = h;
     params->a = -1;
+    params->b = -1;
 
     params->dims[0] = M0;
     params->dims[1] = M1;
@@ -103,6 +104,29 @@ void SE2P_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2,
     params->d = pow(c/PI,1.5);
     params->h = h;
     params->a = a;
+    params->b = -1;
+
+    params->dims[0] = M0;
+    params->dims[1] = M1;
+    params->dims[2] = M2;
+
+    params->npdims[0] = M0+P;
+    params->npdims[1] = M1+P;
+    params->npdims[2] = M2+P;
+}
+
+// -----------------------------------------------------------------------------
+void SE1P_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2, 
+			  int P, double c, double h, double a, double b)
+{
+    params->N = N;
+    params->P = P;
+    params->P_half=half(P);
+    params->c = c;
+    params->d = pow(c/PI,1.5);
+    params->h = h;
+    params->a = a;
+    params->b = b;
 
     params->dims[0] = M0;
     params->dims[1] = M1;
@@ -120,7 +144,7 @@ void SE_FGG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params,
     const int P=params->P;
     int numel = SE_prod3(params->npdims);
     work->H = SE_FGG_MALLOC(numel*sizeof(double));
-  
+
     SE_fp_set_zero(work->H, numel);
 
     if(allocate_zs)
@@ -134,56 +158,26 @@ void SE_FGG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params,
     {
 	numel = (params->N)*(params->P);
 	work->zx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-	work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));;
-	work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));;
+	work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+	work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
 	work->idx= (int*) SE_FGG_MALLOC(params->N*sizeof(int));
+#ifdef FORCE
+        work->zfx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+        work->zfy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+        work->zfz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+#endif
     }
     else
     {
 	work->zx=NULL;
 	work->zy=NULL;
 	work->zz=NULL;
-	work->idx=NULL;
-    }
-    work->free_fgg_expa=allocate_fgg_expa;
-}
-
-// -----------------------------------------------------------------------------
-void SE_FGG_allocate_workspace_SSE_force(SE_FGG_work* work, const SE_FGG_params* params,
-                                         int allocate_zs, int allocate_fgg_expa)
-{
-    const int P=params->P;
-    int numel = SE_prod3(params->npdims);
-    work->H = SE_FGG_MALLOC(numel*sizeof(double));
-    SE_fp_set_zero(work->H, numel);
-
-    if(allocate_zs)
-        work->zs = SE_FGG_MALLOC(P*P*P*sizeof(double));
-    else
-        work->zs = NULL;
-
-    work->free_zs=allocate_zs;
-
-    if(allocate_fgg_expa)
-    {
-        numel = (params->N)*(params->P);
-        work->zx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->idx= (int*) SE_FGG_MALLOC(params->N*sizeof(int));
-    }
-    else
-    {
-        work->zx =NULL;
-        work->zy =NULL;
-        work->zz =NULL;
+#ifdef FORCE
         work->zfx=NULL;
         work->zfy=NULL;
         work->zfz=NULL;
-        work->idx=NULL;
+#endif
+	work->idx=NULL;
     }
     work->free_fgg_expa=allocate_fgg_expa;
 }
@@ -220,26 +214,11 @@ void SE_FGG_free_workspace(SE_FGG_work* work)
 	SE_FGG_FREE(work->zx);
 	SE_FGG_FREE(work->zy);
 	SE_FGG_FREE(work->zz);
-	SE_FGG_FREE(work->idx);
-    }
-}
-
-// -----------------------------------------------------------------------------
-void SE_FGG_free_workspace_SSE_force(SE_FGG_work* work)
-{
-    SE_FGG_FREE(work->H);
-
-    if(work->free_zs)
-	SE_FGG_FREE(work->zs);
-
-    if(work->free_fgg_expa)
-    {
-	SE_FGG_FREE(work->zx);
-	SE_FGG_FREE(work->zy);
-	SE_FGG_FREE(work->zz);
-	SE_FGG_FREE(work->zfx);
-	SE_FGG_FREE(work->zfy);
-	SE_FGG_FREE(work->zfz);
+#ifdef FORCE
+        SE_FGG_FREE(work->zfx);
+        SE_FGG_FREE(work->zfy);
+        SE_FGG_FREE(work->zfz);
+#endif
 	SE_FGG_FREE(work->idx);
     }
 }
@@ -364,6 +343,36 @@ void SE2P_FGG_wrap_fcn(double* restrict H_per,
 }
 
 // -----------------------------------------------------------------------------
+// Wrap H to produce 1-periodicity
+// OUTPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
+void SE1P_FGG_wrap_fcn(double* restrict H_per, 
+		       const SE_FGG_work* work, 
+		       const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+    // can not openMP here, race to += on H_per beacuse indices wrap around
+    for(int i=0; i<params->npdims[0]; i++)
+    {
+	for(int j=0; j<params->npdims[1]; j++)
+	{
+	    for(int k=0; k<params->npdims[2]; k++)
+	    {
+		widx= vmod(k-p_half,params->dims[2]);
+		idx = __IDX3_CMAJ(i, j, widx, 
+				  params->dims[0], params->dims[1]);
+		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
+						   params->npdims[1],
+						   params->npdims[2]) ];
+	    }
+	}
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 // Extend periodic function larger box
 // INPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
 void SE_FGG_extend_fcn(SE_FGG_work* work, const double* H_per, 
@@ -424,6 +433,34 @@ void SE2P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per,
     }
 }
 
+// -----------------------------------------------------------------------------
+// Extend 1-periodic function larger box
+// INPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
+void SE1P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per, 
+			 const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
+    for(int i=0; i<params->npdims[0]; i++)
+    {
+	for(int j=0; j<params->npdims[1]; j++)
+	{
+	    for(int k=0; k<params->npdims[2]; k++)
+	    {
+		widx = vmod(k-p_half,params->dims[2]);
+		idx = __IDX3_CMAJ(i, j, widx, 
+				  params->dims[0], params->dims[1]);
+		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
+		    = H_per[idx];
+	    }
+	}
+    }
+}
 
 // =============================================================================
 // Core SE FGG routines ========================================================
@@ -579,24 +616,7 @@ int fgg_expansion_3p_force(const double x[3], const double q,
     int idx_from[3],p_from;
 
     // compute index range and centering
-    if(is_odd(p))
-    {
-	for(int j=0; j<3; j++)
-	{
-	    idx = (int) round(x[j]/h);
-	    idx_from[j] = idx - p_half;
-	    t0[j] = x[j]-h*idx;
-	}
-    }
-    else
-    {
-	for(int j=0; j<3; j++)
-	{
-	    idx = (int) floor(x[j]/h);
-	    idx_from[j] = idx - (p_half-1);
-	    t0[j] = x[j]-h*idx;
-	}
-    }
+    fgg_offset_3p(x, params, t0, idx_from);
 
     // compute third factor 
     double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
@@ -815,6 +835,263 @@ int fgg_index_2p(const double x[3],
 
 #endif
 // -----------------------------------------------------------------------------
+#ifdef ONE_PERIODIC
+static 
+int fgg_expansion_1p(const double x[3], const double q,
+		     const SE_FGG_params* params,
+		     double z2_0[P_MAX], 
+		     double z2_1[P_MAX], 
+		     double z2_2[P_MAX])
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double c=params->c;
+    const double a=params->a;
+    const double b=params->b;
+
+    double t0[3];
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - p_half;
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) round((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - p_half;
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) round(x[2]/h);
+	idx_from[2] = idx - p_half;
+	t0[2] = x[2]-h*idx;
+    }
+    else
+    {
+	idx = (int) floor((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - (p_half-1);
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) floor((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - (p_half-1);
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) floor(x[2]/h);
+	idx_from[2] = idx - (p_half-1);
+	t0[2] = x[2]-h*idx;
+    }
+
+    // compute third factor 
+    double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
+
+    // compute second factor by induction
+    double z_base0 = exp(2*c*h*t0[0]);
+    double z_base1 = exp(2*c*h*t0[1]);
+    double z_base2 = exp(2*c*h*t0[2]);
+
+    double z0, z1, z2;
+    if(is_odd(p))
+    {
+	z0 = pow(z_base0,-p_half);
+	z1 = pow(z_base1,-p_half);
+	z2 = pow(z_base2,-p_half);
+    }	
+    else
+    {
+    	z0 = pow(z_base0,-p_half+1);
+    	z1 = pow(z_base1,-p_half+1);
+    	z2 = pow(z_base2,-p_half+1);
+    }
+
+    z2_0[0] = z0;
+    z2_1[0] = z1;
+    z2_2[0] = z2;
+    for(int i=1; i<p; i++)
+    {
+	z0 *=z_base0;
+	z1 *=z_base1;
+	z2 *=z_base2;
+
+	z2_0[i] = z0;
+	z2_1[i] = z1;
+	z2_2[i] = z2;
+    }
+
+    // save some flops by multiplying one vector with z3 factor
+    for(int i=0; i<p; i++)
+    {
+	z2_0[i] *= z3;
+    }
+
+    return __IDX3_RMAJ(idx_from[0], 
+		       idx_from[1], 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+
+#ifdef FORCE
+// -----------------------------------------------------------------------------
+static 
+int fgg_expansion_1p_force(const double x[3], const double q,
+			   const SE_FGG_params* params,
+			   double z2_0[P_MAX], 
+			   double z2_1[P_MAX], 
+			   double z2_2[P_MAX],
+                           double zf_0[P_MAX],
+                           double zf_1[P_MAX],
+                           double zf_2[P_MAX])
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double c=params->c;
+    const double a=params->a;
+    const double b=params->b;
+
+    double t0[3];
+    int idx;
+    int idx_from[3], p_from;
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - p_half;
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) round((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - p_half;
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) round(x[2]/h);
+	idx_from[2] = idx - p_half;
+	t0[2] = x[2]-h*idx;
+
+	p_from = -p_half;
+    }
+    else
+    {
+	idx = (int) floor((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - (p_half-1);
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) floor((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - (p_half-1);
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) floor(x[2]/h);
+	idx_from[2] = idx - (p_half-1);
+	t0[2] = x[2]-h*idx;
+
+	p_from = -p_half + 1;
+    }
+
+    // compute third factor 
+    double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
+
+    // compute second factor by induction
+    double z_base0 = exp(2*c*h*t0[0]);
+    double z_base1 = exp(2*c*h*t0[1]);
+    double z_base2 = exp(2*c*h*t0[2]);
+
+    double z0, z1, z2;
+    if(is_odd(p))
+    {
+	z0 = pow(z_base0,-p_half);
+	z1 = pow(z_base1,-p_half);
+	z2 = pow(z_base2,-p_half);
+    }	
+    else
+    {
+    	z0 = pow(z_base0,-p_half+1);
+    	z1 = pow(z_base1,-p_half+1);
+    	z2 = pow(z_base2,-p_half+1);
+    }
+
+    z2_0[0] = z0;
+    z2_1[0] = z1;
+    z2_2[0] = z2;
+
+    // extra terms multiplied to calculate forces
+    zf_0[0] = -c*(t0[0]-p_from*h);
+    zf_1[0] = -c*(t0[1]-p_from*h);
+    zf_2[0] = -c*(t0[2]-p_from*h);
+
+    for(int i=1; i<p; i++)
+    {
+	z0 *=z_base0;
+	z1 *=z_base1;
+	z2 *=z_base2;
+
+	z2_0[i] = z0;
+	z2_1[i] = z1;
+	z2_2[i] = z2;
+
+        zf_0[i] = -c*(t0[0]-(p_from+i)*h);
+        zf_1[i] = -c*(t0[1]-(p_from+i)*h);
+        zf_2[i] = -c*(t0[2]-(p_from+i)*h);
+    }
+
+    // save some flops by multiplying one vector with z3 factor
+    for(int i=0; i<p; i++)
+    {
+	z2_0[i] *= z3;
+    }
+
+    return __IDX3_RMAJ(idx_from[0], 
+		       idx_from[1], 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+#endif
+// -----------------------------------------------------------------------------
+static inline
+int fgg_index_1p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double a=params->a;
+    const double b=params->b;
+
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - p_half;
+
+	idx = (int) round((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - p_half;
+
+	idx = (int) round(x[2]/h);
+	idx_from[2] = idx - p_half;
+    }
+    else
+    {
+	idx = (int) floor((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - (p_half-1);
+
+	idx = (int) floor((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - (p_half-1);
+
+	idx = (int) floor(x[2]/h);
+	idx_from[2] = idx - (p_half-1);
+    }
+
+    return __IDX3_RMAJ(idx_from[0], 
+		       idx_from[1], 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+#endif
+// -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
 		       const SE_state* st, 
 		       const SE_FGG_params* params)
@@ -840,7 +1117,7 @@ void SE_FGG_expand_all(SE_FGG_work* work,
 
 #ifdef THREE_PERIODIC
 // -----------------------------------------------------------------------------
-void SE_FGG_expand_all_SSE_force(SE_FGG_work* work, 
+void SE_FGG_expand_all_force(SE_FGG_work* work, 
 				 const SE_state* st, 
 				 const SE_FGG_params* params)
 {

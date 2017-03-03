@@ -27,6 +27,13 @@
 #define PER_STR "2P"
 #endif
 
+#ifdef ONE_PERIODIC
+#define __FGG_EXPA fgg_expansion_1p
+#define __FGG_EXPA_FORCE fgg_expansion_1p_force
+#define __FGG_INDEX fgg_index_1p
+#define PER_STR "1P"
+#endif
+
 // Maximal amount of Gaussian support (defined to help the compiler)
 #define P_MAX 32
 
@@ -132,7 +139,8 @@ typedef struct
     double c;
     double d;
     double h;
-    double a;
+    double a;   // z-dir offset in 2P and x-dir offset in 1P
+    double b;   // y-dir offset in 1P
 
 } SE_FGG_params;
 
@@ -197,7 +205,7 @@ void SE_FGG_grid_split_AVX_force(SE_FGG_work*, const SE_state*, const SE_FGG_par
 
 // Compute all FGG expansion vectors
 void SE_FGG_expand_all(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
-void SE_FGG_expand_all_SSE_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+void SE_FGG_expand_all_force(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 
 // Grid to particles Potential
 void SE_FGG_int(double*, const SE_FGG_work*, const SE_state*, const SE_FGG_params*);
@@ -239,10 +247,12 @@ void SE_FGG_base_gaussian(SE_FGG_work*, const SE_FGG_params*);
 // Wrap function to produce periodicity
 void SE_FGG_wrap_fcn(double*, const SE_FGG_work*, const SE_FGG_params*);
 void SE2P_FGG_wrap_fcn(double*, const SE_FGG_work*, const SE_FGG_params*);
+void SE1P_FGG_wrap_fcn(double*, const SE_FGG_work*, const SE_FGG_params*);
 
 // Extend periodic function
 void SE_FGG_extend_fcn(SE_FGG_work*, const double*, const SE_FGG_params*);
 void SE2P_FGG_extend_fcn(SE_FGG_work*, const double*, const SE_FGG_params*);
+void SE1P_FGG_extend_fcn(SE_FGG_work*, const double*, const SE_FGG_params*);
 
 // Randomize positions and charges (malloc)
 void SE_init_system(SE_state*, const SE_FGG_params*);
