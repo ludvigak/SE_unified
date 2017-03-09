@@ -24,18 +24,18 @@ dim_in = fsize(2:end);
 pre_t = tic;
 S = SE2P_Stokes_pre(x,xi,opt);
 walltime.pre = toc(pre_t);
-grid_fcn = @(f) SE_fg_grid_split_thrd_mex(x(S.perm,:),f(S.perm), ...
+grid_fcn = @(f) SE_fg_grid_split_thrd_mex_2p(x(S.perm,:),f(S.perm), ...
                                           opt,S.zs,S.zx,S.zy,S.zz,S.idx);
 
 % Integrator
 SI = S;
 iperm = @(u) u(SI.iperm,:);
-int_fcn = @(F) iperm(SE_fg_int_split_mex(x(SI.iperm,:),F, ...
+int_fcn = @(F) iperm(SE_fg_int_split_mex_2p(x(SI.iperm,:),F, ...
                                          opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
 
 % === Uncomment for direct code
-%grid_fcn = @(f) SE_fg_grid_mex(x,f,opt);
-%int_fcn = @(f) SE_fg_int_mex(x,f,opt);
+%grid_fcn = @(f) SE_fg_grid_mex_2p(x,f,opt);
+%int_fcn = @(f) SE_fg_int_mex_2p(x,f,opt);
 
 % grid + FFT
 H = cell([dim_in, 1]); 
