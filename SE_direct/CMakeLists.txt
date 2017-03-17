@@ -1,5 +1,4 @@
 ## FGG MEX libraries
-if(PERIODICITY STREQUAL "THREE_PERIODIC")
   matlab_add_mex(
     NAME SE3P_direct_real_mex
     SRC SE3P_direct_real.c
@@ -17,7 +16,6 @@ if(PERIODICITY STREQUAL "THREE_PERIODIC")
     SRC SE3P_direct_self.c
     )
   
-elseif(PERIODICITY STREQUAL "TWO_PERIODIC")
   matlab_add_mex(
     NAME SE2P_direct_real_mex
     SRC SE2P_direct_real.c
@@ -38,5 +36,4 @@ elseif(PERIODICITY STREQUAL "TWO_PERIODIC")
     NAME SE2P_direct_k0_mex
     SRC SE2P_direct_k0.c
     )
-endif()
 
