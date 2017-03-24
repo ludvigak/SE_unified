@@ -43,6 +43,18 @@ matlab_add_mex(
 target_link_libraries(SE_fg_int_mex fgg)
 
 matlab_add_mex(
+  NAME SE_fg_grid_kaiser_mex
+  SRC mex/SE_fg_grid_kaiser_mex.c 
+)
+target_link_libraries(SE_fg_grid_kaiser_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_int_kaiser_mex
+  SRC mex/SE_fg_int_kaiser_mex.c
+)
+target_link_libraries(SE_fg_int_kaiser_mex fgg)
+
+matlab_add_mex(
   NAME SE_fgg_expand_all_mex
   SRC mex/SE_fgg_expand_all_mex.c  SE_fgg.c SE_fgg_MEX_params.c
 )

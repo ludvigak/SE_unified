@@ -133,6 +133,7 @@ typedef struct
     double d;
     double h;
     double a;
+    double beta;
 
 } SE_FGG_params;
 
@@ -149,6 +150,8 @@ typedef struct
     double* phi;
 
 } SE_state;
+
+void SE_FGG_grid_kaiser(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
 
 // Fill parameter struct
 void SE_FGG_pack_params(SE_FGG_params*, int, int, int, int, int, 

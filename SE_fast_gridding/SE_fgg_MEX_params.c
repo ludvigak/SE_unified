@@ -23,6 +23,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     const double* p    = (double*) get_arg(OPT,"P");
     const double* c    = (double*) get_arg(OPT,"c");
     const double* box  = (double*) get_arg(OPT,"box");
+    const double* beta = (double*) get_arg(OPT,"beta");
 
     params->N = N;
     params->P = (int) *p;
@@ -31,6 +32,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->d = pow(params->c/PI,1.5);
     params->h = box[0]/m[0];
     params->a = -FGG_INF;
+    params->beta = *beta;
 
     params->dims[0] = (int) m[0];
     params->dims[1] = (int) m[1];
