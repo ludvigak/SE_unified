@@ -79,7 +79,9 @@
 #define __DISPATCHER_MSG(s) __PRINTF(s)
 #endif
 #else
-#define __DISPATCHER_MSG(s) {}
+//#define __DISPATCHER_MSG(s) {}
+#define __DISPATCHER_MSG(s) _Pragma("omp master") \
+    __PRINTF(s)
 #endif
 
 static inline int is_odd(int p)
@@ -151,7 +153,8 @@ typedef struct
 
 } SE_state;
 
-void SE_FGG_grid_kaiser(SE_FGG_work*, const SE_state*, const SE_FGG_params*);
+
+
 
 // Fill parameter struct
 void SE_FGG_pack_params(SE_FGG_params*, int, int, int, int, int, 

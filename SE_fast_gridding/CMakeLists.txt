@@ -43,18 +43,6 @@ matlab_add_mex(
 target_link_libraries(SE_fg_int_mex fgg)
 
 matlab_add_mex(
-  NAME SE_fg_grid_kaiser_mex
-  SRC mex/SE_fg_grid_kaiser_mex.c 
-)
-target_link_libraries(SE_fg_grid_kaiser_mex fgg)
-
-matlab_add_mex(
-  NAME SE_fg_int_kaiser_mex
-  SRC mex/SE_fg_int_kaiser_mex.c
-)
-target_link_libraries(SE_fg_int_kaiser_mex fgg)
-
-matlab_add_mex(
   NAME SE_fgg_expand_all_mex
   SRC mex/SE_fgg_expand_all_mex.c  SE_fgg.c SE_fgg_MEX_params.c
 )
@@ -150,3 +138,35 @@ matlab_add_mex(
   SRC mex/SE_fg_int_extended_split_mex.c
 )
 target_link_libraries(SE_fg_int_extended_split_mex_2p fgg_2p)
+
+
+# KAISER
+matlab_add_mex(
+  NAME SE_fg_grid_kaiser_mex
+  SRC mex/SE_fg_grid_kaiser_mex.c 
+)
+target_link_libraries(SE_fg_grid_kaiser_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_int_kaiser_mex
+  SRC mex/SE_fg_int_kaiser_mex.c
+)
+target_link_libraries(SE_fg_int_kaiser_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_grid_split_kaiser_mex
+  SRC mex/SE_fg_grid_split_kaiser_mex.c 
+)
+target_link_libraries(SE_fg_grid_split_kaiser_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_int_split_kaiser_mex
+  SRC mex/SE_fg_int_split_kaiser_mex.c
+)
+target_link_libraries(SE_fg_int_split_kaiser_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fkg_expand_all_mex
+  SRC mex/SE_fkg_expand_all_mex.c
+)
+target_link_libraries(SE_fkg_expand_all_mex fgg)
