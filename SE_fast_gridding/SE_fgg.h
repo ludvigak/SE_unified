@@ -16,7 +16,9 @@
 // Select periodicty: must give -D<...> to compiler
 #ifdef THREE_PERIODIC
 #define __FGG_EXPA fgg_expansion_3p
+#ifdef FORCE
 #define __FGG_EXPA_FORCE fgg_expansion_3p_force
+#endif
 #define __FGG_INDEX fgg_index_3p
 #define PER_STR "3P"
 #endif
@@ -29,7 +31,9 @@
 
 #ifdef ONE_PERIODIC
 #define __FGG_EXPA fgg_expansion_1p
+#ifdef FORCE
 #define __FGG_EXPA_FORCE fgg_expansion_1p_force
+#endif
 #define __FGG_INDEX fgg_index_1p
 #define PER_STR "1P"
 #endif

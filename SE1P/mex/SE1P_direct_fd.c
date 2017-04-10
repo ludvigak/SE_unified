@@ -83,9 +83,9 @@ void SE1P_direct_fd(double* restrict force,
 	      f[2] += -qn*k3*sin(k3z)*K0;
 	    }
 	}
-      force[idx[m]    ] = -0.5*q[idx[m]]*f[0]/(opt.box[2]);
-      force[idx[m]+  N] = -0.5*q[idx[m]]*f[1]/(opt.box[2]);
-      force[idx[m]+2*N] = -0.5*q[idx[m]]*f[2]/(opt.box[2]);
+      force[idx[m]    ] = -f[0]/(opt.box[2]);
+      force[idx[m]+  N] = -f[1]/(opt.box[2]);
+      force[idx[m]+2*N] = -f[2]/(opt.box[2]);
     }
 
     gsl_integration_workspace_free (w);
@@ -102,7 +102,7 @@ void SE1P_direct_fd(double* restrict phi,
   const double xi   = opt.xi;
   double xi2        = xi*xi;
   double TwoPiOverL = 2.*PI/opt.box[2];
-  int rep;
+  //  int rep;
 
 #ifdef _OPENMP
 #pragma omp parallel for private(p)
@@ -158,7 +158,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #else 
     /* This is to allocate 3 vectors for the force. 
      * (FIXME) Note that the variable is still called PHI.*/
-    PHI = mxCreateDoubleMatrix(num_eval*3, 1, mxREAL);
+    PHI = mxCreateDoubleMatrix(num_eval, 3, mxREAL);
     double* restrict phi = mxGetPr(PHI);
 #endif
 

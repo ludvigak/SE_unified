@@ -56,7 +56,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #else 
     /* This is to allocate 3 vectors for the force. 
      * (FIXME) Note that the variable is still called PHI.*/
-    PHI = mxCreateDoubleMatrix(num_eval*3, 1, mxREAL);
+    PHI = mxCreateDoubleMatrix(num_eval, 3, mxREAL);
     double* restrict phi = mxGetPr(PHI);
 #endif
 

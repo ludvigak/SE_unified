@@ -82,9 +82,9 @@ void SE1P_direct_real_rc(double* restrict force,
 	      f[2] += c*rvp[2];
 	    }
 	}
-      force[idx[m]    ] = -.5*q[idx[m]]*f[0];
-      force[idx[m]+  N] = -.5*q[idx[m]]*f[1];
-      force[idx[m]+2*N] = -.5*q[idx[m]]*f[2];
+      force[idx[m]    ] = -f[0];
+      force[idx[m]+  N] = -f[1];
+      force[idx[m]+2*N] = -f[2];
     }
 }
 #else
@@ -148,7 +148,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #else 
     /* This is to allocate 3 vectors for the force. 
      * (FIXME) Note that the variable is still called PHI.*/
-    PHI = mxCreateDoubleMatrix(num_eval*3, 1, mxREAL);
+    PHI = mxCreateDoubleMatrix(num_eval, 3, mxREAL);
     double* restrict phi = mxGetPr(PHI);
 #endif
 

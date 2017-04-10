@@ -1091,6 +1091,7 @@ int fgg_index_1p(const double x[3],
 		       params->npdims[1], params->npdims[2]);
 }
 #endif
+
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
 		       const SE_state* st, 
@@ -1115,7 +1116,7 @@ void SE_FGG_expand_all(SE_FGG_work* work,
     }
 }
 
-#ifdef THREE_PERIODIC
+#ifdef FORCE
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all_force(SE_FGG_work* work, 
 				 const SE_state* st, 
@@ -1197,7 +1198,7 @@ void SE_FGG_int(double* restrict phi,
     }
 }
 
-#ifdef THREE_PERIODIC
+#if defined THREE_PERIODIC || defined ONE_PERIODIC
 // -----------------------------------------------------------------------------
 // vanilla grid gather to calculate forces
 void SE_FGG_int_force(double* restrict force,  

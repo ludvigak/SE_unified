@@ -57,8 +57,8 @@ void SE1P_direct_k0(double* restrict force,
 	  force_x += q[n]*2.*(xm[0]-x[n]  )/rho2*(1-exp(-rho2*xi*xi));
 	  force_y += q[n]*2.*(xm[1]-x[n+N])/rho2*(1-exp(-rho2*xi*xi));
         }
-      force[idx[m]    ] = -.5*q[idx[m]]*force_x/opt.box[2];
-      force[idx[m]+  N] = -.5*q[idx[m]]*force_y/opt.box[2];
+      force[idx[m]    ] = -force_x/opt.box[2];
+      force[idx[m]+  N] = -force_y/opt.box[2];
       force[idx[m]+2*N] = 0;
     }  
 }
@@ -112,7 +112,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #else 
     /* This is to allocate 3 vectors for the force. 
      * (FIXME) Note that the variable is still called PHI.*/
-    PHI = mxCreateDoubleMatrix(num_eval*3, 1, mxREAL);
+    PHI = mxCreateDoubleMatrix(num_eval, 3, mxREAL);
     double* restrict phi = mxGetPr(PHI);
 #endif
 

@@ -15,6 +15,12 @@ add_library(
 )
 target_compile_definitions(fgg_thrd PUBLIC ${PERIODICITY} FGG_THRD)
 
+add_library(
+  fgg_force
+  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
+)
+target_compile_definitions(fgg_force PUBLIC ${PERIODICITY} FORCE)
+
 ## MEX functions
 matlab_add_mex(
   NAME SE_fg_grid_mex
@@ -69,3 +75,9 @@ matlab_add_mex(
   SRC mex/SE_fg_int_extended_split_mex.c
 )
 target_link_libraries(SE_fg_int_extended_split_mex fgg)
+
+matlab_add_mex(
+  NAME SE_fg_int_force_mex
+  SRC mex/SE_fg_int_force_mex.c
+)
+target_link_libraries(SE_fg_int_force_mex fgg_force) 
