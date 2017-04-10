@@ -27,8 +27,14 @@ include_directories(
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/")
 
 # Assuming gcc for now
-# -ffast-math is for some reason not working with gcc
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fopenmp")
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+  # using GCC
+  # -ffast-math is for some reason not working with gcc
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fopenmp")
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
+  link_directories(/NOBACKUP/davoudss/intel/lib/intel64/)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -fast -O3 -march=native -openmp")
+endif()
 
 # Add modules with MEX to be built
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_direct")

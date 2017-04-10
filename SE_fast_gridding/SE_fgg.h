@@ -79,9 +79,9 @@
 #define __DISPATCHER_MSG(s) __PRINTF(s)
 #endif
 #else
-//#define __DISPATCHER_MSG(s) {}
-#define __DISPATCHER_MSG(s) _Pragma("omp master") \
-    __PRINTF(s)
+#define __DISPATCHER_MSG(s) {}
+/* #define __DISPATCHER_MSG(s) _Pragma("omp master") \ */
+/*     __PRINTF(s) */
 #endif
 
 static inline int is_odd(int p)

@@ -9,6 +9,7 @@ walltime = struct('pre',0,'grid',0,'fft',0,'ifft',0,'scale',0,'int',0,'prefft',0
 % parameters and constants
 opt = parse_params(opt);
 
+%gridding precomp
 if(fkg)
     pre_t = tic;
     S = SE_FKG_precomp(x,opt.xi,opt);
@@ -30,7 +31,6 @@ grid_t=tic;
 H = grid_fcn(q);
 walltime.grid = toc(grid_t);
 
-
 % transform and shift
 fft_t=tic;
 H = fftn(H);
@@ -47,12 +47,11 @@ pre_t=tic;
 pre = precomp(opt);
 walltime.prefft = walltime.prefft + toc(pre_t);
 
+scale_t=tic;
 Z = exp(-k2/(4*opt.xi^2))./k2.*pre.F;
 Z(1,1,1) = 0;
-scale_t=tic;
 H = H.*Z;
 walltime.scale = toc(scale_t);
-
 
 % inverse shift and inverse transform
 ifft_t=tic;
