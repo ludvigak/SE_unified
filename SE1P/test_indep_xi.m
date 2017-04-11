@@ -8,7 +8,7 @@ opt.box = box;
 opt.layers = 100;
 
 xi = linspace(1,5,5);
-idx = 1:2;
+idx = 1;
 
 for j=1:length(xi)
     opt.xi = xi(j);
