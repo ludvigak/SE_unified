@@ -13,13 +13,13 @@ opt.c = 2*xi^2/eta;
 opt.box=opt.box;
 opt.a=opt.wbox(3,1);
 
-[zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
+[zx zy zz idx] = SE_fgg_expand_all_mex_2p(x,opt);
 
 [~, s] = sort(idx);
 x = x(s,:);
 
-[zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
-zs = SE_fgg_base_gaussian_mex(opt);
+[zx zy zz idx] = SE_fgg_expand_all_mex_2p(x,opt);
+zs = SE_fgg_base_gaussian_mex_2p(opt);
 
 SE_static.zs=zs;
 SE_static.zx=zx;

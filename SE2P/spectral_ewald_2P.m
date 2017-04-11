@@ -33,10 +33,10 @@ end
 if(static_fgg)
     x = x(sdat.perm,:);
     q = q(sdat.perm);
-    H = SE_fg_grid_split_mex(x,q,opt,...
+    H = SE_fg_grid_split_mex_2p(x,q,opt,...
         sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
 else
-    H  = SE_fg_grid_mex(x,q,opt);
+    H  = SE_fg_grid_mex_2p(x,q,opt);
 end
 
 
@@ -62,11 +62,11 @@ F = F(:,:,1:Mz);
 % integrate
 if(static_fgg)
     assert(length(eval_idx)==size(x,1),'fixme')
-    phi = SE_fg_int_split_mex(x,F,opt,...
+    phi = SE_fg_int_split_mex_2p(x,F,opt,...
                                  sdat.zs,sdat.zx,sdat.zy,sdat.zz,sdat.idx);
     phi = phi(sdat.iperm,:);
 else
-    phi = SE_fg_int_mex(x(eval_idx,:),F,opt);
+    phi = SE_fg_int_mex_2p(x(eval_idx,:),F,opt);
     
 end
 phi = 4*pi*phi/(opt.L^2);

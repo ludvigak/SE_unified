@@ -6,17 +6,17 @@ L = 1;
 box = [L L L];
 [x, f] = vector_system(N, box);
 
-M0 = 24; % Set M0 to an even number, the rest is auto
+M0 = 32; % Set M0 to an even number, the rest is auto
 
 opt.M = M0*box(1);
 opt.xi = pi*M0 / 12;
-opt.P = 32;
+opt.P = 28;
 opt.rc = 6 / opt.xi;opt.rc = min(opt.rc,L);
 opt.box = box;
 opt.layers = 100;
-opt.sl = 4;
-opt.nl = 6;
-opt.s0 = 4;
+opt.sl = 3;
+opt.nl = 4;
+opt.s0 = 2.5;
 
 
 %% Ewald

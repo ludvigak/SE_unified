@@ -2,82 +2,240 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+# ## FGG MEX libraries
+# # 3D
+# add_library(
+#   fgg
+#   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
+# )
+# target_compile_definitions(fgg PUBLIC THREE_PERIODIC)
+
+# add_library(
+#   fgg_thrd
+#   SE_fgg.c SE_fgg_MEX_params.c
+# )
+# target_compile_definitions(fgg_thrd PUBLIC THREE_PERIODIC FGG_THRD)
+
+# ## FGG MEX libraries
+
+# # 2D
+# add_library(
+#   fgg_2p
+#   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
+# )
+# target_compile_definitions(fgg_2p PUBLIC TWO_PERIODIC)
+
+# add_library(
+#   fgg_thrd_2p
+#   SE_fgg.c SE_fgg_MEX_params.c
+# )
+# target_compile_definitions(fgg_thrd_2p PUBLIC TWO_PERIODIC FGG_THRD)
+
 ## FGG MEX libraries
-add_library(
-  fgg
-  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
-)
-target_compile_definitions(fgg PUBLIC ${PERIODICITY})
+
+# 1D
 
 add_library(
-  fgg_thrd
+  fgg_1p
+  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
+)
+target_compile_definitions(fgg_1p PUBLIC ONE_PERIODIC)
+
+add_library(
+  fgg_thrd_1p
   SE_fgg.c SE_fgg_MEX_params.c
 )
-target_compile_definitions(fgg_thrd PUBLIC ${PERIODICITY} FGG_THRD)
+target_compile_definitions(fgg_thrd_1p PUBLIC ONE_PERIODIC FGG_THRD)
 
 add_library(
-  fgg_force
+  fgg_force_1p
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
-target_compile_definitions(fgg_force PUBLIC ${PERIODICITY} FORCE)
+target_compile_definitions(fgg_force_1p PUBLIC ONE_PERIODIC FORCE)
 
-## MEX functions
+
+# ## MEX functions 3P
+
+# matlab_add_mex(
+#   NAME SE_fg_grid_mex
+#   SRC mex/SE_fg_grid_mex.c 
+# )
+# target_link_libraries(SE_fg_grid_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_mex
+#   SRC mex/SE_fg_int_mex.c
+# )
+# target_link_libraries(SE_fg_int_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fgg_expand_all_mex
+#   SRC mex/SE_fgg_expand_all_mex.c  SE_fgg.c SE_fgg_MEX_params.c
+# )
+# target_link_libraries(SE_fgg_expand_all_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fgg_base_gaussian_mex
+#   SRC mex/SE_fgg_base_gaussian_mex.c
+# )
+# target_link_libraries(SE_fgg_base_gaussian_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fg_grid_split_mex
+#   SRC mex/SE_fg_grid_split_mex.c
+# )
+# target_link_libraries(SE_fg_grid_split_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_split_mex
+#   SRC mex/SE_fg_int_split_mex.c
+# )
+# target_link_libraries(SE_fg_int_split_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fg_grid_split_thrd_mex
+#   SRC mex/SE_fg_grid_split_thrd_mex.c
+# )
+# target_link_libraries(SE_fg_grid_split_thrd_mex fgg_thrd)
+
+# matlab_add_mex(
+#   NAME SE_fg_extend_fcn_mex
+#   SRC mex/SE_fg_extend_fcn_mex.c
+# )
+# target_link_libraries(SE_fg_extend_fcn_mex fgg)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_extended_split_mex
+#   SRC mex/SE_fg_int_extended_split_mex.c
+# )
+# target_link_libraries(SE_fg_int_extended_split_mex fgg)
+
+
+# ## MEX functions 2P
+# matlab_add_mex(
+#   NAME SE_fg_grid_mex_2p
+#   SRC mex/SE_fg_grid_mex.c 
+# )
+# target_link_libraries(SE_fg_grid_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_mex_2p
+#   SRC mex/SE_fg_int_mex.c
+# )
+# target_link_libraries(SE_fg_int_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fgg_expand_all_mex_2p
+#   SRC mex/SE_fgg_expand_all_mex.c  SE_fgg.c SE_fgg_MEX_params.c
+# )
+# target_link_libraries(SE_fgg_expand_all_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fgg_base_gaussian_mex_2p
+#   SRC mex/SE_fgg_base_gaussian_mex.c
+# )
+# target_link_libraries(SE_fgg_base_gaussian_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_grid_split_mex_2p
+#   SRC mex/SE_fg_grid_split_mex.c
+# )
+# target_link_libraries(SE_fg_grid_split_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_split_mex_2p
+#   SRC mex/SE_fg_int_split_mex.c
+# )
+# target_link_libraries(SE_fg_int_split_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_grid_split_thrd_mex_2p
+#   SRC mex/SE_fg_grid_split_thrd_mex.c
+# )
+# target_link_libraries(SE_fg_grid_split_thrd_mex_2p fgg_thrd_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_extend_fcn_mex_2p
+#   SRC mex/SE_fg_extend_fcn_mex.c
+# )
+# target_link_libraries(SE_fg_extend_fcn_mex_2p fgg_2p)
+
+# matlab_add_mex(
+#   NAME SE_fg_int_extended_split_mex_2p
+#   SRC mex/SE_fg_int_extended_split_mex.c
+# )
+# target_link_libraries(SE_fg_int_extended_split_mex_2p fgg_2p)
+
+## MEX functions 1P
 matlab_add_mex(
-  NAME SE_fg_grid_mex
+  NAME SE_fg_grid_mex_1p
   SRC mex/SE_fg_grid_mex.c 
 )
-target_link_libraries(SE_fg_grid_mex fgg)
+target_link_libraries(SE_fg_grid_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fg_int_mex
+  NAME SE_fg_int_mex_1p
   SRC mex/SE_fg_int_mex.c
 )
-target_link_libraries(SE_fg_int_mex fgg)
+target_link_libraries(SE_fg_int_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fgg_expand_all_mex
+  NAME SE_fgg_expand_all_mex_1p
   SRC mex/SE_fgg_expand_all_mex.c  SE_fgg.c SE_fgg_MEX_params.c
 )
-target_link_libraries(SE_fgg_expand_all_mex fgg)
+target_link_libraries(SE_fgg_expand_all_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fgg_base_gaussian_mex
+  NAME SE_fgg_base_gaussian_mex_1p
   SRC mex/SE_fgg_base_gaussian_mex.c
 )
-target_link_libraries(SE_fgg_base_gaussian_mex fgg)
+target_link_libraries(SE_fgg_base_gaussian_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fg_grid_split_mex
+  NAME SE_fg_grid_split_mex_1p
   SRC mex/SE_fg_grid_split_mex.c
 )
-target_link_libraries(SE_fg_grid_split_mex fgg)
+target_link_libraries(SE_fg_grid_split_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fg_int_split_mex
+  NAME SE_fg_int_split_mex_1p
   SRC mex/SE_fg_int_split_mex.c
 )
-target_link_libraries(SE_fg_int_split_mex fgg)
+target_link_libraries(SE_fg_int_split_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fg_grid_split_thrd_mex
+  NAME SE_fg_grid_split_thrd_mex_1p
   SRC mex/SE_fg_grid_split_thrd_mex.c
 )
-target_link_libraries(SE_fg_grid_split_thrd_mex fgg_thrd)
+target_link_libraries(SE_fg_grid_split_thrd_mex_1p fgg_thrd_1p)
 
 matlab_add_mex(
-  NAME SE_fg_extend_fcn_mex
+  NAME SE_fg_extend_fcn_mex_1p
   SRC mex/SE_fg_extend_fcn_mex.c
 )
-target_link_libraries(SE_fg_extend_fcn_mex fgg)
+target_link_libraries(SE_fg_extend_fcn_mex_1p fgg_1p)
 
 matlab_add_mex(
-  NAME SE_fg_int_extended_split_mex
+  NAME SE_fg_int_extended_split_mex_1p
   SRC mex/SE_fg_int_extended_split_mex.c
 )
-target_link_libraries(SE_fg_int_extended_split_mex fgg)
+target_link_libraries(SE_fg_int_extended_split_mex_1p fgg_1p)
+
+# 1D FORCE
+matlab_add_mex(
+  NAME SE_fgg_expand_all_force_mex_1p
+  SRC mex/SE_fgg_expand_all_force_mex.c  SE_fgg.c SE_fgg_MEX_params.c
+)
+target_link_libraries(SE_fgg_expand_all_force_mex_1p fgg_force_1p)
 
 matlab_add_mex(
-  NAME SE_fg_int_force_mex
+  NAME SE_fg_int_force_mex_1p
   SRC mex/SE_fg_int_force_mex.c
 )
-target_link_libraries(SE_fg_int_force_mex fgg_force) 
+target_link_libraries(SE_fg_int_force_mex_1p fgg_force_1p)
+
+matlab_add_mex(
+  NAME SE_fg_int_split_force_mex_1p
+  SRC mex/SE_fg_int_split_force_mex.c
+)
+target_link_libraries(SE_fg_int_split_force_mex_1p fgg_force_1p)

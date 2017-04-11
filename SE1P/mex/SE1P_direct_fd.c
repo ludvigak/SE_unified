@@ -46,19 +46,21 @@ void SE1P_direct_fd(double* restrict force,
 		    const double* restrict q, int N,
 		    const ewald_opts opt)
 {
-  double f[3];
   const double xi   = opt.xi;
   double xi2        = xi*xi;
   double TwoPiOverL = 2.*PI/opt.box[2];
+  //  int rep;
   /* get ready for gsl integration*/
-   gsl_integration_workspace * w 
-     = gsl_integration_workspace_alloc (STACK_SIZE);
-
+   /* gsl_integration_workspace * w  */
+   /*   = gsl_integration_workspace_alloc (STACK_SIZE); */
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
   for(int m=0; m<nidx; m++)
     {
       double xm[] = {x[idx[m]],x[idx[m]+N],x[idx[m]+2*N]};
 
-      f[0] = 0; f[1] = 0; f[2] = 0;
+      double f[] = {0, 0, 0};
       for(int n = 0; n<N; n++)
 	{
 	  double rvec[] = {xm[0]-x[n],xm[1]-x[n+N], xm[2]-x[n+2*N]};
@@ -74,12 +76,14 @@ void SE1P_direct_fd(double* restrict force,
 	      double k3z = -k3*rvec[2];
 	      
 	      double a   = k3*k3/(4.*xi2);
-	      //K0  = IncompBesselK0_Simpson(1e-15, &rep, a,b,1);
-	      double K0  = call_gsl_bessel_integrator(a,b,w,1);
+	      double K0  = computeINCBK0(a,b,1);
+	      /* double K0  = IncompBesselK0_Simpson(1e-15, &rep, a,b,1); */
+	      // double K0  = call_gsl_bessel_integrator(a,b,w,1);
 	      f[0] += 2.*qn*xi2*cos(k3z)*rvec[0]*K0;
 	      f[1] += 2.*qn*xi2*cos(k3z)*rvec[1]*K0;
+	      K0  = computeINCBK0(a,b,0);
 	      //K0  = IncompBesselK0_Simpson(1e-15, &rep, a,b,0);
-	      K0  = call_gsl_bessel_integrator(a,b,w,0);
+	      //K0  = call_gsl_bessel_integrator(a,b,w,0);
 	      f[2] += -qn*k3*sin(k3z)*K0;
 	    }
 	}
@@ -88,7 +92,7 @@ void SE1P_direct_fd(double* restrict force,
       force[idx[m]+2*N] = -f[2]/(opt.box[2]);
     }
 
-    gsl_integration_workspace_free (w);
+    /* gsl_integration_workspace_free (w); */
 }
 #else
 void SE1P_direct_fd(double* restrict phi, 

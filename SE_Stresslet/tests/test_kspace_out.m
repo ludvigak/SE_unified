@@ -31,7 +31,7 @@ for P = [ 25 8 12 16 24];
     
     e = u-uf;
     e_inf = norm(e(:),inf)/norm(u(:),inf);
-    assert(e_inf < 1e-14, 'FOURIER OUT: FAILED');
+    assert(e_inf < 2e-14, 'FOURIER OUT: FAILED');
 end
 
 fprintf('\n********** FOURIER OUT: OK **********\n\n')

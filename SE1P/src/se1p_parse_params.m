@@ -18,9 +18,9 @@ w = popt.h*popt.P/2;
 eta = (2*w*popt.xi/popt.m)^2;
 popt.c = 2*popt.xi^2/eta;
 
-if(eta<1)
-   w = max(w, sqrt((1-eta)/2)*popt.m/popt.xi);
-end
+% if(eta<1)
+%    w = max(w, sqrt((1-eta)/2)*popt.m/popt.xi);
+% end
 
 % we want even grids
 deltaM = 2*ceil(w/popt.h);

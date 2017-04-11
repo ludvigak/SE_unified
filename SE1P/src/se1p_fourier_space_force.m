@@ -1,4 +1,4 @@
-function [u varargout]= se1p_fourier_space(x, f, opt)
+function [u varargout]= se1p_fourier_space_force(x, f, opt) 
 
 % initialize time array
 walltime = struct('pre',0,'grid',0,'fft',0,'scale',0,'int',0);
@@ -19,20 +19,22 @@ N = fsize(1);
 % === Use vectorized code
 % Gridder
 pre_t = tic;
-S = se1p_precomp(x,se_opt);
+S = se1p_precomp_force(x,se_opt);
 walltime.pre = toc(pre_t);
 grid_fcn = @(f) SE_fg_grid_split_thrd_mex_1p(x(S.perm,:),f(S.perm), ...
-					    se_opt,S.zs,S.zx,S.zy,S.zz,S.idx);
-% Integrator
+					 se_opt,S.zs,S.zx,S.zy,S.zz,S.idx);
+% % % Integrator
 SI = S;
 iperm = @(u) u(SI.iperm,:);
-int_fcn = @(F) iperm(SE_fg_int_split_mex_1p(0,F,se_opt,... 
-					   SI.zs,SI.zx,SI.zy,SI.zz,SI.idx));
+int_fcn = @(F) iperm(SE_fg_int_split_force_mex_1p(x,F,se_opt,... 
+						 SI.zs,SI.zx,SI.zy,SI.zz,...
+						 SI.zfx, SI.zfy, SI.zfz, ...
+						 SI.idx));
 
 % === Uncomment for direct code
 
-% grid_fcn = @(f) SE_fg_grid_mex_1p(x,f,se_opt);
-% int_fcn = @(f) SE_fg_int_mex_1p(x,f,se_opt);
+%grid_fcn = @(F) SE_fg_grid_mex_1p(x,F,se_opt);
+%int_fcn = @(F) SE_fg_int_force_mex_1p(x,F,se_opt);
 
 % grid
 %H = cell([dim_in, 1]);
@@ -77,6 +79,7 @@ walltime.fft = walltime.fft + toc(fft_t);
 u = zeros(N, dim_out);
 int_t = tic;
 u = 4*pi*int_fcn(F);
+
 walltime.int = walltime.int + toc(int_t);
 
 if nargout==2

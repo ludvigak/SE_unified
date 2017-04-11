@@ -19,16 +19,11 @@
 #define MIN(a, b) ((a > b) ? b : a)
 #define EULER  0.577215664901532860606512090082402431042
 #define EPSILON __DBL_EPSILON__
-#define STACK_SIZE 10000  /*FIXME: This must be adpative.*/
+#define STACK_SIZE 100000  /*FIXME: This must be adpative.*/
 
-
-void glwt_fast(int, double, double, double*, double*);
-void glwt(int, double, double, double*, double*);
-void trapz_wt(int, double*, double*);
-double IncompBesselK0_int_inf(double a, double b, int n);
-double IncompBesselK0_int(double a, double b, int n, double* x, double* w);
 double IncompBesselK0_Simpson(double tol, int *cnt, double bes_a, double bes_b, int der);
 double computeK0(double a, double b);
+double computeINCBK0(double a, double b, int der);
 
 typedef struct {
   double a;

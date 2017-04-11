@@ -32,9 +32,6 @@ else()
 endif()
 
 
-set(PERIODICITY "ONE_PERIODIC")
-message(STATUS "Compiled with ${PERIODICITY} option")
-
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/bin/")
 
 # Assuming gcc for now
@@ -45,18 +42,11 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fope
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_direct")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes_direct/mex")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_fast_gridding")
-
-if(PERIODICITY STREQUAL "THREE_PERIODIC")
-  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes/mex")  
-  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
-  add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
-elseif(PERIODICITY STREQUAL "TWO_PERIODIC")
-  add_subdirectory("${PROJECT_SOURCE_DIR}/SE2P_Stokes/mex")
-elseif(PERIODICITY STREQUAL "ONE_PERIODIC")
-  add_subdirectory("${PROJECT_SOURCE_DIR}/SE1P/mex")
-else ()
-  message(FATAL_ERROR "Periodicity has to be provided. THREE_PERIODIC/TWO_PERIODIC")
-endif ()
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stokes/mex")  
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE2P_Stokes/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE1P/mex")
 
 # Enable running Matlab test suite through ctest
 enable_testing()
