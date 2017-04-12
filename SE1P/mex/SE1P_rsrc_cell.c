@@ -73,6 +73,7 @@ static void empty_buffer(ComputeBuffer* buffer,
     double r[BUF_SIZE];
     double xir[BUF_SIZE];
     double xi2r2[BUF_SIZE];
+#pragma ivdep
     for (int n=0; n<N; n++)
     {
 	r[n] = sqrt(r2[n]);
@@ -83,6 +84,7 @@ static void empty_buffer(ComputeBuffer* buffer,
     double exp_vec[BUF_SIZE];
     vdErfc(N, xir, erfc_vec);
     vdExp(N, xi2r2, exp_vec);
+#pragma ivdep
     for (int n=0; n<N; n++)
     {
 	double  xiexp = xi*exp_vec[n];
@@ -96,6 +98,9 @@ static void empty_buffer(ComputeBuffer* buffer,
     }
 #endif
     // Compute interactions
+#ifdef INTEL_MKL
+#pragma ivdep
+#endif
     for (int n=0; n<N; n++)
     {
 	idx_t = buffer->idx_t[n];

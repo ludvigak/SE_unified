@@ -1,6 +1,7 @@
 %% figure 8 example 2 in paper 
 %% total runtime in potential 
 %% with 1e-6 accuracy
+%% with icc we get better than linear!!!
 
 clear
 rng(1);
