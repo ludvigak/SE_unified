@@ -50,15 +50,14 @@ void SE1P_direct_real_rc(double* restrict force,
 			 const double* restrict q, int N,
 			 const ewald_opts opt)
 {
-  double f[3];
   double xi = opt.xi;
   double xi2 = xi*xi;
 #ifdef _OPENMP
-#pragma omp parallel for private(f)
+#pragma omp parallel for
 #endif
   for(int m=0; m<nidx; m++)
     {
-      f[0] = 0; f[1] = 0; f[2] = 0; 
+      double f[] = {0,0,0};
       double xm[] = {x[idx[m]],x[idx[m]+N],x[idx[m]+2*N]};
       for(int n=0; n<N; n++)
 	{
@@ -80,6 +79,10 @@ void SE1P_direct_real_rc(double* restrict force,
 	      f[0] += c*rvp[0];
 	      f[1] += c*rvp[1];
 	      f[2] += c*rvp[2];
+	      //     printf("cr:%10f%10f%10f%10f%10f\n",q[idx[m]],qn,rvp[0],rvp[1],rvp[2]);
+	      printf("%d %f %f %f\n",m,qn,c,rvp[0]);
+	      printf("%d %f %f %f\n",m,qn,c,rvp[1]);
+	      printf("%d %f %f %f\n",m,qn,c,rvp[2]);
 	    }
 	}
       force[idx[m]    ] = -f[0];
@@ -94,13 +97,12 @@ void SE1P_direct_real_rc(double* restrict phi,
 			 const double* restrict q, int N,
 			 const ewald_opts opt)
 {
-    double p;
 #ifdef _OPENMP
-#pragma omp parallel for private(p)
+#pragma omp parallel for
 #endif
     for(int m=0; m<nidx; m++)
     {
-	p = 0;
+	double p = 0;
 	for(int n=0; n<N; n++)
 	{
 	  double rvec[] = {x[idx[m]    ]-x[n    ],
@@ -120,9 +122,10 @@ void SE1P_direct_real_rc(double* restrict phi,
 				(rvec[2]+p2*opt.box[2]));
 		if(r < opt.rc)
 		  p += qn*erfc(opt.xi*r)/r;
+		/* printf("c:   %10f%10f%2d%2d%10f\n",qn,q[idx[m]],idx[m],n,erfc(opt.xi*r)/r); */
 	      }
 	}
-	phi[m] += p;
+	phi[idx[m]] += p;
     }    
 }
 #endif

@@ -42,7 +42,8 @@ if (MATLAB)
         nt = nt + 1;
     end
 else
-    u = SE1P_direct_real_force_mex(idx,x,f,opt);
+    %   u = SE1P_direct_real_force_mex(idx,x,f,opt);
+    u = SE1P_direct_rsrc_force_mex(idx,x,f,opt);
 end
 walltime = toc(time);
 

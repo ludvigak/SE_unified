@@ -61,7 +61,6 @@ else
                         zeros(se_opt.s0*se_opt.Mx,se_opt.s0*se_opt.My),se_opt);
 end
 walltime.scale = toc(scale_t);
-dim_out = numel(G);
 
 % inverse shift and inverse transform
 fft_t = tic;
@@ -74,7 +73,7 @@ else
 end
 walltime.fft = walltime.fft + toc(fft_t);
 
-u = zeros(N, dim_out);
+u = zeros(N, 1);
 int_t = tic;
 u = 4*pi*int_fcn(F);
 walltime.int = walltime.int + toc(int_t);

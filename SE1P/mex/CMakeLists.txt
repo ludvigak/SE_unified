@@ -77,3 +77,30 @@ matlab_add_mex(
   SRC SE1P_direct_k0.c
   )
 target_link_libraries(SE1P_direct_k0_force_mex mathint_force)
+
+if(MKL_FOUND)
+  
+  # Build stokeslet RS using cell list and MKL
+  matlab_add_mex(
+    NAME SE1P_rsrc_cell_mkl_mex
+    SRC SE1P_rsrc_cell_force.c cell_list.c
+    )
+  
+  # Linking twice, this might have to do with circular dependencies
+  target_link_libraries(SE1P_rsrc_cell_mkl_mex ${MKL_STATIC})
+  target_link_libraries(SE1P_rsrc_cell_mkl_mex ${MKL_STATIC})
+
+  target_compile_definitions(SE1P_rsrc_cell_mkl_mex PUBLIC INTEL_MKL)
+  
+endif()
+
+# no-MKL version
+matlab_add_mex(
+  NAME SE1P_rsrc_cell_mex
+  SRC SE1P_rsrc_cell.c cell_list.c
+)
+
+matlab_add_mex(
+  NAME SE1P_rsrc_cell_force_mex
+  SRC SE1P_rsrc_cell_force.c cell_list.c
+)

@@ -34,7 +34,7 @@ opt.P=32;
 [u2 treal]= se1p_real_space_force(1:N,x, f, opt,true);
 u3 = se1p_k0_direct_force(1:N,x,f,opt,true);
 u = u1+u2+u3;
-rms_error = rms(u-ue) / rms(u)
+rms_error = rms(u(:)-ue(:)) / rms(u(:))
 
 % fprintf('fourier-sp time\t real-sp time\t total time\t direct time\n');
 % fprintf('%10.6f\t%10.6f\t%10.6f\t%10.6f\n',...
