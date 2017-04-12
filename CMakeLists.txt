@@ -3,7 +3,7 @@ project(MEX)
 
 set(CMAKE_MODULE_PATH
   ${CMAKE_MODULE_PATH}
-  ${PROJECT_SOURCE_DIR}/cmake)
+  ${PROJECT_SOURCE_DIR}/cmake-compat)
 
 if(CMAKE_VERSION VERSION_LESS "3.3") 
   message(WARNING "CMake version less than 3.3\n"
@@ -29,6 +29,17 @@ if(NOT GSL_FOUND)
   message(FATAL_ERROR "GSL not found.")
 else()
   message("GSL found.")
+endif()
+
+find_package(MKL)
+if(MKL_FOUND)
+  include_directories(
+    ${MKL_INCLUDE_DIR}
+    )
+
+  link_directories(
+    ${MKL_LIBRARY}
+    )
 endif()
 
 
