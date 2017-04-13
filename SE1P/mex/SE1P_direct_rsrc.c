@@ -79,10 +79,6 @@ void SE1P_direct_real_rc(double* restrict force,
 	      f[0] += c*rvp[0];
 	      f[1] += c*rvp[1];
 	      f[2] += c*rvp[2];
-	      //     printf("cr:%10f%10f%10f%10f%10f\n",q[idx[m]],qn,rvp[0],rvp[1],rvp[2]);
-	      printf("%d %f %f %f\n",m,qn,c,rvp[0]);
-	      printf("%d %f %f %f\n",m,qn,c,rvp[1]);
-	      printf("%d %f %f %f\n",m,qn,c,rvp[2]);
 	    }
 	}
       force[idx[m]    ] = -f[0];
