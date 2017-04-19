@@ -22,14 +22,14 @@ pre_t = tic;
 S = se1p_precomp_force(x,se_opt);
 walltime.pre = toc(pre_t);
 grid_fcn = @(f) SE_fg_grid_split_thrd_mex_1p(x(S.perm,:),f(S.perm), ...
-					 se_opt,S.zs,S.zx,S.zy,S.zz,S.idx);
+                                             se_opt,S.zs,S.zx,S.zy,S.zz,S.idx);
 % % % Integrator
 SI = S;
 iperm = @(u) u(SI.iperm,:);
 int_fcn = @(F) iperm(SE_fg_int_split_force_mex_1p(x,F,se_opt,... 
-						 SI.zs,SI.zx,SI.zy,SI.zz,...
-						 SI.zfx, SI.zfy, SI.zfz, ...
-						 SI.idx));
+                                                  SI.zs,SI.zx,SI.zy,SI.zz,...
+                                                  SI.zfx, SI.zfy, SI.zfz, ...
+                                                  SI.idx));
 
 % === Uncomment for direct code
 
@@ -55,14 +55,16 @@ walltime.fft = walltime.fft + toc(fft_t);
 end
 
 % scale
-scale_t = tic;
+%scale_t = tic;
 if(se_opt.sl~=se_opt.sg)
-    [G Gres G0] = se1p_k_scaling(G, Gres, G0, se_opt);
+    [G, Gres, G0, scale_t] = se1p_k_scaling(G, Gres, G0, se_opt);
 else
-    [G, ~, ~] = se1p_k_scaling(G,zeros(size(G)), ...
-                        zeros(se_opt.s0*se_opt.Mx,se_opt.s0*se_opt.My),se_opt);
+    [G, ~, ~, scale_t] = se1p_k_scaling(G,zeros(size(G)), ...
+                                        zeros(se_opt.s0*se_opt.Mx, ...
+                                              se_opt.s0*se_opt.My),se_opt);
 end
-walltime.scale = toc(scale_t);
+%walltime.scale = toc(scale_t);
+walltime.scale = scale_t;
 
 % inverse shift and inverse transform
 fft_t = tic;
@@ -78,7 +80,6 @@ walltime.fft = walltime.fft + toc(fft_t);
 u = zeros(N, 3);
 int_t = tic;
 u = 4*pi*int_fcn(F);
-
 walltime.int = walltime.int + toc(int_t);
 
 if nargout==2

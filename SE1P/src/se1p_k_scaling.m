@@ -1,4 +1,4 @@
-function [G, Gres, G0] = se1p_k_scaling(G,Gres,G0,opt)
+function [G, Gres, G0, varargout] = se1p_k_scaling(G,Gres,G0,opt)
 
 R = opt.R; eta = opt.eta; xi = opt.xi;
 
@@ -14,6 +14,7 @@ Znum = exp(-(1-eta)/(4*xi^2)*k2);
 Z = Znum./k2;
 Z(1,1,1) = 0;
 
+scale_t = tic;
 if(opt.sg~=opt.s0)
     kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.s0);
     kappa_2   = k_vectors(opt.My, opt.Ly, opt.s0);
@@ -21,10 +22,11 @@ if(opt.sg~=opt.s0)
     k2 =  KAPPA1.^2 + KAPPA2.^2 + K.^2;
     Znum = exp(-(1-eta)/(4*xi^2)*k2);
 end
-
+walltime = toc(scale_t);
 kmod  = sqrt(k2(:,:,opt.k0mod));
 Green=(1-besselj(0,R*kmod))./k2(:,:,zidx)-R*log(R)*besselj(1,R*kmod)./kmod;
 Z0 = Znum(:,:,opt.k0mod).*Green;
+
 % Finite limit at k3=0.
 Z0(1,1) = R^2/4-R*log(R)*R/2;
 
@@ -36,7 +38,8 @@ elseif(opt.sg~=opt.s0)
     G0 = Z0.*G0;
     G = Z.*G;
 end
-
+   
+scale_t = tic;
 if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     % local pad scaling
     kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.sl);
@@ -46,10 +49,14 @@ if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     k2 = KAPPA1.^2 + KAPPA2.^2 + K.^2;
     Znum = exp(-(1-eta)/(4*xi^2)*k2);
     Zres = Znum./k2;
+    
     Gres = Gres.*Zres;
 end
+walltime = walltime + toc(scale_t);
 
-
+if nargout == 4
+    varargout{1} = walltime;
+end
 end
 
 % ------------------------------------------------------------------------------

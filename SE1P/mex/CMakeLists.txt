@@ -78,6 +78,15 @@ matlab_add_mex(
   )
 target_link_libraries(SE1P_direct_k0_force_mex mathint_force)
 
+
+# OBS, This should be moved to another directory
+matlab_add_mex(
+  NAME SE3P_direct_fd_force_mex
+  SRC SE3P_direct_fd.c
+  )
+target_link_libraries(SE3P_direct_fd_force_mex mathint_force)
+
+
 if(MKL_FOUND)
   
   # Build stokeslet RS using cell list and MKL
