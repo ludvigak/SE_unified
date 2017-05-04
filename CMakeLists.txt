@@ -50,7 +50,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fopenmp")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -O3 -ipo -fast -std=c99 -march=native -openmp")
-  link_directories(/NOBACKUP/davoudss/intel/lib/intel64)
 endif()
  
 

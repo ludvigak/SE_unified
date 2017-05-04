@@ -19,10 +19,27 @@ int fgg_expansion_3p_force(const double x[3], const double q,
     const double c=params->c;
     
     double t0[3];
-    int idx_from[3],p_from;
+    int idx_from[3],idx,p_from;
 
     // compute index range and centering
-    fgg_offset_3p(x, params, t0, idx_from);
+    if(is_odd(p))
+    {
+	for(int j=0; j<3; j++)
+	{
+	    idx = (int) round(x[j]/h);
+	    idx_from[j] = idx - p_half;
+	    t0[j] = x[j]-h*idx;
+	}
+    }
+    else
+    {
+	for(int j=0; j<3; j++)
+	{
+	    idx = (int) floor(x[j]/h);
+	    idx_from[j] = idx - (p_half-1);
+	    t0[j] = x[j]-h*idx;
+	}
+    }    
 
     // compute third factor 
     double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
