@@ -6,10 +6,6 @@
 #include "fgg_thrd.h"
 #include "fgg_thrd.c"
 
-#ifdef FORCE
-#include "fgg_force.c"
-#endif
-
 // Dag Lindbo, dag@kth.se
 
 // =============================================================================
@@ -494,8 +490,6 @@ void SE_FGG_base_gaussian(SE_FGG_work* work, const SE_FGG_params* params)
 
 // -----------------------------------------------------------------------------
 #ifdef THREE_PERIODIC
-
-static inline 
 void fgg_offset_3p(const double x[3],
 		   const SE_FGG_params* params,
 		   double t0[3],
@@ -3237,3 +3231,6 @@ double calc_energy(SE_state st, int N)
 return energy/2.;
 }
 
+#ifdef FORCE
+#include "fgg_force.c"
+#endif

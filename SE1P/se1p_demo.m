@@ -20,7 +20,7 @@ opt.s0 = 2.5;
 
 
 %% Ewald
-disp('Free-space Ewald...')
+disp('One periodic Ewald...')
 [uf tfourier]= se1p_fourier_space(x, f, opt);
 [ur treal]= se1p_real_space(1:N,x, f, opt,false);
 us = -f*opt.xi *2/sqrt(pi);

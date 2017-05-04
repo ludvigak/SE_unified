@@ -22,8 +22,6 @@ for j=1:length(xi)
     F(j,:) = F1+F2+F3;
 end
 
-bsxfun(@minus,se1p_direct_force(idx,x,f,opt,MATLAB),F(2:end,:));
-
 err = bsxfun(@minus,F(1,:),F(2:end,:));
 
 rms_err = rms(err(:)) / rms(F(1,:))

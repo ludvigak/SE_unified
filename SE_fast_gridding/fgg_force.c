@@ -1,5 +1,7 @@
 #ifdef FORCE
 #ifdef THREE_PERIODIC
+#include "SE_fgg.h"
+
 static 
 int fgg_expansion_3p_force(const double x[3], const double q,
 			   const SE_FGG_params* params,
@@ -17,7 +19,6 @@ int fgg_expansion_3p_force(const double x[3], const double q,
     const double c=params->c;
     
     double t0[3];
-    int idx;
     int idx_from[3],p_from;
 
     // compute index range and centering
@@ -1247,10 +1248,14 @@ void SE_FGG_int_split_AVX_dispatch_force(double* restrict force,
     const int p = params->P;
     const int incrj = params->dims[2]; // middle increment
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
-
-#if 1
+#ifdef AVX_FMA
+    __DISPATCHER_MSG("[FGG INT AVX-FMA] ");
+#else
+    __DISPATCHER_MSG("[FGG INT AVX] ");
+#endif
+#if 0
     // THIS BYPASSES THE FAST AVX KERNELS.
-    __DISPATCHER_MSG("[FGG INT AVX] AVX Disabled\n");
+    __DISPATCHER_MSG("AVX Disabled\n");
     SE_FGG_int_split_force(force, st, work, params);
     return;
 #endif
@@ -1258,7 +1263,7 @@ void SE_FGG_int_split_AVX_dispatch_force(double* restrict force,
     // if P, incri or increments are not divisible by 4, fall back on vanilla
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
-	__DISPATCHER_MSG("[FGG INT AVX] AVX Abort (PARAMS)\n");
+	__DISPATCHER_MSG("AVX Abort (PARAMS)\n");
 	SE_FGG_int_split_force(force, st, work, params);
 	return;
     }
@@ -1267,31 +1272,31 @@ void SE_FGG_int_split_AVX_dispatch_force(double* restrict force,
     if(p==8)
     {
 	// specific for p=8
-	__DISPATCHER_MSG("[FGG INT AVX] P=8\n");
+	__DISPATCHER_MSG("P=8\n");
 	SE_FGG_int_split_AVX_P8_force(force, st, work, params);
     }
     else if(p==16)
     {
 	// specific for p=16
-	__DISPATCHER_MSG("[FGG INT AVX] P=16\n");
+	__DISPATCHER_MSG("P=16\n");
 	SE_FGG_int_split_AVX_P16_force(force, st, work, params); 
     }
     else if(p%8==0)
     {
 	// for p divisible by 8
-	__DISPATCHER_MSG("[FGG INT AVX] P unroll 8\n");
+	__DISPATCHER_MSG("P unroll 8\n");
 	SE_FGG_int_split_AVX_u8_force(force, st, work, params); 
     }
     else if(p%4==0)
     {
 	// vanilla AVX code (p divisible by 4)
-	__DISPATCHER_MSG("[FGG INT AVX] P unroll 4\n");
+	__DISPATCHER_MSG("P unroll 4\n");
 	SE_FGG_int_split_AVX_force(force, st, work, params);
     }
     else
     {
       // vanilla SSE code (any even p)
-      __DISPATCHER_MSG("[FGG INT AVX] Vanilla\n");
+      __DISPATCHER_MSG("Vanilla\n");
       SE_FGG_int_split_SSE_force(force, st, work, params);
     }
 }
@@ -1365,12 +1370,26 @@ void SE_FGG_int_split_AVX_force(double* restrict force,
 		      rH0  = _mm256_load_pd( H  + idx );
 		      rZZ0 = _mm256_load_pd( zz + idx_zz);
 		      rZS0 = _mm256_load_pd( zs + idx_zs);
-		      rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCX),rZS0)));
-		      rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCY),rZS0)));
-		      rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)),rZFZ0));
+
+		      rH0 = _mm256_mul_pd(rH0,_mm256_mul_pd(rZZ0,rZS0));
+
+#ifdef AVX_FMA
+		      rFX = _mm256_fmadd_pd(rH0,rCX,rFX);
+		      rFY = _mm256_fmadd_pd(rH0,rCY,rFY);
+		      rFZ = _mm256_fmadd_pd(rH0,_mm256_mul_pd(rC,rZFZ0),rFZ);
+#else
+		      rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,rCX));
+		      rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,rCY));
+		      rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(rH0,_mm256_mul_pd(rC,rZFZ0)));
+#endif		      
+		      
+		      /* rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCX),rZS0))); */
+		      /* rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCY),rZS0))); */
+		      /* rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)),rZFZ0)); */
 
 #ifdef CALC_ENERGY
-		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
+		      //		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
+		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,rC));
 #endif			
 			idx+=4; 
 			idx_zs+=4; 
@@ -1399,12 +1418,26 @@ void SE_FGG_int_split_AVX_force(double* restrict force,
 		      rH0  = _mm256_loadu_pd( H+idx );
 		      rZZ0 = _mm256_load_pd( zz + idx_zz);
 		      rZS0 = _mm256_load_pd( zs + idx_zs);
-		      rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCX),rZS0)));
-		      rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCY),rZS0)));
-		      rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)),rZFZ0));
+
+		      		      rH0 = _mm256_mul_pd(rH0,_mm256_mul_pd(rZZ0,rZS0));
+
+#ifdef AVX_FMA
+		      rFX = _mm256_fmadd_pd(rH0,rCX,rFX);
+		      rFY = _mm256_fmadd_pd(rH0,rCY,rFY);
+		      rFZ = _mm256_fmadd_pd(rH0,_mm256_mul_pd(rC,rZFZ0),rFZ);
+#else
+		      rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,rCX));
+		      rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,rCY));
+		      rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(rH0,_mm256_mul_pd(rC,rZFZ0)));
+#endif		      
+		      
+		      /* rFX = _mm256_add_pd(rFX,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCX),rZS0))); */
+		      /* rFY = _mm256_add_pd(rFY,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rCY),rZS0))); */
+		      /* rFZ = _mm256_add_pd(rFZ,_mm256_mul_pd(_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)),rZFZ0)); */
 
 #ifdef CALC_ENERGY
-		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
+		      //		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0)));
+		      rP = _mm256_add_pd(rP,_mm256_mul_pd(rH0,rC));
 #endif			
 			idx+=4; 
 			idx_zs+=4; 

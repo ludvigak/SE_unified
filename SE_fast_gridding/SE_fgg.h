@@ -16,9 +16,9 @@
 // Select periodicty: must give -D<...> to compiler
 #ifdef THREE_PERIODIC
 #define __FGG_EXPA fgg_expansion_3p
-/* #ifdef FORCE */
-/* #define __FGG_EXPA_FORCE fgg_expansion_3p_force */
-/* #endif */
+#ifdef FORCE
+#define __FGG_EXPA_FORCE fgg_expansion_3p_force
+#endif
 #define __FGG_INDEX fgg_index_3p
 #define PER_STR "3P"
 #endif
@@ -247,6 +247,9 @@ void SE_FGG_int_split_AVX_force(double*, SE_state*, const SE_FGG_work*, const SE
 
 // Static Gaussian on P^3-grid
 void SE_FGG_base_gaussian(SE_FGG_work*, const SE_FGG_params*);
+
+// calculate offsets in 3periodic
+//static inline void fgg_offset_3p(const double *, const SE_FGG_params*, double *,   int *);
 
 // Wrap function to produce periodicity
 void SE_FGG_wrap_fcn(double*, const SE_FGG_work*, const SE_FGG_params*);

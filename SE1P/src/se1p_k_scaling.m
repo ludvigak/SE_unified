@@ -23,6 +23,7 @@ if(opt.sg~=opt.s0)
     Znum = exp(-(1-eta)/(4*xi^2)*k2);
 end
 walltime = toc(scale_t);
+
 kmod  = sqrt(k2(:,:,opt.k0mod));
 Green=(1-besselj(0,R*kmod))./k2(:,:,zidx)-R*log(R)*besselj(1,R*kmod)./kmod;
 Z0 = Znum(:,:,opt.k0mod).*Green;
@@ -39,7 +40,6 @@ elseif(opt.sg~=opt.s0)
     G = Z.*G;
 end
    
-scale_t = tic;
 if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     % local pad scaling
     kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.sl);
@@ -48,11 +48,12 @@ if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     [KAPPA1, KAPPA2, K] = ndgrid(kappa_1,kappa_2,k(opt.local_pad));
     k2 = KAPPA1.^2 + KAPPA2.^2 + K.^2;
     Znum = exp(-(1-eta)/(4*xi^2)*k2);
-    Zres = Znum./k2;
-    
+
+    scale_t = tic;
+    Zres = Znum./k2;    
     Gres = Gres.*Zres;
+    walltime = walltime + toc(scale_t);
 end
-walltime = walltime + toc(scale_t);
 
 if nargout == 4
     varargout{1} = walltime;

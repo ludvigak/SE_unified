@@ -86,6 +86,12 @@ matlab_add_mex(
   )
 target_link_libraries(SE3P_direct_fd_force_mex mathint_force)
 
+# OBS and this one
+matlab_add_mex(
+  NAME se3p_k_scaling_mex
+  SRC se3p_k_scaling.c
+  )
+target_link_libraries(se3p_k_scaling )
 
 if(MKL_FOUND)
   
