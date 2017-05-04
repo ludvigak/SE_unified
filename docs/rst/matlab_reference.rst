@@ -24,6 +24,14 @@ Ewald summation for the 2-periodic electrostatic potential.
 .. automodule:: SE2P
    :members:
 
+SE1P
+----
+
+Ewald summation for the 1-periodic electrostatic potential.
+
+.. automodule:: SE1P
+   :members:      
+
 SE2P_Stokes
 -----------
 Ewald summation for the 2-periodic stokeslet potential.

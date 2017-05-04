@@ -6,6 +6,7 @@ The package provides a Matlab implementation of the :doc:`Spectral Ewald <math>`
 
 - :mod:`SE`:          3-periodic Laplace (electrostatics)
 - :mod:`SE2P`:        2-periodic Laplace (electrostatics)
+- :mod:`SE1P`:        1-periodic Laplace (electrostatics)
 - :mod:`SE_Stokes`:    3-periodic Stokeslet (viscous flow)
 - :mod:`SE2P_Stokes`:  2-periodic Stokeslet (viscous flow)	
 - :mod:`SE_Stresslet`: 3-periodic Stresslet (viscous flow)
