@@ -23,10 +23,23 @@ popt.c = 2*popt.xi^2/eta;
 % end
 
 % we want even grids
+% Assume not cubic domain
 deltaM = 2*ceil(w/popt.h);
 popt.w = popt.h*deltaM/2;
-popt.Mx = popt.M+deltaM;
-popt.My = popt.M+deltaM;
+popt.Mx = ceil( (popt.box(1)+2*popt.w)/popt.h);
+popt.My = ceil( (popt.box(2)+2*popt.w)/popt.h);
+% Even grids
+popt.Mx = 2*ceil(popt.Mx/2);
+popt.My = 2*ceil(popt.My/2);
+    
+% Otherwise
+if( abs(popt.box(1)-popt.box(3))<1e-6 )
+    popt.Mx = popt.M+deltaM;
+end
+if( abs(popt.box(2)-popt.box(3))<1e-6 )
+    popt.My = popt.M+deltaM;
+end
+
 popt.Lx = popt.box(1)+2*popt.w;
 popt.Ly = popt.box(2)+2*popt.w;
 

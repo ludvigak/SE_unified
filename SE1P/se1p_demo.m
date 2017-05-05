@@ -4,17 +4,18 @@ rng(1);
 N = 10;
 L = 1;
 box = [L L L];
+box = [1.3 1.2 1];
 [x, f] = vector_system(N, box);
 
-M0 = 32; % Set M0 to an even number, the rest is auto
+M0 = 20; % Set M0 to an even number, the rest is auto
 
-opt.M = M0*box(1);
+opt.M = M0*box(3);
 opt.xi = pi*M0 / 12;
 opt.P = 28;
 opt.rc = 6 / opt.xi;opt.rc = min(opt.rc,L);
 opt.box = box;
 opt.layers = 100;
-opt.sl = 3;
+opt.sl = 2.5;
 opt.nl = 4;
 opt.s0 = 2.5;
 
