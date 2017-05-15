@@ -1,10 +1,10 @@
 clear
 rng(1);
 
-N = 10;
+N = 20;
 L = 1;
 box = [L L L];
-box = [1.3 1.2 1];
+%box = [1.3 1.2 1];
 [x, f] = vector_system(N, box);
 
 M0 = 20; % Set M0 to an even number, the rest is auto

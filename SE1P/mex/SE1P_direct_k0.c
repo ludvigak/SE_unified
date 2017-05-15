@@ -83,7 +83,9 @@ void SE1P_direct_k0(double* restrict phi,
       for(int n=0; n<N; n++) {
 	double rho2 = ( (xm[0]-x[n  ])*(xm[0]-x[n  ]) +
 			(xm[1]-x[n+N])*(xm[1]-x[n+N]) );
-	if(rho2>__DBL_EPSILON__)
+	if(rho2>34)
+	  p += -q[n]*(log(rho2*xi*xi)+egamma);
+	else if(rho2>__DBL_EPSILON__)
 	  p += -q[n]*(gsl_sf_expint_E1(rho2*xi*xi)+log(rho2*xi*xi)+egamma);
       }
       phi[m] = p/opt.box[2];
