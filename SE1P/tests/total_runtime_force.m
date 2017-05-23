@@ -40,7 +40,7 @@ for k=1:numel(Llist)
 end
 plot(Nlist,time,'b.')
 hold on
-plot(Nlist,Nlist./Nlist(1)*time(1),'r--')
+plot(Nlist,Nlist./Nlist(end)*time(end),'r--')
 
 %% Direct
 % idx = 1:N;

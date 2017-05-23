@@ -22,26 +22,19 @@ popt.c = 2*popt.xi^2/eta;
 %    w = max(w, sqrt((1-eta)/2)*popt.m/popt.xi);
 % end
 
-% we want even grids
-% Assume not cubic domain
-deltaM = 2*ceil(w/popt.h);
-popt.w = popt.h*deltaM/2;
-popt.Mx = ceil( (popt.box(1)+2*popt.w)/popt.h);
-popt.My = ceil( (popt.box(2)+2*popt.w)/popt.h);
+popt.w = popt.h*popt.P/2;
+popt.Mx = ceil(popt.box(1)/popt.h)+popt.P;
+popt.My = ceil(popt.box(2)/popt.h)+popt.P;
+popt.Lx = popt.box(1)+2*popt.w;
+popt.Ly = popt.box(2)+2*popt.w;
+
 % Even grids
 popt.Mx = 2*ceil(popt.Mx/2);
 popt.My = 2*ceil(popt.My/2);
-    
-% Otherwise
-if( abs(popt.box(1)-popt.box(3))<1e-6 )
-    popt.Mx = popt.M+deltaM;
-end
-if( abs(popt.box(2)-popt.box(3))<1e-6 )
-    popt.My = popt.M+deltaM;
-end
 
-popt.Lx = popt.box(1)+2*popt.w;
-popt.Ly = popt.box(2)+2*popt.w;
+% h should be the same in all directions
+assert((popt.Lx/popt.Mx-popt.h)<eps)
+assert((popt.Ly/popt.My-popt.h)<eps)
 
 % sampling factor (oversampling)
 if( isfield(opt,'sg')), popt.sg = opt.sg; else popt.sg=1; end;
@@ -50,10 +43,14 @@ if( isfield(opt,'s0')), popt.s0 = opt.s0; else popt.s0=1; end;
 if( isfield(opt,'nl')), popt.nl = opt.nl; else popt.nl=3; end;
 if( ~isfield(opt,'k0mod')), popt.k0mod = 1; end% just to define something.
 
-overM = ceil(popt.sg * popt.Mx/2)*2;
-popt.sg = overM / popt.Mx;
-
+    %overM = ceil(popt.sg * popt.Mx/2)*2;
+    %popt.sg = overM / popt.Mx;
 popt.R = sqrt(popt.Lx^2+popt.Ly^2);
+
+% increase sl and s0 such that FFTN has integer size vectors.
+popt.sl = max(ceil(popt.sl*popt.Mx)/popt.Mx,ceil(popt.sl*popt.My)/popt.My);
+popt.s0 = max(ceil(popt.s0*popt.Mx)/popt.Mx,ceil(popt.s0*popt.My)/popt.My);
+
 
 % % find local pad modes to apply higher over sampling factor.
 if(popt.sg~=popt.sl)
@@ -72,6 +69,7 @@ if(popt.sg~=popt.sl)
 else
     popt.local_pad = 1;
 end
+    
 
 % collect
 popt.PH = popt.P/2;
