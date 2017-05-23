@@ -50,7 +50,8 @@ if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     Znum = exp(-(1-eta)/(4*xi^2)*k2);
 
     scale_t = tic;
-    Zres = Znum./k2;    
+    Zres = Znum./k2; 
+    Zres(isinf(Zres)==1)=0;
     Gres = Gres.*Zres;
     walltime = walltime + toc(scale_t);
 end

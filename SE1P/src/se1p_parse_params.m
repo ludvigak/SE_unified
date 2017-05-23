@@ -13,7 +13,7 @@ popt.L = opt.box(3);
 popt.h = popt.L/popt.M;
 
 % Gaussian
-popt.m = .95*sqrt(pi*popt.P);
+popt.m = .94*sqrt(pi*popt.P);
 w = popt.h*popt.P/2;
 eta = (2*w*popt.xi/popt.m)^2;
 popt.c = 2*popt.xi^2/eta;
@@ -48,7 +48,6 @@ if( isfield(opt,'sg')), popt.sg = opt.sg; else popt.sg=1; end;
 if( isfield(opt,'sl')), popt.sl = opt.sl; else popt.sl=1; end;
 if( isfield(opt,'s0')), popt.s0 = opt.s0; else popt.s0=1; end;
 if( isfield(opt,'nl')), popt.nl = opt.nl; else popt.nl=3; end;
-%if( isfield(opt,'R')),  popt.R  = opt.R;  else popt.R=L*sqrt(2); end
 if( ~isfield(opt,'k0mod')), popt.k0mod = 1; end% just to define something.
 
 overM = ceil(popt.sg * popt.Mx/2)*2;
@@ -67,8 +66,8 @@ if(popt.sg~=popt.sl)
         popt.local_pad = [2:n+1 popt.M-n+1:popt.M]; % 0 mode is the first element
         popt.k0mod = 1;
     else
-        popt.local_pad = [1:n+1 popt.M-n-1:popt.M-1];% 0 mode is the last element
-        popt.k0mod = popt.M;
+        popt.local_pad = [2:n+1 popt.M-n+1:popt.M];% 0 mode is the last element
+        popt.k0mod = 1;
     end
 else
     popt.local_pad = 1;
