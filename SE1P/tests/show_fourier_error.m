@@ -15,20 +15,20 @@ box = L*[1 1 1];
 [x, f] = vector_system(N, box);
 
 M_ref = M_max + 2;
-opt.xi = pi*(M_max/L) / 15;
+opt.xi = pi*(M_max/L) / 12;
 opt.box = box;
 %opt.layers = 20;
 opt.M = M_ref*box(3);
 opt.P = 32;
 opt.sl = 4;
 opt.nl = input.M-2;
-opt.s0 = 4;
+opt.s0 = 2.5;
 
 % compute reference
 ref = se1p_fourier_space(x, f, opt);
 ref_max = rms(ref);
 
-Mlist = 2:1:M_max;
+Mlist = 4:1:M_max;
 [err_inf, err_rms, est] = deal(zeros(size(Mlist)));
 tic
 for i=1:numel(Mlist)

@@ -28,9 +28,11 @@ popt.My = ceil(popt.box(2)/popt.h)+popt.P;
 popt.Lx = popt.box(1)+2*popt.w;
 popt.Ly = popt.box(2)+2*popt.w;
 
-% Even grids
-popt.Mx = 2*ceil(popt.Mx/2);
-popt.My = 2*ceil(popt.My/2);
+% Even grids if even grids are in the z direction
+if(mod(popt.M,2)==0)
+    popt.Mx = 2*ceil(popt.Mx/2);
+    popt.My = 2*ceil(popt.My/2);
+end
 
 % h should be the same in all directions
 assert((popt.Lx/popt.Mx-popt.h)<eps)
@@ -43,8 +45,8 @@ if( isfield(opt,'s0')), popt.s0 = opt.s0; else popt.s0=1; end;
 if( isfield(opt,'nl')), popt.nl = opt.nl; else popt.nl=3; end;
 if( ~isfield(opt,'k0mod')), popt.k0mod = 1; end% just to define something.
 
-    %overM = ceil(popt.sg * popt.Mx/2)*2;
-    %popt.sg = overM / popt.Mx;
+%overM = ceil(popt.sg * popt.Mx/2)*2;
+%popt.sg = overM / popt.Mx;
 popt.R = sqrt(popt.Lx^2+popt.Ly^2);
 
 % increase sl and s0 such that FFTN has integer size vectors.
@@ -63,13 +65,13 @@ if(popt.sg~=popt.sl)
         popt.local_pad = [2:n+1 popt.M-n+1:popt.M]; % 0 mode is the first element
         popt.k0mod = 1;
     else
-        popt.local_pad = [2:n+1 popt.M-n+1:popt.M];% 0 mode is the last element
+        popt.local_pad = [2:n+1 popt.M-n+1:popt.M]; % 0 mode is the first element
         popt.k0mod = 1;
     end
 else
     popt.local_pad = 1;
 end
-    
+
 
 % collect
 popt.PH = popt.P/2;
