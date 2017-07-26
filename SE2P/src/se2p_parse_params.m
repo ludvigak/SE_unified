@@ -32,12 +32,26 @@ assert((popt.Lz/popt.Mz-popt.h)<eps)
 
 % sampling factor (oversampling)
 if( isfield(opt,'s')), popt.s = opt.s; else popt.s=1; end;
+if( isfield(opt,'s0')), popt.s0 = opt.s0; else popt.s0=2; end;
+if( isfield(opt,'n')), popt.n = opt.n; else popt.n=max(ceil(M/2),1); end;
 
 popt.R = popt.Lz;
 
 % increase s and such that FFTN has integer size vectors.
-popt.s = ceil(popt.s*popt.Mz)/popt.Mz;
+popt.s  = ceil(popt.s*popt.Mz)/popt.Mz;
+popt.s0 = ceil(popt.s0*popt.Mz)/popt.Mz;
 
+% local pads
+% FIXME: We assume that the same number of modes in x and y directions
+% are oversampled.
+n = popt.n;
+if(n>1)
+    n = min(floor((popt.M-1)/2),n); % half modes should be at most
+                                    % half of M
+end
+% 0 mode is the first element. But for simplicity we add it and
+% overwrite it whenever needed.    
+popt.local_pad = [1:n+1 popt.M-n+1:popt.M]; 
 
 % collect
 popt.PH = popt.P/2;

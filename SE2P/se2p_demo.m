@@ -14,16 +14,17 @@ opt.xi = pi*M0 / 12;
 opt.P = 32;
 opt.rc = 6 / opt.xi;
 opt.box = box;
-opt.layers = 10;
-opt.s = 3;
-opt.s0= 2;
+opt.layers = 25;
+opt.s = 2.4;
+opt.n=8;
+opt.s0= 1.8;
 
 % compute FD Ewald sum
 ref  = SE2P_direct_fd_mex(1:N,x,f,opt);
 ref0 = se2p_k0_direct(1:N,x,f,opt,false);
 ref=ref+ref0;
 
-u = se2p_fourier_space(x,f,opt);
+[u t]= se2p_fourier_space(x,f,opt);
 
 % compute RMS error
 rms_err = rms(u-ref)/rms(ref)

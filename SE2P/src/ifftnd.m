@@ -1,33 +1,39 @@
-function [x, varargout] = ifftnd(x,x0,Mx,My,Mz,s0,s)
+function [x, varargout] = ifftnd(x,xr,x0,opt)
 %IFFTND 3-dimensional inverse discrete Fourier Transform.
-%   IFFTND(X,M,S0,S,LOCAL_PAD,PER) returns 3-dimensional inverse DFT of 
-%   the 3D array X with size M with one periodic direction PER 
-%   and 2 free directions. S is the oversampling factor on LOCAL_PAD
-%   and S0 is the oversampling factor on the rest, all in free directions.
+%   IFFTND(X,OPT) returns 3-dimensional inverse DFT of 
+%   the 3D array X with size M with two periodic directions
+%   and 1 free directions. S is the oversampling factor on LOCAL_PAD
+%   and S0 is the oversampling factor on the zero mod, all in free directions.
+%
+% Note: For smplicity, LOCAL_PAD contains zero mode as well but it
+% will be updated by the zero mode later on.
+
 %
 %   INPUT:
-%       X:          Input vector of size (S*M,S*M,M).
-%       XRES:       LOCAL_PAD vector with S0 oversampling factor with size 
-%                       (S0*M,S0*M,LOCAL_PAD).
+%       X:          Input vector of size (M,M,M).
+%       XR:         LOCAL_PAD vector with S0 oversampling factor with size 
+%                       (LOCAL_PAD,LOCAL_PAD,SR*M).
 %       M:          Size of the input vector in the periodic direction.
 %       LOCAL_PAD:  List of modes to apply a large oversampling (LOCAL_PAD=3:5).
-%       S0:         Oversampling factor on LOCAL_PAD.
-%       S:          Oversampling factor on the rest of the free domain.
-%                   (usally 2).
-%       PER:        Periodic diretion.
+%       S:          Oversampling factor on LOCAL_PAD.
+%       S0:         Oversampling factor on the zero mod.
 %
 %   OUTPUT:
 %       X:          Output vector of size (M,M,M)
 
+F0= ifft(x0,round(opt.Mz*opt.s0)); % since this is a vector we skip 3
 
-F0= ifft(x0,Mz*s0);
+Fr= ifft(xr,round(opt.Mz*opt.s),3);
 
-F1 = ifft(x,round(Mz*s),3);         % 1D fft on z
+F1 = ifft(x,opt.Mz,3);		% 1D ifft on z
 
-Fz = F1(:,:,1:Mz);		% update old values and restrict
-Fz(1,1,:) = F0(1:Mz);           % restrict to (1,1,Mz)
+Fz = zeros(opt.M,opt.M,opt.Mz);
 
-x = ifft2(Fz,Mx,My);                              % 1D fft in z
+Fz = F1(:,:,1:opt.Mz);		% update old values and restrict
+Fz(opt.local_pad,opt.local_pad,:) = Fr(:,:,1:opt.Mz);
+opt.local_pad
+Fz(1,1,:) = F0(1:opt.Mz);       % restrict to (1,1,Mz)
 
+x = ifft2(Fz,opt.M,opt.M);      % 2D ifft in x and y
 
 end

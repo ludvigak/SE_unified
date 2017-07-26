@@ -1,29 +1,34 @@
-function [x,x0,varargout] = fftnd(x,Mx,My,Mz,s0,s)
+function [x,xr,x0,varargout] = fftnd(x,opt)
 %FFTND 3-dimensional discrete Fourier Transform.
-%   FFTND(X,M,S0,S,LOCAL_PAD,PER) returns 3-dimensional DFT of 
-%   the 3D array X with size M with one periodic direction PER 
-%   and 2 free directions in X vector and XRES. XRES contains the LOCAL_PAD
+%   FFTND(X,OPT) returns 3-dimensional DFT of 
+%   the 3D array X with size M with two periodic directions
+%   and 1 free directions in X vector and XR and X0. XR contains the LOCAL_PAD
 %   result and the corresponding values in X vector are not updated. S is 
 %   the oversampling factor on LOCAL_PAD and S0 is the oversampling factor 
-%   on the rest, all in free directions.
+%   on zero mod, all in free directions.
+    
+% Note: For smplicity, LOCAL_PAD contains zero mode as well but it
+% will be updated by the zero mode later on.
+
 %
 %   INPUT:
 %       X:          Input vector
 %       Mx,My,Mz:   Size of the input vector (Mx,My,Mz)
-%       LOCAL_PAD:  List of modeshe to apply a large oversampling (LOCAL_PAD=3:5).
-%       S0:         Oversampling factor on LOCAL_PAD
-%       S:          Oversampling factor on the rest of the free domain.
+%       LOCAL_PAD:  List of modes to apply a large oversampling (LOCAL_PAD=3:5).
+%       S0:         Oversampling factor on zero mode
+%       S:          Oversampling factor on LOCAL_PAD.
 %                   (usally 2).
-%       PER:        Periodic diretion
 %
 %   OUTPUT:
-%       X:          Output vector of size (S*M,S*M,M)
-%       XRES:       Output vector of size (S0*M,S0*M,LOCAL_PAD);
+%       X:          Output vector of size (M,M,M)
+%       XR:         Output vector of size (LOCAL_PAD,LOCAL_PAD,SR*M);
+%       X0:         Output vector of size (1,1,S0*M);
 
 
-Fxy = fft2(x ,Mx, My);                              % 2D fft in x and y
-x   = fft(Fxy,round(Mz*s),3);                          % 1D fft with padding in z
+Fxy = fft2(x ,opt.M, opt.M);	  % 2D fft in x and y
+x   = fft(Fxy);                   % 1D fft with no padding in z
+xr   = fft(Fxy(opt.local_pad,opt.local_pad,:),round(opt.Mz*opt.s),3);                          % 1D fft with padding in z
 
-x0 = fft(Fxy(1,1,:),Mz*s0);
+x0 = fft(Fxy(1,1,:),round(opt.Mz*opt.s0));
 
 end

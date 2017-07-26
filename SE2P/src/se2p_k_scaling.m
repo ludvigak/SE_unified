@@ -1,11 +1,11 @@
-function [G, G0, varargout] = se2p_k_scaling(G,G0,opt)
+function [G, Gr, G0, varargout] = se2p_k_scaling(G,Gr,G0,opt)
 
 R = opt.R; eta = opt.eta; xi = opt.xi;
 
 % k-vectors
 [k1 zidx1] = k_vectors(opt.M, opt.L, 1);
 [k2 zidx2] = k_vectors(opt.M, opt.L, 1);
-kappa      = k_vectors(opt.Mz,opt.Lz,opt.s);
+kappa      = k_vectors(opt.Mz,opt.Lz,1);
 [K1 K2 KAPPA] = ndgrid(k1,k2,kappa);
 
 % scale the whole domain
@@ -14,9 +14,8 @@ Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 Z = Znum./ksq;
 Z(zidx1,zidx2,1) = 0;
 
-
+% scale zero mode
 kappa = k_vectors(opt.Mz, opt.Lz, opt.s0);
-
 [K1, K2, KAPPA] = ndgrid(k1,k2,kappa);
 ksq = K1.^2 + K2.^2 + KAPPA.^2;
 Znum = exp(-(1-eta)/(4*xi^2)*ksq);
@@ -28,8 +27,23 @@ Z0 = Znum(zidx1,zidx2,:).*Green;
 % % Finite limit at k3=0.
 Z0(zidx1,zidx2,1) = R^2/2;
 
+
+% scale the local pad
+if(numel(opt.local_pad)>0)
+    % local pad scaling
+    kappa   = k_vectors(opt.Mz, opt.Lz, opt.s);
+    
+    [K1,K2, KAPPA] = ndgrid(k1(opt.local_pad),k2(opt.local_pad),kappa);
+    ksq = K1.^2 + K2.^2 + KAPPA.^2;
+    Znum = exp(-(1-eta)/(4*xi^2)*ksq);
+
+    Zr = Znum./ksq;
+    Zr(isinf(Zr)==1)=0;
+end
+
 G0 = Z0.*G0;
-G = Z.*G;
+Gr = Zr.*Gr;
+G  = Z.*G;
 
 end
 
