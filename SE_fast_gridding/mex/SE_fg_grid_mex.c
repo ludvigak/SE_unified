@@ -50,7 +50,11 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 
 #ifdef TWO_PERIODIC
     SE2P_FGG_wrap_fcn(H_per, &work, &params);
-#endif    
+#endif
+    
+#ifdef ONE_PERIODIC
+    SE1P_FGG_wrap_fcn(H_per, &work, &params);
+#endif        
     
     // done
     SE_FGG_free_workspace(&work);

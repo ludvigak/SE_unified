@@ -1,17 +1,10 @@
-function SE_static  = SE_FGG_precomp(x,xi,opt)
+function SE_static  = se2p_precomp(x,opt) 
 % SPECTRAL EWALD 2P, pre-computation of FGG vectors
 % Fast Ewald method for electrostatic potential calculation, k-space part.
-%
-% Dag Lindbo, dag@kth.se, Jul. 2011
 
 verb = false;
 
 % get parameters
-opt=parse_params(opt);
-eta=(2*opt.w*xi/opt.m)^2;
-opt.c = 2*xi^2/eta;
-opt.box=opt.box;
-opt.a=opt.wbox(3,1);
 
 [zx zy zz idx] = SE_fgg_expand_all_mex_2p(x,opt);
 

@@ -10,11 +10,10 @@ g = N(1);
 
 Q = N/4;
 
-% verified formulas (wapr is a numerical approximation of lambertw)
-%xxi = @(r) (1./(r*sqrt(2))) .* sqrt(wapr(2*C1^2./(r.^2*epsi^2)))
-xxi = @(r) (1./r).*sqrt(wapr( (1/epsi)*sqrt(Q/(2*L^3)) ) );
-kinf = @(x) sqrt(3)*L*x.*sqrt(wapr( 4*Q.^(2/3)./( 3*pi^(2/3)*L^2*x.^(2/3)*epsi^(4/3) ) ))/(2*pi);
-%kinf = @(x) (x/pi)*sqrt(3/2) .* sqrt(wapr(2*pi^2*C2^(2/3)*x.^(2/3)./(3*epsi^(2/3))))
+%xxi = @(r) (1./(r*sqrt(2))) .* sqrt(lambertw(2*C1^2./(r.^2*epsi^2)))
+xxi = @(r) (1./r).*sqrt(lambertw( (1/epsi)*sqrt(Q/(2*L^3)) ) );
+kinf = @(x) sqrt(3)*L*x.*sqrt(lambertw( 4*Q.^(2/3)./( 3*pi^(2/3)*L^2*x.^(2/3)*epsi^(4/3) ) ))/(2*pi);
+%kinf = @(x) (x/pi)*sqrt(3/2) .* sqrt(lambertw(2*pi^2*C2^(2/3)*x.^(2/3)./(3*epsi^(2/3))))
 
 rc = (3*g./(4*pi*rho)).^(1/3);
 xi = xxi(rc);

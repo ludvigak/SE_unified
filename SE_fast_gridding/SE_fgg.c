@@ -9,12 +9,6 @@
 #include "SE_fkg.c"
 
 // Dag Lindbo, dag@kth.se
-// Core of SE is written by Dag Lindbo. The routines are modified
-// to calculate forces.
-// Davoud Saffar Shamshirgar
-
-// =============================================================================
-//#define PI 3.141592653589793
 
 // =============================================================================
 // Internal routines ===========================================================
@@ -83,6 +77,7 @@ void SE_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2,
     params->d = pow(c/PI,1.5);
     params->h = h;
     params->a = -1;
+    params->b = -1;
 
     params->dims[0] = M0;
     params->dims[1] = M1;
@@ -104,6 +99,29 @@ void SE2P_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2,
     params->d = pow(c/PI,1.5);
     params->h = h;
     params->a = a;
+    params->b = -1;
+
+    params->dims[0] = M0;
+    params->dims[1] = M1;
+    params->dims[2] = M2;
+
+    params->npdims[0] = M0+P;
+    params->npdims[1] = M1+P;
+    params->npdims[2] = M2+P;
+}
+
+// -----------------------------------------------------------------------------
+void SE1P_FGG_pack_params(SE_FGG_params* params, int N, int M0, int M1, int M2, 
+			  int P, double c, double h, double a, double b)
+{
+    params->N = N;
+    params->P = P;
+    params->P_half=half(P);
+    params->c = c;
+    params->d = pow(c/PI,1.5);
+    params->h = h;
+    params->a = a;
+    params->b = b;
 
     params->dims[0] = M0;
     params->dims[1] = M1;
@@ -121,7 +139,7 @@ void SE_FGG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params,
     const int P=params->P;
     int numel = SE_prod3(params->npdims);
     work->H = SE_FGG_MALLOC(numel*sizeof(double));
-  
+
     SE_fp_set_zero(work->H, numel);
 
     if(allocate_zs)
@@ -135,56 +153,26 @@ void SE_FGG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params,
     {
         numel = (params->N)*(params->P);
 	work->zx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-	work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));;
-	work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));;
+	work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+	work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
 	work->idx= (int*) SE_FGG_MALLOC(params->N*sizeof(int));
+#ifdef FORCE
+        work->zfx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+        work->zfy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+        work->zfz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
+#endif
     }
     else
     {
 	work->zx=NULL;
 	work->zy=NULL;
 	work->zz=NULL;
-	work->idx=NULL;
-    }
-    work->free_fgg_expa=allocate_fgg_expa;
-}
-
-// -----------------------------------------------------------------------------
-void SE_FGG_allocate_workspace_SSE_force(SE_FGG_work* work, const SE_FGG_params* params,
-                                         int allocate_zs, int allocate_fgg_expa)
-{
-    const int P=params->P;
-    int numel = SE_prod3(params->npdims);
-    work->H = SE_FGG_MALLOC(numel*sizeof(double));
-    SE_fp_set_zero(work->H, numel);
-
-    if(allocate_zs)
-        work->zs = SE_FGG_MALLOC(P*P*P*sizeof(double));
-    else
-        work->zs = NULL;
-
-    work->free_zs=allocate_zs;
-
-    if(allocate_fgg_expa)
-    {
-        numel = (params->N)*(params->P);
-        work->zx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->zfz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
-        work->idx= (int*) SE_FGG_MALLOC(params->N*sizeof(int));
-    }
-    else
-    {
-        work->zx =NULL;
-        work->zy =NULL;
-        work->zz =NULL;
+#ifdef FORCE
         work->zfx=NULL;
         work->zfy=NULL;
         work->zfz=NULL;
-        work->idx=NULL;
+#endif
+	work->idx=NULL;
     }
     work->free_fgg_expa=allocate_fgg_expa;
 }
@@ -221,26 +209,11 @@ void SE_FGG_free_workspace(SE_FGG_work* work)
 	SE_FGG_FREE(work->zx);
 	SE_FGG_FREE(work->zy);
 	SE_FGG_FREE(work->zz);
-	SE_FGG_FREE(work->idx);
-    }
-}
-
-// -----------------------------------------------------------------------------
-void SE_FGG_free_workspace_SSE_force(SE_FGG_work* work)
-{
-    SE_FGG_FREE(work->H);
-
-    if(work->free_zs)
-	SE_FGG_FREE(work->zs);
-
-    if(work->free_fgg_expa)
-    {
-	SE_FGG_FREE(work->zx);
-	SE_FGG_FREE(work->zy);
-	SE_FGG_FREE(work->zz);
-	SE_FGG_FREE(work->zfx);
-	SE_FGG_FREE(work->zfy);
-	SE_FGG_FREE(work->zfz);
+#ifdef FORCE
+        SE_FGG_FREE(work->zfx);
+        SE_FGG_FREE(work->zfy);
+        SE_FGG_FREE(work->zfz);
+#endif
 	SE_FGG_FREE(work->idx);
     }
 }
@@ -365,6 +338,36 @@ void SE2P_FGG_wrap_fcn(double* restrict H_per,
 }
 
 // -----------------------------------------------------------------------------
+// Wrap H to produce 1-periodicity
+// OUTPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
+void SE1P_FGG_wrap_fcn(double* restrict H_per, 
+		       const SE_FGG_work* work, 
+		       const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+    // can not openMP here, race to += on H_per beacuse indices wrap around
+    for(int i=0; i<params->npdims[0]; i++)
+    {
+	for(int j=0; j<params->npdims[1]; j++)
+	{
+	    for(int k=0; k<params->npdims[2]; k++)
+	    {
+		widx= vmod(k-p_half,params->dims[2]);
+		idx = __IDX3_CMAJ(i, j, widx, 
+				  params->dims[0], params->dims[1]);
+		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
+						   params->npdims[1],
+						   params->npdims[2]) ];
+	    }
+	}
+    }
+}
+
+
+// -----------------------------------------------------------------------------
 // Extend periodic function larger box
 // INPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
 void SE_FGG_extend_fcn(SE_FGG_work* work, const double* H_per, 
@@ -425,6 +428,34 @@ void SE2P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per,
     }
 }
 
+// -----------------------------------------------------------------------------
+// Extend 1-periodic function larger box
+// INPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!
+void SE1P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per, 
+			 const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
+    for(int i=0; i<params->npdims[0]; i++)
+    {
+	for(int j=0; j<params->npdims[1]; j++)
+	{
+	    for(int k=0; k<params->npdims[2]; k++)
+	    {
+		widx = vmod(k-p_half,params->dims[2]);
+		idx = __IDX3_CMAJ(i, j, widx, 
+				  params->dims[0], params->dims[1]);
+		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
+		    = H_per[idx];
+	    }
+	}
+    }
+}
 
 // =============================================================================
 // Core SE FGG routines ========================================================
@@ -461,8 +492,6 @@ void SE_FGG_base_gaussian(SE_FGG_work* work, const SE_FGG_params* params)
 
 // -----------------------------------------------------------------------------
 #ifdef THREE_PERIODIC
-
-static inline 
 void fgg_offset_3p(const double x[3],
 		   const SE_FGG_params* params,
 		   double t0[3],
@@ -559,106 +588,6 @@ int fgg_expansion_3p(const double x[3], const double q,
 		       params->npdims[1], params->npdims[2]);
 }
 
-static 
-int fgg_expansion_3p_force(const double x[3], const double q,
-			   const SE_FGG_params* params,
-			   double z2_0[P_MAX], 
-			   double z2_1[P_MAX], 
-			   double z2_2[P_MAX],
-			   double zf_0[P_MAX],
-			   double zf_1[P_MAX],
-			   double zf_2[P_MAX])
-{
-    // unpack params
-    const int p = params->P;
-    const int p_half = params->P_half;
-    const double h = params->h;
-    const double c=params->c;
-    
-    double t0[3];
-    int idx;
-    int idx_from[3],p_from;
-
-    // compute index range and centering
-    if(is_odd(p))
-    {
-	for(int j=0; j<3; j++)
-	{
-	    idx = (int) round(x[j]/h);
-	    idx_from[j] = idx - p_half;
-	    t0[j] = x[j]-h*idx;
-	}
-    }
-    else
-    {
-	for(int j=0; j<3; j++)
-	{
-	    idx = (int) floor(x[j]/h);
-	    idx_from[j] = idx - (p_half-1);
-	    t0[j] = x[j]-h*idx;
-	}
-    }
-
-    // compute third factor 
-    double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
-
-    // compute second factor by induction
-    double z_base0 = exp(2*c*h*t0[0]);
-    double z_base1 = exp(2*c*h*t0[1]);
-    double z_base2 = exp(2*c*h*t0[2]);
-
-    double z0, z1, z2;
-    if(is_odd(p)) 
-    {
-	z0 = pow(z_base0,-p_half);
-	z1 = pow(z_base1,-p_half);
-	z2 = pow(z_base2,-p_half);
-	p_from = -p_half;
-    }	
-    else
-    {
-    	z0 = pow(z_base0,-p_half+1);
-    	z1 = pow(z_base1,-p_half+1);
-    	z2 = pow(z_base2,-p_half+1);
-	p_from = -p_half+1;
-    }
-
-    z2_0[0] = z0;
-    z2_1[0] = z1;
-    z2_2[0] = z2;
-    
-    // extra terms multiplied to calculate forces
-    zf_0[0] = -c*(t0[0]-p_from*h);
-    zf_1[0] = -c*(t0[1]-p_from*h);
-    zf_2[0] = -c*(t0[2]-p_from*h);
-
-    for(int i=1; i<p; i++)
-    {
-	z0 *=z_base0;
-	z1 *=z_base1;
-	z2 *=z_base2;
-
-	z2_0[i] = z0;
-	z2_1[i] = z1;
-	z2_2[i] = z2;
-
-	zf_0[i] = -c*(t0[0]-(p_from+i)*h);
-	zf_1[i] = -c*(t0[1]-(p_from+i)*h);
-	zf_2[i] = -c*(t0[2]-(p_from+i)*h);
-    }
- 
-    // save some flops by multiplying one vector with z3 factor
-    for(int i=0; i<p; i++)
-    {
-	z2_0[i] *= z3;
-    }
-
-    return __IDX3_RMAJ(idx_from[0]+p_half, 
-		       idx_from[1]+p_half, 
-		       idx_from[2]+p_half, 
-		       params->npdims[1], params->npdims[2]);
-}
-
 static inline
 int fgg_index_3p(const double x[3],
 		 const SE_FGG_params* params)
@@ -672,76 +601,8 @@ int fgg_index_3p(const double x[3],
 		       idx_from[2]+p_half, 
 		       params->npdims[1], params->npdims[2]);
 }
+
 #endif
-
-/* // --------------------------------------------------------------------------- */
-/* // ----------------KAISER KERNEL --------------------------------------------- */
-/* // --------------------------------------------------------------------------- */
-
-/* static inline double */
-/* kaiser(double x, double ow2, double beta) { */
-/*   double t = sqrt(1. - x*x*ow2); */
-/*   return exp(beta*(t-1)); */
-/* } */
-
-/* static */
-/* int kaiser_expansion_3p(const double x[3], const double q, */
-/* 			const SE_FGG_params* params, */
-/* 			double z2_0[P_MAX], */
-/* 			double z2_1[P_MAX], */
-/* 			double z2_2[P_MAX]) */
-/* { */
-/*     // unpack params */
-/*     const int p = params->P; */
-/*     const int p_half = params->P_half; */
-/*     const double h = params->h; */
-/*     const double w = params->P/2.; */
-/*     const double ow2  =1./(w*w); */
-/*     const double beta = params->beta; */
-/*     double t0[3]; */
-
-/*     int idx; */
-/*     int idx_from[3]; */
-
-/*     // compute index range and centering */
-/*     if(is_odd(p)) { */
-/*       for(int j=0; j<3; j++) { */
-/* 	idx = (int) round(x[j]/h); */
-/* 	idx_from[j] = idx - p_half; */
-/* 	t0[j] = (x[j]-h*idx)/h; */
-/*       } */
-/*     } */
-/*     else { */
-/*       for(int j=0; j<3; j++) { */
-/* 	idx = (int) floor(x[j]/h); */
-/* 	idx_from[j] = idx - (p_half-1); */
-/* 	t0[j] = (x[j]-h*idx)/h; */
-/*       } */
-/*     } */
-
-/*     // compute second factor by induction */
-/*     if(is_odd(p)) */
-/*       for(int i=0; i<p; i++) { */
-/* 	z2_0[i] = kaiser((t0[0]-(i-p_half)),ow2,beta); */
-/* 	z2_1[i] = kaiser((t0[1]-(i-p_half)),ow2,beta); */
-/* 	z2_2[i] = kaiser((t0[2]-(i-p_half)),ow2,beta); */
-/*       } */
-/*     else */
-/*       for(int i=0; i<p; i++) { */
-/* 	z2_0[i] = kaiser((t0[0]-(i-p_half+1)),ow2,beta); */
-/* 	z2_1[i] = kaiser((t0[1]-(i-p_half+1)),ow2,beta); */
-/* 	z2_2[i] = kaiser((t0[2]-(i-p_half+1)),ow2,beta); */
-/*       } */
-/*     // save some flops by multiplying one vector with q */
-/*     for(int i=0; i<p; i++) */
-/*       z2_0[i] *= q; */
-
-/*     return __IDX3_RMAJ(idx_from[0]+p_half, */
-/*                        idx_from[1]+p_half, */
-/*                        idx_from[2]+p_half, */
-/*                        params->npdims[1], params->npdims[2]); */
-/* } */
-
 // -----------------------------------------------------------------------------
 #ifdef TWO_PERIODIC
 // -----------------------------------------------------------------------------
@@ -881,8 +742,219 @@ int fgg_index_2p(const double x[3],
 		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
-
 #endif
+
+/* // --------------------------------------------------------------------------- */
+/* // ----------------KAISER KERNEL --------------------------------------------- */
+/* // --------------------------------------------------------------------------- */
+
+/* static inline double */
+/* kaiser(double x, double ow2, double beta) { */
+/*   double t = sqrt(1. - x*x*ow2); */
+/*   return exp(beta*(t-1)); */
+/* } */
+
+/* static */
+/* int kaiser_expansion_3p(const double x[3], const double q, */
+/* 			const SE_FGG_params* params, */
+/* 			double z2_0[P_MAX], */
+/* 			double z2_1[P_MAX], */
+/* 			double z2_2[P_MAX]) */
+/* { */
+/*     // unpack params */
+/*     const int p = params->P; */
+/*     const int p_half = params->P_half; */
+/*     const double h = params->h; */
+/*     const double w = params->P/2.; */
+/*     const double ow2  =1./(w*w); */
+/*     const double beta = params->beta; */
+/*     double t0[3]; */
+
+/*     int idx; */
+/*     int idx_from[3]; */
+
+/*     // compute index range and centering */
+/*     if(is_odd(p)) { */
+/*       for(int j=0; j<3; j++) { */
+/* 	idx = (int) round(x[j]/h); */
+/* 	idx_from[j] = idx - p_half; */
+/* 	t0[j] = (x[j]-h*idx)/h; */
+/*       } */
+/*     } */
+/*     else { */
+/*       for(int j=0; j<3; j++) { */
+/* 	idx = (int) floor(x[j]/h); */
+/* 	idx_from[j] = idx - (p_half-1); */
+/* 	t0[j] = (x[j]-h*idx)/h; */
+/*       } */
+/*     } */
+
+/*     // compute second factor by induction */
+/*     if(is_odd(p)) */
+/*       for(int i=0; i<p; i++) { */
+/* 	z2_0[i] = kaiser((t0[0]-(i-p_half)),ow2,beta); */
+/* 	z2_1[i] = kaiser((t0[1]-(i-p_half)),ow2,beta); */
+/* 	z2_2[i] = kaiser((t0[2]-(i-p_half)),ow2,beta); */
+/*       } */
+/*     else */
+/*       for(int i=0; i<p; i++) { */
+/* 	z2_0[i] = kaiser((t0[0]-(i-p_half+1)),ow2,beta); */
+/* 	z2_1[i] = kaiser((t0[1]-(i-p_half+1)),ow2,beta); */
+/* 	z2_2[i] = kaiser((t0[2]-(i-p_half+1)),ow2,beta); */
+/*       } */
+/*     // save some flops by multiplying one vector with q */
+/*     for(int i=0; i<p; i++) */
+/*       z2_0[i] *= q; */
+
+/*     return __IDX3_RMAJ(idx_from[0]+p_half, */
+/*                        idx_from[1]+p_half, */
+/*                        idx_from[2]+p_half, */
+/*                        params->npdims[1], params->npdims[2]); */
+/* } */
+
+// -----------------------------------------------------------------------------
+#ifdef ONE_PERIODIC
+static 
+int fgg_expansion_1p(const double x[3], const double q,
+		     const SE_FGG_params* params,
+		     double z2_0[P_MAX], 
+		     double z2_1[P_MAX], 
+		     double z2_2[P_MAX])
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double c=params->c;
+    const double a=params->a;
+    const double b=params->b;
+
+    double t0[3];
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - p_half;
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) round((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - p_half;
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) round(x[2]/h);
+	idx_from[2] = idx - p_half;
+	t0[2] = x[2]-h*idx;
+    }
+    else
+    {
+	idx = (int) floor((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - (p_half-1);
+	t0[0] = x[0] - (idx*h + (a+h/2));
+
+	idx = (int) floor((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - (p_half-1);
+	t0[1] = x[1] - (idx*h + (b+h/2));
+
+	idx = (int) floor(x[2]/h);
+	idx_from[2] = idx - (p_half-1);
+	t0[2] = x[2]-h*idx;
+    }
+
+    // compute third factor 
+    double z3 = exp(-c*(t0[0]*t0[0] + t0[1]*t0[1] + t0[2]*t0[2]) )*q;
+
+    // compute second factor by induction
+    double z_base0 = exp(2*c*h*t0[0]);
+    double z_base1 = exp(2*c*h*t0[1]);
+    double z_base2 = exp(2*c*h*t0[2]);
+
+    double z0, z1, z2;
+    if(is_odd(p))
+    {
+	z0 = pow(z_base0,-p_half);
+	z1 = pow(z_base1,-p_half);
+	z2 = pow(z_base2,-p_half);
+    }	
+    else
+    {
+    	z0 = pow(z_base0,-p_half+1);
+    	z1 = pow(z_base1,-p_half+1);
+    	z2 = pow(z_base2,-p_half+1);
+    }
+
+    z2_0[0] = z0;
+    z2_1[0] = z1;
+    z2_2[0] = z2;
+    for(int i=1; i<p; i++)
+    {
+	z0 *=z_base0;
+	z1 *=z_base1;
+	z2 *=z_base2;
+
+	z2_0[i] = z0;
+	z2_1[i] = z1;
+	z2_2[i] = z2;
+    }
+
+    // save some flops by multiplying one vector with z3 factor
+    for(int i=0; i<p; i++)
+    {
+	z2_0[i] *= z3;
+    }
+
+    return __IDX3_RMAJ(idx_from[0], 
+		       idx_from[1], 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+
+// -----------------------------------------------------------------------------
+static inline
+int fgg_index_1p(const double x[3],
+		 const SE_FGG_params* params)
+{
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double a=params->a;
+    const double b=params->b;
+
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p))
+    {
+	idx = (int) round((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - p_half;
+
+	idx = (int) round((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - p_half;
+
+	idx = (int) round(x[2]/h);
+	idx_from[2] = idx - p_half;
+    }
+    else
+    {
+	idx = (int) floor((x[0]-(a+h/2))/h);
+	idx_from[0] = idx - (p_half-1);
+
+	idx = (int) floor((x[1]-(b+h/2))/h);
+	idx_from[1] = idx - (p_half-1);
+
+	idx = (int) floor(x[2]/h);
+	idx_from[2] = idx - (p_half-1);
+    }
+
+    return __IDX3_RMAJ(idx_from[0], 
+		       idx_from[1], 
+		       idx_from[2]+p_half, 
+		       params->npdims[1], params->npdims[2]);
+}
+#endif
+
 // -----------------------------------------------------------------------------
 void SE_FGG_expand_all(SE_FGG_work* work, 
 		       const SE_state* st, 
@@ -907,32 +979,6 @@ void SE_FGG_expand_all(SE_FGG_work* work,
     }
 }
 
-#ifdef THREE_PERIODIC
-// -----------------------------------------------------------------------------
-void SE_FGG_expand_all_SSE_force(SE_FGG_work* work, 
-				 const SE_state* st, 
-				 const SE_FGG_params* params)
-{
-    double xn[3] MEM_ALIGNED;
-    
-    const int N = params->N;
-    const int P = params->P;
-
-    for(int n=0; n<N; n++)
-    {
-	// compute index and expansion vectors
-	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
-	
-	*(work->idx+n) = __FGG_EXPA_FORCE(xn,1,params, 
-					  work->zx+n*P, 
-					  work->zy+n*P, 
-					  work->zz+n*P,
-					  work->zfx+n*P,
-					  work->zfy+n*P,
-					  work->zfz+n*P);
-    }
-}
-#endif
 
 /* // ----------------------------------------------------------------------------- */
 /* void SE_FGG_int_kaiser(double* restrict phi,   */
@@ -1036,88 +1082,6 @@ void SE_FGG_int(double* restrict phi,
 	phi[m] = (h*h*h)*phi_m;
     }
 }
-
-#ifdef THREE_PERIODIC
-// -----------------------------------------------------------------------------
-// vanilla grid gather to calculate forces
-void SE_FGG_int_force(double* restrict force,  
-		      const SE_FGG_work* work, 
-		      SE_state* st, 
-		      const SE_FGG_params* params)
-{
-    double z2_0[P_MAX] MEM_ALIGNED;
-    double z2_1[P_MAX] MEM_ALIGNED;
-    double z2_2[P_MAX] MEM_ALIGNED;
-
-    // to alculate forces
-    double zf_0[P_MAX] MEM_ALIGNED;
-    double zf_1[P_MAX] MEM_ALIGNED;
-    double zf_2[P_MAX] MEM_ALIGNED;
-
-    // unpack params
-    const double* restrict H = work->H;
-    const double* restrict zs = work->zs;
-    const int p = params->P;
-    const int N = params->N;
-    const double h=params->h;
-
-    double xm[3],qm;
-    int i,j,k,idx, zidx;
-    double force_m[3], cij,Hzc;
-#ifdef CALC_ENERGY
-    double phi_m;
-#endif
-    
-    const int incrj = params->npdims[2]-p;
-    const int incri = params->npdims[2]*(params->npdims[1]-p);
-
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
-    for(int m=0; m<N; m++)
-    {
-      xm[0] = st->x[m]; xm[1] = st->x[m+N]; xm[2] = st->x[m+2*N]; 
-      qm = st->q[m];
-
-      idx = __FGG_EXPA_FORCE(xm, qm, params, z2_0, z2_1, z2_2,zf_0,zf_1,zf_2);
-      
-      force_m[0] = 0; force_m[1] = 0; force_m[2] = 0;
-
-#ifdef CALC_ENERGY
-      phi_m = 0;
-#endif
-      zidx = 0;
-      
-      for(i = 0; i<p; i++)
-	{
-	  for(j = 0; j<p; j++)
-	    {
-	      cij = z2_0[i]*z2_1[j];
-	      for(k = 0; k<p; k++)
-		{
-		  Hzc         = H[idx]*zs[zidx]*z2_2[k]*cij; 
-#ifdef CALC_ENERGY
-		  phi_m      += Hzc/qm;
-#endif
-		  force_m[0] += Hzc*zf_0[i];
-		  force_m[1] += Hzc*zf_1[j];
-		  force_m[2] += Hzc*zf_2[k];	 
-
-		  idx++; zidx++;
-		}
-	      idx += incrj;
-	    }
-	  idx += incri;
-	}
-      force[m    ] = (h*h*h)*force_m[0];
-      force[m+  N] = (h*h*h)*force_m[1];
-      force[m+2*N] = (h*h*h)*force_m[2];
-#ifdef CALC_ENERGY
-      st->phi[m]    = (h*h*h)*phi_m;
-#endif
-    }
-}
-#endif
 
 // -----------------------------------------------------------------------------
 void SE_FGG_int_split_SSE_dispatch(double* restrict phi,  
@@ -2205,10 +2169,61 @@ void SE_FGG_int_split_AVX_u8(double* restrict phi,
 #endif // AVX
 
 // -----------------------------------------------------------------------------
-void SE_FGG_int_split_SSE_dispatch_force(double* restrict force,  
-					 SE_state *st,
-					 const SE_FGG_work* work, 
-					 const SE_FGG_params* params)
+void SE_FGG_grid(SE_FGG_work* work, const SE_state* st, 
+		 const SE_FGG_params* params)
+{
+    // vectors for FGG expansions
+    double zx0[P_MAX] MEM_ALIGNED;
+    double zy0[P_MAX] MEM_ALIGNED;
+    double zz0[P_MAX] MEM_ALIGNED;
+
+    // unpack parameters
+    const int N=params->N;
+    double* restrict H = work->H; // pointer to grid does NOT alias
+    const double* restrict zs = work->zs;
+    const int p = params->P;
+    
+    double cij0;
+    double xn[3];
+    double qn;
+    int idx0, zidx, i,j,k, i_end;
+    const int incrj = params->npdims[2]-p; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
+
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
+    for(int n=0; n<N; n++)
+    {
+	// compute index and expansion vectors
+	xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
+	idx0 = __FGG_INDEX(xn, params);
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	qn = st->q[n];		
+	__FGG_EXPA(xn, qn, params, zx0, zy0, zz0);
+	for(; i < i_end; i++)
+	{
+	    for(j = 0; j<p; j++)
+	    {
+		cij0 = zx0[i]*zy0[j];
+		for(k = 0; k<p; k++)
+		{
+		    H[idx0] += zs[zidx]*zz0[k]*cij0;
+		    idx0++; 
+		    zidx++;
+		}
+		idx0 += incrj; 
+	    }
+	    idx0 += incri; 
+	}
+    }
+}
+
+// -----------------------------------------------------------------------------
+void SE_FGG_grid_split_SSE_dispatch(SE_FGG_work* work, const SE_state* st, 
+				    const SE_FGG_params* params)
 {
     const int p = params->P;
     const int incrj = params->dims[2]; // middle increment
@@ -2216,141 +2231,133 @@ void SE_FGG_int_split_SSE_dispatch_force(double* restrict force,
 
 #if 0
     // THIS BYPASSES THE FAST SSE KERNELS.
-    __DISPATCHER_MSG("[FGG INT SSE] SSE Disabled\n");
-    SE_FGG_int_split_force(force, st, work, params);
+    // 
+    // THEY ARE PLATFORM DEPENDENT, AND THUS MAY NOT WORK OUT OF THE BOX.
+    // REMOVE THIS BLOCK ONLY IF YOU ARE FAMILIAR WITH BASIC DEBUGGING, 
+    // THE BASICS OF SSE INTRINSICS, AND ARE WILLING TO UNDERSTAND WHERE
+    // THE (DATA ALIGNMENT) PRECONDITIONS OF SSE INSTRUCTIONS MAY BREAK
+    // IN THE SSE CODE BELOW.
+    __DISPATCHER_MSG("[FGG GRID SSE] SSE Disabled\n");
+    SE_FGG_grid_split(work, st, params);
     return;
 #endif
 
     // if P is odd, or if either increment is odd, fall back on vanilla
     if( is_odd(p) || is_odd(incri) || is_odd(incrj) )
     {
-	__DISPATCHER_MSG("[FGG INT SSE] SSE Abort (PARAMS)\n");
-	SE_FGG_int_split_force(force, st, work, params);
+	__DISPATCHER_MSG("[FGG GRID SSE] SSE Abort (PARAMS)\n");
+	SE_FGG_grid_split(work, st, params);
 	return;
     }
-    
-    // otherwise the preconditions for SSE codes are satisfied. 
-    if(p==8)
+
+#if 0
+    // If the work arrays zs or zX are misaligned, fall back on vanilla.
+    // These arrays are dynamically allocated, so getting this alignment
+    // is really the compilers job! Once you trust it, remove this 
+    // check, because the long integer modulus operation is not fast.
+    if( ( (unsigned long) work->zs)%16 != 0 || 
+	( (unsigned long) work->zx)%16 != 0 || 
+	( (unsigned long) work->zy)%16 != 0 ||
+	( (unsigned long) work->zz)%16 != 0 )
     {
-	// specific for p=8
-	__DISPATCHER_MSG("[FGG INT SSE] P=8\n");
-	SE_FGG_int_split_SSE_P8_force(force, st, work, params);
+	__DISPATCHER_MSG("[FGG GRID SSE] SSE Abort (DATA)\n");
+	SE_FGG_grid_split(work, st, params);
+	return;
     }
-    else if(p==16)
+#endif
+
+    // otherwise the preconditions for SSE codes are satisfied. 
+    if(p==16)
     {
 	// specific for p=16
-	__DISPATCHER_MSG("[FGG INT SSE] P=16\n");
-	SE_FGG_int_split_SSE_P16_force(force, st, work, params); 
+	__DISPATCHER_MSG("[FGG GRID SSE] P=16\n");
+	SE_FGG_grid_split_SSE_P16(work, st, params); 
     }
     else if(p%8==0)
     {
-	// for p divisible by 8
-	__DISPATCHER_MSG("[FGG INT SSE] P unroll 8\n");
-	SE_FGG_int_split_SSE_u8_force(force, st, work, params); 
+	// specific for p divisible by 8
+	__DISPATCHER_MSG("[FGG GRID SSE] P unroll 8\n");
+	SE_FGG_grid_split_SSE_u8(work, st, params); 
     }
     else
     {
 	// vanilla SSE code (any even p)
-	__DISPATCHER_MSG("[FGG INT SSE] Vanilla\n");
-	SE_FGG_int_split_SSE_force(force, st, work, params);
+	__DISPATCHER_MSG("[FGG GRID SSE] Vanilla\n");
+	SE_FGG_grid_split_SSE(work, st, params);
     }
 }
 
 // -----------------------------------------------------------------------------
-void SE_FGG_int_split_force(double* restrict force,  
-			    SE_state* st,
-			    const SE_FGG_work* work, 
-			    const SE_FGG_params* params)
+void SE_FGG_grid_split(SE_FGG_work* work, const SE_state* st, 
+		       const SE_FGG_params* params)
 {
-    // unpack params
-    const double* restrict H   = work->H;
-    const double* restrict zs  = work->zs;
-    const double* restrict zx  = work->zx;
-    const double* restrict zy  = work->zy;
-    const double* restrict zz  = work->zz;
-    const double* restrict zfx = work->zfx;
-    const double* restrict zfy = work->zfy;
-    const double* restrict zfz = work->zfz;
-
-
-    const int    p = params->P;
-    const int    N = params->N;
-    const double h = params->h;
-
-    int i,j,k,m,idx,idx_zs,idx_zz;
-    double force_m[3], cij, Hzc,qm;
-#ifdef CALC_ENERGY
-    double phi_m;
-#endif
-
-    const int incrj = params->npdims[2]-p;
-    const int incri = params->npdims[2]*(params->npdims[1]-p);
-
-#ifdef _OPENMP
-#pragma omp for private(m)// work-share over OpenMP threads here
-#endif
-    for(m=0; m<N; m++)
-    {
-	idx = work->idx[m];
-	qm = st->q[m];
-	force_m[0] = 0; force_m[1] = 0; force_m[2] = 0;
-#ifdef CALC_ENERGY
-        phi_m = 0;
-#endif
-	idx_zs = 0;
-
-	for(i = 0; i<p; i++)
-	{
-	    for(j = 0; j<p; j++)
-	    {
-		cij = zx[m*p+i]*zy[m*p+j];
-		idx_zz=m*p;
-		for(k = 0; k<p; k++)
-		  {
-		    Hzc         = H[idx]*zs[idx_zs]*zz[idx_zz]*cij*qm;   
-#ifdef CALC_ENERGY
-		    phi_m      += Hzc/qm;
-#endif
-		    force_m[0] += Hzc*zfx[m*p+i];
-		    force_m[1] += Hzc*zfy[m*p+j];
-		    force_m[2] += Hzc*zfz[m*p+k];
-		    
-		    idx++; idx_zs++; idx_zz++;
-		}
-		idx += incrj;
-	    }
-	    idx += incri;
-	}
-	force[m    ] = (h*h*h)*force_m[0];
-	force[m+  N] = (h*h*h)*force_m[1];
-	force[m+2*N] = (h*h*h)*force_m[2];
-#ifdef CALC_ENERGY
-	st->phi[m]   = (h*h*h)*phi_m;
-#endif
-    }
-}
-
-// -----------------------------------------------------------------------------
-void SE_FGG_int_split_SSE_force(double* restrict force,
-				SE_state* st,
-				const SE_FGG_work* work, 
-				const SE_FGG_params* params)
-{
-    // unpack params
-    const double* restrict H = work->H;
+    // unpack parameters
+    const int N=params->N;
+    double* restrict H = work->H; // pointer to grid does NOT alias
     const double* restrict zs = work->zs;
     const double* restrict zx = work->zx;
     const double* restrict zy = work->zy;
     const double* restrict zz = work->zz;
-    const double* restrict zfx = work->zfx;
-    const double* restrict zfy = work->zfy;
-    const double* restrict zfz = work->zfz;
-
-
+    
     const int p = params->P;
-    const int N = params->N;
-    const double h=params->h;
 
+    double cij0;
+    double qn;
+    int idx0, zidx, idxzz, i, j, k, i_end;
+    const int incrj = params->npdims[2]-p; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
+    
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
+    for(int n=0; n<N; n++)
+    {
+	idx0 = work->idx[n];
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &zidx);
+	if (grid_thrd_ws.skip) 
+	    continue;
+	qn = st->q[n];
+	// inline vanilla loop
+	for(; i < i_end; i++)
+	{
+	    for(j = 0; j<p; j++)
+	    {
+		cij0 = qn*zx[p*n+i]*zy[p*n+j];
+		idxzz=p*n;
+		for(k = 0; k<p; k++)
+		{
+		    H[idx0] += zs[zidx]*zz[idxzz]*cij0;
+		    idx0++; zidx++; idxzz++;
+		}
+		idx0 += incrj; 
+	    }
+	    idx0 += incri; 
+	}
+    }
+}
+
+// -----------------------------------------------------------------------------
+void SE_FGG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st, 
+			       const SE_FGG_params* params)
+{
+    // unpack parameters
+    const int N=params->N;
+    double* restrict H = work->H; // pointer to grid does NOT alias
+    const double* restrict zs = work->zs;
+    const double* restrict zx = work->zx;
+    const double* restrict zy = work->zy;
+    const double* restrict zz = work->zz;
+
+    double qn;
+    int idx, idx_zs, i, j;
+    const int incrj = params->npdims[2]-16; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-16);// outer increment
+
+    __m128d rZZ0, rZZ1, rZZ2, rZZ3, rZZ4, rZZ5, rZZ6, rZZ7; 
+    __m128d rH0, rH1, rH2, rH3;
+    __m128d rC, rZS0;
+
+<<<<<<< HEAD
     int i,j,k,m,idx,idx_zs,idx_zz;
     double qm;
     double sx[2] MEM_ALIGNED;
@@ -5157,15 +5164,23 @@ void SE_FGG_grid_split_SSE_P16_force(SE_FGG_work* work,
     __m128d rZZ0, rZZ1, rZZ2, rZZ3, rZZ4, rZZ5, rZZ6, rZZ7; 
     __m128d rH0, rH1, rH2, rH3;
     __m128d rC, rZS0;
+=======
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
+>>>>>>> se2p
 
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
-	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
+	qn = st->q[n];
 
         rZZ0 = _mm_load_pd(zz + n*16     );
         rZZ1 = _mm_load_pd(zz + n*16 + 2 );
@@ -5178,7 +5193,7 @@ void SE_FGG_grid_split_SSE_P16_force(SE_FGG_work* work,
 
 	if(idx%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -5238,7 +5253,7 @@ void SE_FGG_grid_split_SSE_P16_force(SE_FGG_work* work,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -5302,9 +5317,8 @@ void SE_FGG_grid_split_SSE_P16_force(SE_FGG_work* work,
 }
 
 // -----------------------------------------------------------------------------
-void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work* work, 
-			            const SE_state* st,
-				    const SE_FGG_params* params)
+void SE_FGG_grid_split_SSE_u8(SE_FGG_work* work, const SE_state* st, 
+			      const SE_FGG_params* params)
 {
     // unpack parameters
     const int N=params->N;
@@ -5315,6 +5329,7 @@ void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work* work,
     const double* restrict zz = work->zz;
     
     const int p = params->P;
+
     double qn;
     int idx0, idx_zs, idx_zz, i, j, k;
     const int incrj = params->npdims[2]-p; // middle increment
@@ -5325,18 +5340,25 @@ void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work* work,
     __m128d rH2, rZZ2, rZS2;
     __m128d rH3, rZZ3, rZS3;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
-	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
-
 	idx_zs = 0;
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0);
 	_mm_prefetch( (void*) zs, _MM_HINT_T0);
 
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -5381,7 +5403,7 @@ void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work* work,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -5428,9 +5450,8 @@ void SE_FGG_grid_split_SSE_u8_force(SE_FGG_work* work,
 }
 
 // -----------------------------------------------------------------------------
-void SE_FGG_grid_split_SSE_force(SE_FGG_work* work, 
-			     	 const SE_state* st,
-				 const SE_FGG_params* params)
+void SE_FGG_grid_split_SSE(SE_FGG_work* work, const SE_state* st, 
+			   const SE_FGG_params* params)
 {
     // unpack parameters
     const int N=params->N;
@@ -5441,6 +5462,7 @@ void SE_FGG_grid_split_SSE_force(SE_FGG_work* work,
     const double* restrict zz = work->zz;
     
     const int p = params->P;
+
     double qn;
     int idx0, idx_zs, idx_zz, i, j, k;
     const int incrj = params->npdims[2]-p; // middle increment
@@ -5448,15 +5470,23 @@ void SE_FGG_grid_split_SSE_force(SE_FGG_work* work,
 
     __m128d rH0, rZZ0, rZS0, rC;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 	if(idx0%2 == 0) // H[idx0] is 16-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -5485,7 +5515,7 @@ void SE_FGG_grid_split_SSE_force(SE_FGG_work* work,
 	}
 	else // H[idx0] is 8-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -5513,35 +5543,49 @@ void SE_FGG_grid_split_SSE_force(SE_FGG_work* work,
     }
 }
 
-
 // -----------------------------------------------------------------------------
 #ifdef __AVX__
-void 
-SE_FGG_grid_split_AVX_dispatch_force(SE_FGG_work* work, 
-				     const SE_state *st,
-				     const SE_FGG_params* params)
+void SE_FGG_grid_split_AVX_dispatch(SE_FGG_work* work, const SE_state* st, 
+				    const SE_FGG_params* params)
 {
     const int p = params->P;
     const int incrj = params->dims[2]; // middle increment
     const int incri = params->npdims[2]*(params->dims[1]);// outer increment
 
+#ifdef AVX_FMA
+    __DISPATCHER_MSG("[FGG GRID AVX-FMA");
+#else
+    __DISPATCHER_MSG("[FGG GRID AVX");
+#endif
+#ifdef FGG_THRD
+    __DISPATCHER_MSG(" THRD] ");
+#else
+    __DISPATCHER_MSG("] ");
+#endif
+
 #if 0
     // THIS BYPASSES THE FAST AVX KERNELS.
-    __DISPATCHER_MSG("[FGG GRID AVX] AVX Disabled\n");
-    SE_FGG_grid_split_force(work, st, params);
+    // 
+    // THEY ARE PLATFORM DEPENDENT, AND THUS MAY NOT WORK OUT OF THE BOX.
+    // REMOVE THIS BLOCK ONLY IF YOU ARE FAMILIAR WITH BASIC DEBUGGING, 
+    // THE BASICS OF AVX INTRINSICS, AND ARE WILLING TO UNDERSTAND WHERE
+    // THE (DATA ALIGNMENT) PRECONDITIONS OF AVX INSTRUCTIONS MAY BREAK
+    // IN THE AVX CODE BELOW.
+    __DISPATCHER_MSG("AVX Disabled\n");
+    SE_FGG_grid_split(work, st, params);
     return;
 #endif
 
-    // if P, or either increments are not divisible by 4, fall back on vanilla
+    // if either P or increments are not divisible by 4, fall back to SSE
     if( isnot_div_by_4(p) || isnot_div_by_4(incri) || isnot_div_by_4(incrj) )
     {
-	__DISPATCHER_MSG("[FGG GRID AVX] AVX Abort (PARAMS)\n");
-	SE_FGG_grid_split_force(work, st, params);
+	__DISPATCHER_MSG("AVX Abort (PARAMS)\n");
+	SE_FGG_grid_split_SSE_dispatch(work, st, params);
 	return;
     }
 
 #if 0
-    // If the work arrays zs or zx are misaligned, fall back on vanilla.
+    // If the work arrays zs or zX are misaligned, fall back on vanilla.
     // These arrays are dynamically allocated, so getting this alignment
     // is really the compilers job! Once you trust it, remove this 
     // check, because the long integer modulus operation is not fast.
@@ -5550,51 +5594,143 @@ SE_FGG_grid_split_AVX_dispatch_force(SE_FGG_work* work,
 	( (unsigned long) work->zy)%32 != 0 ||
 	( (unsigned long) work->zz)%32 != 0 )
     {
-	__DISPATCHER_MSG("[FGG GRID AVX] AVX Abort (DATA)\n");
-	SE_FGG_grid_split_force(work, params);
+	__DISPATCHER_MSG("AVX Abort (DATA)\n");
+	SE_FGG_grid_split(work, st, params);
 	return;
     }
 #endif
-    
+
     // otherwise the preconditions for AVX codes are satisfied. 
-    
     if(p==16)
     {
 	// specific for p=16
-	__DISPATCHER_MSG("[FGG GRID AVX] P=16\n");
-	SE_FGG_grid_split_AVX_P16_force(work, st, params); 
+	__DISPATCHER_MSG("P=16\n");
+	SE_FGG_grid_split_AVX_P16(work, st, params); 
     }
     else if(p==8)
     {
-	// specific for p=8
-	__DISPATCHER_MSG("[FGG GRID AVX] P=8\n");
-	SE_FGG_grid_split_AVX_P8_force(work, st, params); 
+      // specific for p=8
+      __DISPATCHER_MSG("P=8\n");
+      SE_FGG_grid_split_AVX_P8(work, st, params);
     }
     else if(p%8==0)
     {
 	// specific for p divisible by 8
-	__DISPATCHER_MSG("[FGG GRID AVX] P unroll 8\n");
-	SE_FGG_grid_split_AVX_u8_force(work, st, params); 
+	__DISPATCHER_MSG("P unroll 8\n");
+	SE_FGG_grid_split_AVX_u8(work, st, params); 
     }
     else if(p%4==0)
     {
       // specific for p divisible by 4
-	__DISPATCHER_MSG("[FGG GRID AVX] P unroll 4\n");
-	SE_FGG_grid_split_AVX_force(work, st, params); 
-    }
-    else
-    {
-	// vanilla SSE code (any even p)
-	__DISPATCHER_MSG("[FGG GRID AVX] Vanilla\n");
-	SE_FGG_grid_split_SSE_force(work, st, params);
+      __DISPATCHER_MSG("P unroll 4\n");
+      SE_FGG_grid_split_AVX(work, st, params);
     }
 }
 
+// -----------------------------------------------------------------------------
+void SE_FGG_grid_split_AVX(SE_FGG_work* work, const SE_state* st, 
+			   const SE_FGG_params* params)
+{
+    // unpack parameters
+    const int N=params->N;
+    double* restrict H = work->H; // pointer to grid does NOT alias
+    const double* restrict zs = work->zs;
+    const double* restrict zx = work->zx;
+    const double* restrict zy = work->zy;
+    const double* restrict zz = work->zz;
+    
+    const int p = params->P;
+
+    double qn;
+    int idx0, idx_zs, idx_zz, i, j, k;
+
+    __m256d rH0, rZZ0, rZS0, rC;
+
+    const int incrj = params->npdims[2]-p; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
+
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
+    for(int n=0; n<N; n++)
+    {
+	idx0 = work->idx[n];
+	idx_zs = 0;
+
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
+
+	if(idx0%4 == 0) // H[idx0] is 16-aligned
+	{
+	    for(; i<i_end; i++)
+	    {
+		for(j = 0; j<p; j++)
+		{
+		    rC = _mm256_set1_pd( qn*zx[p*n+i]*zy[p*n+j] );
+		    idx_zz=p*n;
+		    for(k = 0; k<p; k+=4)
+		    {
+			rH0  = _mm256_load_pd( H+idx0     );
+			rZZ0 = _mm256_load_pd( zz + idx_zz     );
+			rZS0 = _mm256_load_pd( zs + idx_zs    );
+			rZZ0 = _mm256_mul_pd(rZZ0,rC);
+#ifdef AVX_FMA
+			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
+#else
+			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
+			rH0  = _mm256_add_pd(rH0,rZZ0);
+#endif
+			_mm256_store_pd(H + idx0, rH0);
+			idx0  +=4;
+			idx_zs+=4; 
+			idx_zz+=4;
+		    }
+		    idx0 += incrj; 
+		}
+		idx0 += incri; 
+	    }
+	}
+	else // H[idx0] is 8-aligned, preventing nice vectorization
+	{
+	    for(; i<i_end; i++)
+	    {
+	    	for(j = 0; j<p; j++)
+	    	{
+	    	    rC = _mm256_set1_pd( qn*zx[p*n+i]*zy[p*n+j] );
+	    	    idx_zz=p*n;
+	    	    for(k = 0; k<p; k+=4)
+	    	    {
+	    		rH0  = _mm256_loadu_pd( H+idx0 );
+	    		rZZ0 = _mm256_load_pd( zz + idx_zz );
+	    		rZS0 = _mm256_load_pd( zs + idx_zs );
+	    		rZZ0 = _mm256_mul_pd(rZZ0,rC);
+#ifdef AVX_FMA
+			rH0 = _mm256_fmadd_pd(rZZ0, rZS0, rH0);
+#else
+			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
+			rH0  = _mm256_add_pd(rH0,rZZ0);
+#endif
+	    		_mm256_storeu_pd( H+idx0, rH0 );
+
+	    		idx0  +=4;
+	    		idx_zs+=4;
+	    		idx_zz+=4;
+	    	    }
+	    	    idx0 += incrj;
+	    	}
+	    	idx0 += incri;
+	    }
+	}
+    }
+}
 
 // -----------------------------------------------------------------------------
-void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work, 
-				     const SE_state* st,
-				     const SE_FGG_params* params)
+void SE_FGG_grid_split_AVX_P16(SE_FGG_work* work, const SE_state* st, 
+			       const SE_FGG_params* params)
 {
     // unpack parameters
     const int N=params->N;
@@ -5605,23 +5741,30 @@ void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work,
     const double* restrict zz = work->zz;
 
 
-    const int incrj = params->npdims[2]-16; // middle increment
-    const int incri = params->npdims[2]*(params->npdims[1]-16);// outer increment
-
     double qn;
     int idx, idx_zs, i, j;
 
     __m256d rZZ0, rZZ1, rZZ2, rZZ3; 
     __m256d rH0, rH1, rH2, rH3;
-    __m256d rC, rZS0,rZS1,rZS2,rZS3;
+    __m256d rC, rZS0, rZS1, rZS2, rZS3;
+
+    const int incrj = params->npdims[2]-16; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-16);// outer increment
+
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 16);
 
     for(int n=0; n<N; n++)
     {
-        qn = st->q[n];
 	idx = work->idx[n];
-	_mm_prefetch( (void*) (H+idx), _MM_HINT_T0);
 	idx_zs = 0;
-	_mm_prefetch( (void*) zs, _MM_HINT_T0);
+
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 
         rZZ0 = _mm256_load_pd(zz + n*16     );
         rZZ1 = _mm256_load_pd(zz + n*16 + 4 );
@@ -5630,7 +5773,7 @@ void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work,
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
@@ -5638,22 +5781,27 @@ void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work,
 
                     rH0  = _mm256_load_pd( H+idx    );
                     rH1  = _mm256_load_pd( H+idx + 4);
-                    rH2  = _mm256_load_pd( H+idx + 8);
+		    rH2  = _mm256_load_pd( H+idx + 8 );
                     rH3  = _mm256_load_pd( H+idx + 12);
 
                     rZS0 = _mm256_load_pd( zs + idx_zs);
-		    rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-                    rZS2 = _mm256_load_pd( zs + idx_zs + 8);   
-                    rZS3 = _mm256_load_pd( zs + idx_zs + 12);    
-
+                    rZS1 = _mm256_load_pd( zs + idx_zs + 4);
+                    rZS2 = _mm256_load_pd( zs + idx_zs + 8);
+                    rZS3 = _mm256_load_pd( zs + idx_zs + 12);
+#ifdef AVX_FMA
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
+		    rH3 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ3,rC), rZS3, rH3);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
 		    rH2 = _mm256_add_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2));
 		    rH3 = _mm256_add_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3));
-
+#endif
 		    _mm256_store_pd(H + idx,      rH0);
 		    _mm256_store_pd(H + idx + 4,  rH1);
-		    _mm256_store_pd(H + idx + 8,  rH2);
+		    _mm256_store_pd(H + idx + 8 , rH2);
 		    _mm256_store_pd(H + idx + 12, rH3);
 
 		    idx += incrj + 16;
@@ -5662,29 +5810,34 @@ void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work,
 		idx += incri;
 	    }
 	}
-	else // H[idx0] is 8-aligned, preventing nice vectorization
+	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<16; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<16; j++)
 		{
 		    rC = _mm256_set1_pd( qn*zx[16*n+i]*zy[16*n+j] );
 
                     rH0  = _mm256_loadu_pd( H+idx     );
-                    rH1  = _mm256_loadu_pd( H+idx + 4 );
-                    rH2  = _mm256_loadu_pd( H+idx + 8 );
+                    rH1  = _mm256_loadu_pd( H+idx +  4);
+                    rH2  = _mm256_loadu_pd( H+idx +  8);
                     rH3  = _mm256_loadu_pd( H+idx + 12);
 
                     rZS0 = _mm256_load_pd( zs + idx_zs     );
-                    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
-                    rZS2 = _mm256_load_pd( zs + idx_zs + 8 );
+                    rZS1 = _mm256_load_pd( zs + idx_zs +  4);
+                    rZS2 = _mm256_load_pd( zs + idx_zs +  8);                   
                     rZS3 = _mm256_load_pd( zs + idx_zs + 12);
-
+#ifdef AVX_FMA
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+		    rH2 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ2,rC), rZS2, rH2);
+		    rH3 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ3,rC), rZS3, rH3);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
 		    rH2 = _mm256_add_pd(rH2,_mm256_mul_pd(_mm256_mul_pd(rZZ2,rC),rZS2));
 		    rH3 = _mm256_add_pd(rH3,_mm256_mul_pd(_mm256_mul_pd(rZZ3,rC),rZS3));
-
+#endif
 		    _mm256_storeu_pd(H + idx,      rH0);
 		    _mm256_storeu_pd(H + idx + 4,  rH1);
 		    _mm256_storeu_pd(H + idx + 8,  rH2);
@@ -5700,9 +5853,8 @@ void SE_FGG_grid_split_AVX_P16_force(SE_FGG_work* work,
 }
 
 // -----------------------------------------------------------------------------
-void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work* work, 
-				     const SE_state* st,
-				     const SE_FGG_params* params)
+void SE_FGG_grid_split_AVX_P8(SE_FGG_work* work, const SE_state* st, 
+			       const SE_FGG_params* params)
 {
     // unpack parameters
     const int N=params->N;
@@ -5719,20 +5871,28 @@ void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work* work,
 
     __m256d rZZ0, rZZ1; 
     __m256d rH0, rH1;
-    __m256d rC, rZS0,rZS1;
+    __m256d rC, rZS0, rZS1;
+
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, 8);
 
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx = work->idx[n];
 	idx_zs = 0;
 
+	grid_thrd_slice(&grid_thrd_ws, &idx, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
         rZZ0 = _mm256_load_pd(zz + n*8     );
         rZZ1 = _mm256_load_pd(zz + n*8 + 4 );
 
 	if(idx%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
@@ -5742,11 +5902,14 @@ void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work* work,
                     rH1  = _mm256_load_pd( H+idx + 4);
 
                     rZS0 = _mm256_load_pd( zs + idx_zs);
-		    rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+                    rZS1 = _mm256_load_pd( zs + idx_zs + 4);
+#ifdef AVX_FMA
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 		    _mm256_store_pd(H + idx,      rH0);
 		    _mm256_store_pd(H + idx + 4,  rH1);
 
@@ -5758,21 +5921,24 @@ void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work* work,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<8; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<8; j++)
 		{
 		    rC = _mm256_set1_pd( qn*zx[8*n+i]*zy[8*n+j] );
 
                     rH0  = _mm256_loadu_pd( H+idx     );
-                    rH1  = _mm256_loadu_pd( H+idx + 4 );
+                    rH1  = _mm256_loadu_pd( H+idx +  4);
 
                     rZS0 = _mm256_load_pd( zs + idx_zs     );
-                    rZS1 = _mm256_load_pd( zs + idx_zs + 4 );
-
+                    rZS1 = _mm256_load_pd( zs + idx_zs +   4);
+#ifdef AVX_FMA
+		    rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+		    rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 		    rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 		    rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 		    _mm256_storeu_pd(H + idx,      rH0);
 		    _mm256_storeu_pd(H + idx + 4,  rH1);
 
@@ -5785,11 +5951,9 @@ void SE_FGG_grid_split_AVX_P8_force(SE_FGG_work* work,
     }
 }
 
-
 // -----------------------------------------------------------------------------
-void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work, 
-			            const SE_state* st,
-				    const SE_FGG_params* params)
+void SE_FGG_grid_split_AVX_u8(SE_FGG_work* work, const SE_state* st, 
+			      const SE_FGG_params* params)
 {
     // unpack parameters
     const int N=params->N;
@@ -5801,26 +5965,32 @@ void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work,
     
     const int p = params->P;
 
-    const int incrj = params->npdims[2]-p; // middle increment
-    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
-
     double qn;
     int idx0, idx_zs, idx_zz, i, j, k;
+    const int incrj = params->npdims[2]-p; // middle increment
+    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
 
     __m256d rH0, rZZ0, rZS0, rC;
     __m256d rH1, rZZ1, rZS1;
 
+    int i_end;
+    grid_thrd_ws_t grid_thrd_ws;
+    grid_thrd_setup(&grid_thrd_ws, params->npdims, p);
+
     for(int n=0; n<N; n++)
     {
-	qn = st->q[n];
 	idx0 = work->idx[n];
-	_mm_prefetch( (void*) (H+idx0), _MM_HINT_T0); 
 	idx_zs = 0;
-	_mm_prefetch( (void*) zs, _MM_HINT_T0);
+
+	grid_thrd_slice(&grid_thrd_ws, &idx0, &i, &i_end, &idx_zs);
+	if (grid_thrd_ws.skip) 
+	    continue;
+
+	qn = st->q[n];
 
 	if(idx0%4 == 0) // H[idx0] is 32-aligned
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 		for(j = 0; j<p; j++)
 		{
@@ -5837,10 +6007,13 @@ void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work,
 
 			rZS0 = _mm256_load_pd( zs + idx_zs    );
 			rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef AVX_FMA
+			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 			rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 			rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-			
+#endif
 			_mm256_store_pd( H+idx0    , rH0 );
 			_mm256_store_pd( H+idx0 + 4, rH1 );
 
@@ -5855,7 +6028,7 @@ void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work,
 	}
 	else // H[idx0] is 16-aligned, preventing nice vectorization
 	{
-	    for(i = 0; i<p; i++)
+	    for(; i<i_end; i++)
 	    {
 	    	for(j = 0; j<p; j++)
 	    	{
@@ -5872,10 +6045,13 @@ void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work,
 
 	    		rZS0 = _mm256_load_pd( zs + idx_zs    );
 	    		rZS1 = _mm256_load_pd( zs + idx_zs + 4);
-
+#ifdef AVX_FMA
+			rH0 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ0,rC), rZS0, rH0);
+			rH1 = _mm256_fmadd_pd(_mm256_mul_pd(rZZ1,rC), rZS1, rH1);
+#else
 			rH0 = _mm256_add_pd(rH0,_mm256_mul_pd(_mm256_mul_pd(rZZ0,rC),rZS0));
 			rH1 = _mm256_add_pd(rH1,_mm256_mul_pd(_mm256_mul_pd(rZZ1,rC),rZS1));
-
+#endif
 	    		_mm256_storeu_pd( H+idx0    , rH0 );
 	    		_mm256_storeu_pd( H+idx0 + 4, rH1 );
 
@@ -5890,101 +6066,7 @@ void SE_FGG_grid_split_AVX_u8_force(SE_FGG_work* work,
 	}
     }
 }
-
-
-// -----------------------------------------------------------------------------
-void SE_FGG_grid_split_AVX_force(SE_FGG_work* work, 
-			     	 const SE_state* st,
-				 const SE_FGG_params* params)
-{
-    // unpack parameters
-    const int N=params->N;
-    double* restrict H = work->H; // pointer to grid does NOT alias
-    const double* restrict zs = work->zs;
-    const double* restrict zx = work->zx;
-    const double* restrict zy = work->zy;
-    const double* restrict zz = work->zz;
-    
-    const int p = params->P;
-    double qn;
-    int idx0, idx_zs, idx_zz, i, j, k;
-    const int incrj = params->npdims[2]-p; // middle increment
-    const int incri = params->npdims[2]*(params->npdims[1]-p);// outer increment
-
-    __m256d rH0, rZZ0, rZS0, rC;
-
-    for(int n=0; n<N; n++)
-    {
-	qn = st->q[n];
-	idx0 = work->idx[n];
-	idx_zs = 0;
-
-	if(idx0%4 == 0) // H[idx0] is 32-aligned
-	{
-	    for(i = 0; i<p; i++)
-	    {
-		for(j = 0; j<p; j++)
-		{
-		    rC = _mm256_set1_pd( qn*zx[p*n+i]*zy[p*n+j] );
-		    idx_zz=p*n;
-		    for(k = 0; k<p; k+=4)
-		    {
-			rH0  = _mm256_load_pd( H+idx0     );
-			rZZ0 = _mm256_load_pd( zz + idx_zz     );
-			rZS0 = _mm256_load_pd( zs + idx_zs    );
-
-			rZZ0 = _mm256_mul_pd(rZZ0,rC);
-			rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
-			rH0  = _mm256_add_pd(rH0,rZZ0);
-
-			_mm256_store_pd( H+idx0    , rH0 );
-
-			idx0  +=4;
-			idx_zs+=4; 
-			idx_zz+=4;
-		    }
-		    idx0 += incrj; 
-		}
-		idx0 += incri; 
-	    }
-	}
-	else // H[idx0] is 8-aligned, preventing nice vectorization
-	{
-	    for(i = 0; i<p; i++)
-	    {
-	    	for(j = 0; j<p; j++)
-	    	{
-	    	    rC = _mm256_set1_pd( qn*zx[p*n+i]*zy[p*n+j] );
-	    	    idx_zz=p*n;
-	    	    for(k = 0; k<p; k+=4)
-	    	    {
-	    		rH0  = _mm256_loadu_pd( H+idx0 );
-
-	    		rZZ0 = _mm256_load_pd( zz + idx_zz );
-	    		rZS0 = _mm256_load_pd( zs + idx_zs );
-
-	    		rZZ0 = _mm256_mul_pd(rZZ0,rC);
-	    		rZZ0 = _mm256_mul_pd(rZZ0,rZS0);
-
-	    		rH0  = _mm256_add_pd(rH0,rZZ0);
-	    		_mm256_storeu_pd( H+idx0, rH0 );
-
-	    		idx0  +=4;
-	    		idx_zs+=4;
-	    		idx_zz+=4;
-	    	    }
-	    	    idx0 += incrj;
-	    	}
-	    	idx0 += incri;
-	    }
-	}
-    }
-}
-#endif //AVX
-
-
-
-
+#endif // AVX
 
 
 
@@ -6076,3 +6158,6 @@ double calc_energy(SE_state st, int N)
 return energy/2.;
 }
 
+#ifdef FORCE
+#include "fgg_force.c"
+#endif

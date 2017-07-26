@@ -70,4 +70,33 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->npdims[2] = params->dims[2];
 
 #endif
+
+#ifdef ONE_PERIODIC
+    const double* m    = (double*) get_arg(OPT,"M");
+    const double* mx   = (double*) get_arg(OPT,"Mx");
+    const double* my   = (double*) get_arg(OPT,"My");
+    const double* p    = (double*) get_arg(OPT,"P");
+    const double* c    = (double*) get_arg(OPT,"c");
+    const double* box  = (double*) get_arg(OPT,"box");
+    /* x- and y-dir offsets. */
+    const double* a    = (double*) get_arg(OPT,"free_offset");
+
+    params->N = N;
+    params->P = (int) *p;
+    params->P_half=half( (int) *p );
+    params->c = *c;
+    params->d = pow(params->c/PI,1.5);
+    params->h = box[2]/m[0];
+    params->a = a[0];
+    params->b = a[1];
+
+    params->dims[0] = (int) mx[0];
+    params->dims[1] = (int) my[0];
+    params->dims[2] = (int)  m[0];
+
+    params->npdims[0] = params->dims[0];
+    params->npdims[1] = params->dims[1];
+    params->npdims[2] = params->dims[2]+params->P;
+
+#endif
 }
