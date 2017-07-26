@@ -7,7 +7,6 @@ walltime = struct('pre',0,'grid',0,'fft',0,'scale',0,'int',0);
 % Check
 assert(isfield(opt, 'xi'), 'xi must be given in opt struct')
 assert(isfield(opt, 's'), 'oversampling rate must be given in opt struct')
-assert(isfield(opt, 'n'), 'oversampling modes must be given in opt struct')
 assert(isfield(opt, 's0'), 'zero mod oversampling rate must be given in opt struct')
 
 % parameters and constants

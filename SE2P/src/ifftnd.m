@@ -31,7 +31,7 @@ Fz = zeros(opt.M,opt.M,opt.Mz);
 
 Fz = F1(:,:,1:opt.Mz);		% update old values and restrict
 Fz(opt.local_pad,opt.local_pad,:) = Fr(:,:,1:opt.Mz);
-opt.local_pad
+
 Fz(1,1,:) = F0(1:opt.Mz);       % restrict to (1,1,Mz)
 
 x = ifft2(Fz,opt.M,opt.M);      % 2D ifft in x and y
