@@ -62,6 +62,7 @@ add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Stresslet/mex")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_Rotlet/mex")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE2P_Stokes/mex")
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE1P/mex")
+add_subdirectory("${PROJECT_SOURCE_DIR}/SE0P/mex")
 
 # Enable running Matlab test suite through ctest
 enable_testing()
