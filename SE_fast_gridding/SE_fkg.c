@@ -831,7 +831,7 @@ void SE_FKG_int_split_SSE_dispatch(double* restrict phi,
     {
     	// specific for p=16
     	__DISPATCHER_MSG("[FKG INT SSE] P=16\n");
-    	SE_FKG_int_split_SSE_P16(phi, work, params);
+	SE_FKG_int_split_SSE_P16(phi, work, params);
     }
     else if(p==6)
     {
@@ -1502,12 +1502,12 @@ void SE_FKG_grid_split_SSE_dispatch(SE_FGG_work* work, const SE_state* st,
   
   // otherwise the preconditions for SSE codes are satisfied. 
   if(p==16)
-  {
+    {
       // specific for p=16
-    __DISPATCHER_MSG("[FKG GRID SSE] P=16\n");
-    SE_FKG_grid_split_SSE_P16(work, st, params);
-  }
-  if(p%8==0)
+      __DISPATCHER_MSG("[FKG GRID SSE] P=16\n");
+      SE_FKG_grid_split_SSE_P16(work, st, params);
+    }
+  else if(p%8==0)
     {
       // specific for p divisible by 8
       __DISPATCHER_MSG("[FKG GRID SSE] P unroll 8\n");

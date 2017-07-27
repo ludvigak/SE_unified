@@ -45,7 +45,6 @@ end
 
 % Default is to keep params
 p = opt;
-p
 % collect
 p.P = P;
 p.w = w;
