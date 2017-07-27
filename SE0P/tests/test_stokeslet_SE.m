@@ -5,7 +5,7 @@ rng(1);
 L = 1;
 box = [L L L];
 N = 100;
-[x, f] = vector_system(N, box);
+[x, f] = vector_system(N, box, 3);
 x(1,:) = 0;
 x(2,:) = box;
 M0 = 10; 

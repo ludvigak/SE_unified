@@ -3,7 +3,7 @@ rng(1)
 box = [2 2 2];
 N = 100;
 
-[x, f] = vector_system(N, box);
+[x, f] = vector_system(N, box, 3);
 
 udir = stokeslet_direct(x, f, box);
 

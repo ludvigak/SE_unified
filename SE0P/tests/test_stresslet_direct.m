@@ -3,8 +3,8 @@ rng(1)
 box = [2 2 2];
 N = 100;
 
-[x, n] = vector_system(N, box);
-[~, q] = vector_system(N, box);
+[x, n] = vector_system(N, box, 3);
+[~, q] = vector_system(N, box, 3);
 
 udir = stresslet_direct(x, [q n], box);
 

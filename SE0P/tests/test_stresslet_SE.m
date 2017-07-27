@@ -5,8 +5,8 @@ rng(1);
 L = 1;
 box = [L L L];
 N = 100;
-[x, n] = vector_system(N, box);
-[~, q] = vector_system(N, box);
+[x, n] = vector_system(N, box, 3);
+[~, q] = vector_system(N, box, 3);
 
 x(1,:) = 0;
 x(2,:) = box;

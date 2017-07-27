@@ -4,7 +4,7 @@ rng(1);
 L = 1;
 box = [L L L];
 N = 1000;
-[x, f] = vector_system(N, box);
+[x, f] = vector_system(N, box, 3);
 
 % Maxmimize point-to-point distance
 x(1,:) = 0;
