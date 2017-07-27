@@ -145,14 +145,10 @@ typedef struct
     double c;
     double d;
     double h;
-<<<<<<< HEAD
-    double a;
-    double beta;
-=======
+  
     double a;   // z-dir offset in 2P and x-dir offset in 1P
     double b;   // y-dir offset in 1P
->>>>>>> se2p
-
+    double beta;
 } SE_FGG_params;
 
 typedef struct
