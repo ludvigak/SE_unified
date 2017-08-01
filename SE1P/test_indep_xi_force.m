@@ -18,7 +18,8 @@ for j=1:length(xi)
     opt.rc = 6/opt.xi;
     F1 = se1p_real_space_force(idx,x,f,opt,MATLAB);
     F2 = se1p_fourier_space_direct_force(idx,x,f,opt,MATLAB);
-    F3 = se1p_k0_direct_force(idx,x,f,opt,MATLAB);
+    F3 = se1p_k0_direct_force(idx,x,f,opt,MATLAB)
+
     F(j,:) = F1+F2+F3;
 end
 
