@@ -23,6 +23,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     const double* p    = (double*) get_arg(OPT,"P");
     const double* c    = (double*) get_arg(OPT,"c");
     const double* box  = (double*) get_arg(OPT,"box");
+    const double* beta = (double*) get_arg(OPT,"beta");
 
     params->N = N;
     params->P = (int) *p;
@@ -31,6 +32,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->d = pow(params->c/PI,1.5);
     params->h = box[0]/m[0];
     params->a = -FGG_INF;
+    params->beta = *beta;
 
     params->dims[0] = (int) m[0];
     params->dims[1] = (int) m[1];
@@ -49,6 +51,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     const double* p    = (double*) get_arg(OPT,"P");
     const double* c    = (double*) get_arg(OPT,"c");
     const double* box  = (double*) get_arg(OPT,"box");
+    const double* beta = (double*) get_arg(OPT,"beta");
     const double* a    = (double*) get_arg(OPT,"a"); /* z-dir offset. RENAME */
 
     params->N = N;
@@ -58,6 +61,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->d = pow(params->c/PI,1.5);
     params->h = box[0]/m[0];
     params->a = a[0];
+    params->beta = *beta;
 
     params->dims[0] = (int)  m[0];
     params->dims[1] = (int)  m[0];
@@ -76,7 +80,9 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     const double* p    = (double*) get_arg(OPT,"P");
     const double* c    = (double*) get_arg(OPT,"c");
     const double* box  = (double*) get_arg(OPT,"box");
-    /* x- and y-dir offsets. */
+    const double* beta = (double*) get_arg(OPT,"beta");
+    
+    /* y- and z-dir offsets. */
     const double* a    = (double*) get_arg(OPT,"free_offset");
 
     params->N = N;
@@ -87,6 +93,7 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->h = box[0]/m[0];
     params->a = a[0];
     params->b = a[1];
+    params->beta = *beta;
 
     params->dims[0] = (int)  m[0];
     params->dims[1] = (int) my[0];

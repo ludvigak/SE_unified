@@ -251,7 +251,7 @@ target_link_libraries(SE_fg_int_split_force_mex_1p fgg_force_1p)
 # 3D
 add_library(
   fkg
-  SE_fgg.c SE_fgg.h SE_fkg_MEX_params.c
+  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
 target_compile_definitions(fkg PUBLIC THREE_PERIODIC)
 
@@ -260,7 +260,7 @@ target_compile_definitions(fkg PUBLIC THREE_PERIODIC)
 # 2D
 add_library(
   fkg_2p
-  SE_fgg.c SE_fgg.h SE_fkg_MEX_params.c
+  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
 target_compile_definitions(fkg_2p PUBLIC TWO_PERIODIC)
 
@@ -270,7 +270,7 @@ target_compile_definitions(fkg_2p PUBLIC TWO_PERIODIC)
 
 add_library(
   fkg_1p
-  SE_fgg.c SE_fgg.h SE_fkg_MEX_params.c
+  SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
 target_compile_definitions(fkg_1p PUBLIC ONE_PERIODIC)
 

@@ -2,7 +2,7 @@
 #include "../SE_fgg.h"
 #include "../SE_fkg.h"
 
-void SE_FKG_MEX_params(SE_FGG_params*, const mxArray*, int);
+void SE_FGG_MEX_params(SE_FGG_params*, const mxArray*, int);
 
 #define X   prhs[0] 
 #define Q   prhs[1] 
@@ -27,7 +27,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 
     // pack parameters
     SE_FGG_params params;
-    SE_FKG_MEX_params(&params, OPT, N);
+    SE_FGG_MEX_params(&params, OPT, N);
 
     // scratch arrays
     SE_FGG_work work;
@@ -61,7 +61,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     SE2P_FGG_wrap_fcn(H_per, &work, &params);
 #endif
 #ifdef ONE_PERIODIC
-    SE1P_FKG_wrap_fcn(H_per, &work, &params);
+    SE1P_FGG_wrap_fcn(H_per, &work, &params);
 #endif
 
 

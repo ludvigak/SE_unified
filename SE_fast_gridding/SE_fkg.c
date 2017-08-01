@@ -274,62 +274,6 @@ void SE_FKG_expand_all(SE_FGG_work* work,
 }
 
 // -----------------------------------------------------------------------------
-// We need this since periodicity is defined in x direction with kaiser window
-// unlike Gaussian window which is in z.
-// FIXME: We need to modify SE1P with Gaussian!
-void SE1P_FKG_wrap_fcn(double* restrict H_per, 
-		       const SE_FGG_work* work, 
-		       const SE_FGG_params* params)
-{
-    int idx;
-    int widx;
-    const int p_half = half(params->P);
-
-    // can not openMP here, race to += on H_per beacuse indices wrap around
-    for(int i=0; i<params->npdims[0]; i++)
-      {
-	widx= vmod(i-p_half,params->dims[0]);
-	for(int j=0; j<params->npdims[1]; j++)
-	  {
-	    for(int k=0; k<params->npdims[2]; k++)
-	      {
-		idx = __IDX3_CMAJ(widx, j, k, 
-				  params->dims[0], params->dims[1]);
-		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
-						   params->npdims[1],
-						   params->npdims[2]) ];
-	      }
-	  }
-      }
-}
-
-void SE1P_FKG_extend_fcn(SE_FGG_work* work, const double* H_per, 
-			 const SE_FGG_params* params)
-{
-    int idx;
-    int widx;
-    const int p_half = half(params->P);
-
-#ifdef _OPENMP
-#pragma omp for // work-share over OpenMP threads here
-#endif
-    for(int i=0; i<params->npdims[0]; i++)
-      {
-	widx = vmod(i-p_half,params->dims[0]);
-	for(int j=0; j<params->npdims[1]; j++)
-	  {
-	    for(int k=0; k<params->npdims[2]; k++)
-	      {
-		idx = __IDX3_CMAJ(widx, j, k, 
-				  params->dims[0], params->dims[1]);
-		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
-		  = H_per[idx];
-	      }
-	  }
-      }
-}
-
-// -----------------------------------------------------------------------------
 void SE_FKG_int(double* restrict phi,  
 		const SE_FGG_work* work, 
 		const SE_state* st, 
