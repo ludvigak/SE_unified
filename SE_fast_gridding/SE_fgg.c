@@ -339,12 +339,12 @@ void SE1P_FGG_wrap_fcn(double* restrict H_per,
     // can not openMP here, race to += on H_per beacuse indices wrap around
     for(int i=0; i<params->npdims[0]; i++)
     {
+      widx= vmod(i-p_half,params->dims[0]);
 	for(int j=0; j<params->npdims[1]; j++)
 	{
 	    for(int k=0; k<params->npdims[2]; k++)
 	    {
-		widx= vmod(k-p_half,params->dims[2]);
-		idx = __IDX3_CMAJ(i, j, widx, 
+		idx = __IDX3_CMAJ(widx, j, k, 
 				  params->dims[0], params->dims[1]);
 		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
 						   params->npdims[1],
@@ -431,12 +431,12 @@ void SE1P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per,
 #endif
     for(int i=0; i<params->npdims[0]; i++)
     {
+      widx = vmod(i-p_half,params->dims[0]);
 	for(int j=0; j<params->npdims[1]; j++)
 	{
 	    for(int k=0; k<params->npdims[2]; k++)
 	    {
-		widx = vmod(k-p_half,params->dims[2]);
-		idx = __IDX3_CMAJ(i, j, widx, 
+		idx = __IDX3_CMAJ(widx, j, k, 
 				  params->dims[0], params->dims[1]);
 		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
 		    = H_per[idx];

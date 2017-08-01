@@ -4,12 +4,12 @@ rng(1);
 N = 20;
 L = 1;
 box = [L L L];
-box = [1.2 1.1 1];
+box = [1 1.1 1.2];
 [x, f] = vector_system(N, box);
 
 M0 = 20; % Set M0 to an even number, the rest is auto
 
-opt.M = M0*box(3);
+opt.M = M0*box(1);
 opt.xi = pi*M0 / 12;
 opt.P = 32;
 opt.rc = 6 / opt.xi;opt.rc = min(opt.rc,L);

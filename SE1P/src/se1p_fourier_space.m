@@ -35,7 +35,6 @@ int_fcn = @(F) iperm(SE_fg_int_split_mex_1p(0,F,se_opt,...
 % int_fcn = @(f) SE_fg_int_mex_1p(x,f,se_opt);
 
 % grid
-%H = cell([dim_in, 1]);
 grid_t = tic;
 % Grid
 H = grid_fcn(f);
@@ -45,10 +44,10 @@ walltime.grid = walltime.grid + toc(grid_t);
 % transform and shift, let FFT do padding
 fft_t = tic;
 if(se_opt.sg~=se_opt.sl)
-    [G, Gres, G0]= fftnd(H, se_opt.Mx,se_opt.My,se_opt.M,se_opt.sl,...
-                         se_opt.s0,se_opt.sg,se_opt.local_pad,se_opt.k0mod,3);
+    [G, Gres, G0]= fftnd(H, se_opt.M,se_opt.My,se_opt.Mz,se_opt.sl,...
+                         se_opt.s0,se_opt.sg,se_opt.local_pad,se_opt.k0mod,1);
 else
-    G = fftn(H, [se_opt.Mx*se_opt.sg se_opt.My*se_opt.sg se_opt.M]);
+    G = fftn(H, [se_opt.M se_opt.My*se_opt.sg se_opt.Mz*se_opt.sg]);
 walltime.fft = walltime.fft + toc(fft_t);
 end
 
@@ -58,18 +57,18 @@ if(se_opt.sl~=se_opt.sg)
     [G Gres G0] = se1p_k_scaling(G, Gres, G0, se_opt);
 else
     [G, ~, ~] = se1p_k_scaling(G,zeros(size(G)), ...
-                        zeros(se_opt.s0*se_opt.Mx,se_opt.s0*se_opt.My),se_opt);
+                        zeros(se_opt.s0*se_opt.My,se_opt.s0*se_opt.Mz),se_opt);
 end
 walltime.scale = toc(scale_t);
 
 % inverse shift and inverse transform
 fft_t = tic;
 if(se_opt.sg~=se_opt.sl)
-    F = ifftnd(G,Gres,G0,se_opt.Mx,se_opt.My,se_opt.M,...
-               se_opt.sl,se_opt.s0,se_opt.sg,se_opt.local_pad,se_opt.k0mod,3);
+    F = ifftnd(G,Gres,G0,se_opt.M,se_opt.My,se_opt.Mz,...
+               se_opt.sl,se_opt.s0,se_opt.sg,se_opt.local_pad,se_opt.k0mod,1);
 else
     F = ifftn( G ); % this should be real to eps accuracy!
-    F = F(1:se_opt.Mx,1:se_opt.My,1:se_opt.M);
+    F = F(1:se_opt.M,1:se_opt.My,1:se_opt.Mz);
 end
 walltime.fft = walltime.fft + toc(fft_t);
 

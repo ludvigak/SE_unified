@@ -20,42 +20,33 @@ function [x, varargout] = ifftnd(x,xres,x0mod,Mx,My,Mz,sl,s0,s,local_pad, zeromo
 %       X:          Output vector of size (M,M,M)
 
 
-global_pad= setdiff(1:Mz,[local_pad zeromod]);                 % global pad vector
+global_pad= setdiff(1:Mx,[local_pad zeromod]);                 % global pad vector
 
-% periodic direction should be z!
-if per==1
-    x = permute(x,[3 1 2]);
-    xres = permute(xres,[3 1 2]);
-    x0mod = permute(x0mod,[3 1 2]);
-elseif per==2
-    x = permute(x,[1 3 2]);
-    xres = permute(xres,[1 3 2]);
-    x0mod = permute(x0mod,[1 3 2]);
-end
+% periodic direction should be x!
+
 time = 0;
 ift_t = tic;
-Fzres = ifft2(xres,Mx*sl,My*sl);               % 2D fft on local_pad in x and y
-Fz0mod= ifft2(x0mod,Mx*s0,My*s0);              % 2D fft on local_pad in x and y, This is always 4 times oversampling
+F0 = ifft2(x0mod,round(My*s0),round(Mz*s0)); % 2D fft on zero mod in y and z
+Fr = ifft(ifft(xres,round(My*sl),2),round(Mz*sl),3); % 2D fft on
+                                                     % local_pad in
+                                                     % y and z
+F = ifft(ifft(x,round(My*s),2),round(Mz*s),3);   % 2D fft on the rest on y and z
 time = time + toc(ift_t);
+
 if(~isempty(local_pad))
-    Fz(:,:,local_pad) = Fzres(1:Mx,1:My,:);    % restrict to (Mx,My,local_pad)
+    Fxy(local_pad,:,:) = Fr(:,1:My,1:Mz);    % restrict to (local_pad,My,Mz)
 end
-Fz(:,:,zeromod) = Fz0mod(1:Mx,1:My);           % restrict to (Mx,My,zeromod)
+
+Fxy(zeromod,:,:) = F0(1:My,1:Mz);           % restrict to
+                                          % (zeromod,My,Mz)
+
+Fxy(global_pad,:,:) = F(global_pad,1:My,1:Mz);  % update old values
+                                                % and restrict
+
 ift_t = tic;
-F1 = ifft2(x,round(Mx*s),round(My*s));         % 2D fft on the rest on x and y
-time = time + toc(ift_t);
-Fz(:,:,global_pad) = F1(1:Mx,1:My,global_pad);  % update old values and restrict
-ift_t = tic;
-x = ifft(Fz,Mz,3);                              % 1D fft in z
+x = ifft(Fxy,Mx);                              % 1D fft in x
 time = time + toc(ift_t);
 x = x(1:Mx,1:My,1:Mz);                          % scale the result with numel
-
-% switch back the dimensions
-if per==1
-    x = permute(x,[3 1 2]);
-elseif per==2
-    x = permute(x,[1 3 2]);
-end
 
 if(nargout==2)
     varargout{1} = time;
