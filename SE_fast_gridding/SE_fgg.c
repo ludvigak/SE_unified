@@ -14,18 +14,6 @@
 // Internal routines ===========================================================
 
 // -----------------------------------------------------------------------------
-// vector index mod, e.g. for double x[6], x[7] --(vmod(7,6))--> x[1] 
-static inline int vmod(int i, int N)
-{
-    if(i>=0)
-	return i%N;
-
-    int k = -i/N;
-    i = i + (k+1)*N;
-    return i % N;
-}
-
-// -----------------------------------------------------------------------------
 static double randnum(double min, double L)
 {
     double q = ( (double) rand() )/RAND_MAX;
@@ -744,73 +732,6 @@ int fgg_index_2p(const double x[3],
 }
 #endif
 
-/* // --------------------------------------------------------------------------- */
-/* // ----------------KAISER KERNEL --------------------------------------------- */
-/* // --------------------------------------------------------------------------- */
-
-/* static inline double */
-/* kaiser(double x, double ow2, double beta) { */
-/*   double t = sqrt(1. - x*x*ow2); */
-/*   return exp(beta*(t-1)); */
-/* } */
-
-/* static */
-/* int kaiser_expansion_3p(const double x[3], const double q, */
-/* 			const SE_FGG_params* params, */
-/* 			double z2_0[P_MAX], */
-/* 			double z2_1[P_MAX], */
-/* 			double z2_2[P_MAX]) */
-/* { */
-/*     // unpack params */
-/*     const int p = params->P; */
-/*     const int p_half = params->P_half; */
-/*     const double h = params->h; */
-/*     const double w = params->P/2.; */
-/*     const double ow2  =1./(w*w); */
-/*     const double beta = params->beta; */
-/*     double t0[3]; */
-
-/*     int idx; */
-/*     int idx_from[3]; */
-
-/*     // compute index range and centering */
-/*     if(is_odd(p)) { */
-/*       for(int j=0; j<3; j++) { */
-/* 	idx = (int) round(x[j]/h); */
-/* 	idx_from[j] = idx - p_half; */
-/* 	t0[j] = (x[j]-h*idx)/h; */
-/*       } */
-/*     } */
-/*     else { */
-/*       for(int j=0; j<3; j++) { */
-/* 	idx = (int) floor(x[j]/h); */
-/* 	idx_from[j] = idx - (p_half-1); */
-/* 	t0[j] = (x[j]-h*idx)/h; */
-/*       } */
-/*     } */
-
-/*     // compute second factor by induction */
-/*     if(is_odd(p)) */
-/*       for(int i=0; i<p; i++) { */
-/* 	z2_0[i] = kaiser((t0[0]-(i-p_half)),ow2,beta); */
-/* 	z2_1[i] = kaiser((t0[1]-(i-p_half)),ow2,beta); */
-/* 	z2_2[i] = kaiser((t0[2]-(i-p_half)),ow2,beta); */
-/*       } */
-/*     else */
-/*       for(int i=0; i<p; i++) { */
-/* 	z2_0[i] = kaiser((t0[0]-(i-p_half+1)),ow2,beta); */
-/* 	z2_1[i] = kaiser((t0[1]-(i-p_half+1)),ow2,beta); */
-/* 	z2_2[i] = kaiser((t0[2]-(i-p_half+1)),ow2,beta); */
-/*       } */
-/*     // save some flops by multiplying one vector with q */
-/*     for(int i=0; i<p; i++) */
-/*       z2_0[i] *= q; */
-
-/*     return __IDX3_RMAJ(idx_from[0]+p_half, */
-/*                        idx_from[1]+p_half, */
-/*                        idx_from[2]+p_half, */
-/*                        params->npdims[1], params->npdims[2]); */
-/* } */
 
 // -----------------------------------------------------------------------------
 #ifdef ONE_PERIODIC
@@ -978,55 +899,6 @@ void SE_FGG_expand_all(SE_FGG_work* work,
 				    work->zz+n*P);
     }
 }
-
-
-/* // ----------------------------------------------------------------------------- */
-/* void SE_FGG_int_kaiser(double* restrict phi,   */
-/* 		       const SE_FGG_work* work,  */
-/* 		       const SE_state* st,  */
-/* 		       const SE_FGG_params* params) */
-/* { */
-/*     double z2_0[P_MAX] MEM_ALIGNED; */
-/*     double z2_1[P_MAX] MEM_ALIGNED; */
-/*     double z2_2[P_MAX] MEM_ALIGNED; */
-
-/*     // unpack params */
-/*     const double* restrict H = work->H; */
-/*     const int p = params->P; */
-/*     const int N = params->N; */
-/*     const double h=params->h; */
-
-/*     double xm[3]; */
-/*     int i,j,k,idx; */
-/*     double phi_m, cij; */
-
-/*     const int incrj = params->npdims[2]-p; */
-/*     const int incri = params->npdims[2]*(params->npdims[1]-p); */
-
-/* #ifdef _OPENMP */
-/* #pragma omp for // work-share over OpenMP threads here */
-/* #endif */
-/*     for(int m=0; m<N; m++) { */
-/*       xm[0] = st->x[m]; xm[1] = st->x[m+N]; xm[2] = st->x[m+2*N]; */
-      
-/*       idx = kaiser_expansion_3p(xm, 1, params, z2_0, z2_1, z2_2); */
-      
-/*       phi_m = 0; */
-      
-/*       for(i = 0; i<p; i++) { */
-/* 	for(j = 0; j<p; j++) { */
-/* 	  cij = z2_0[i]*z2_1[j]; */
-/* 	  for(k = 0; k<p; k++) { */
-/* 	    phi_m += H[idx]*z2_2[k]*cij; */
-/* 	    idx++; */
-/* 	  } */
-/* 	  idx += incrj; */
-/* 	} */
-/* 	idx += incri; */
-/*       } */
-/*       phi[m] = (h*h*h)*phi_m; */
-/*     } */
-/* } */
 
 // ----------------------------------------------------------------------
 // vanilla grid gather

@@ -33,10 +33,12 @@ if(mod(popt.M,2)==0)
     popt.Mx = 2*ceil(popt.Mx/2);
     popt.My = 2*ceil(popt.My/2);
 end
+popt.Lx = popt.h*popt.Mx;
+popt.Ly = popt.h*popt.My;
 
 % h should be the same in all directions
-assert((popt.Lx/popt.Mx-popt.h)<eps)
-assert((popt.Ly/popt.My-popt.h)<eps)
+assert(abs(popt.Lx/popt.Mx-popt.h)<eps)
+assert(abs(popt.Ly/popt.My-popt.h)<eps)
 
 % sampling factor (oversampling)
 if( isfield(opt,'sg')), popt.sg = opt.sg; else popt.sg=1; end;

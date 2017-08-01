@@ -26,6 +26,7 @@ popt.Lz = popt.box(3)+2*popt.w;
 if(mod(popt.M,2)==0)
     popt.Mz = 2*ceil(popt.Mz/2);
 end
+popt.Lz = popt.h*popt.Mz;
 
 % h should be the same in all directions
 assert((popt.Lz/popt.Mz-popt.h)<eps)

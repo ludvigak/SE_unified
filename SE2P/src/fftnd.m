@@ -25,10 +25,11 @@ function [x,xr,x0,varargout] = fftnd(x,opt)
 %       X0:         Output vector of size (1,1,S0*M);
 
 
-Fxy = fft2(x ,opt.M, opt.M);	  % 2D fft in x and y
-x   = fft(Fxy);                   % 1D fft with no padding in z
+Fxy = fft2(x ,opt.M, opt.M);	% 2D fft in x and y
+x   = fft(Fxy,opt.Mz,3);                   % 1D fft with no padding in z
 xr  = fft(Fxy(opt.local_pad,opt.local_pad,:),round(opt.Mz*opt.s),3);                          % 1D fft with padding in z
 
 x0 = fft(Fxy(1,1,:),round(opt.Mz*opt.s0));
+x0 = x0(:);
 
 end

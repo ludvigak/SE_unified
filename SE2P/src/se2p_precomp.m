@@ -4,8 +4,6 @@ function SE_static  = se2p_precomp(x,opt)
 
 verb = false;
 
-% get parameters
-
 [zx zy zz idx] = SE_fgg_expand_all_mex_2p(x,opt);
 
 [~, s] = sort(idx);

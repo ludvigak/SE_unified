@@ -4,14 +4,11 @@
 #include "SE_fgg.h"
 #include "SE_fkg.h"
 
-
-// Kaiser window function gridding
-// Davoud Saffar Shamshirgar, davoudss@kth.se
+// Fast Kaiser Gridding routines
 
 
 // =============================================================================
 // Core SE FGG routines ========================================================
-
 void SE_FKG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params, 
 			       int allocate_fgg_expa)
 {
@@ -52,6 +49,7 @@ kaiser(double x, double ow2, double beta) {
   return exp(beta*(t-1));
 }
 
+#ifdef THREE_PERIODIC
 static
 int kaiser_expansion_3p(const double x[3], const double q,
 			const SE_FGG_params* params,
@@ -90,7 +88,7 @@ int kaiser_expansion_3p(const double x[3], const double q,
 	}
     }
 
-    // compute second factor by induction
+    // compute second factor
     for(int i=0; i<p; i++) {
       z2_0[i] = kaiser(t0[0]-i,ow2,beta);
       z2_1[i] = kaiser(t0[1]-i,ow2,beta);
@@ -106,6 +104,150 @@ int kaiser_expansion_3p(const double x[3], const double q,
                        idx_from[2]+p_half,
                        params->npdims[1], params->npdims[2]);
 }
+#endif
+#ifdef TWO_PERIODIC
+static
+int kaiser_expansion_2p(const double x[3], const double q,
+			const SE_FGG_params* params,
+			double z2_0[P_MAX],
+			double z2_1[P_MAX],
+			double z2_2[P_MAX])
+{
+    // unpack params
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double one_h = 1./h;
+    const double w = params->P/2.;
+    const double ow2  =1./(w*w);
+    const double beta = params->beta;
+    const double a = params->a;
+    double t0[3];
+
+    int idx;
+    int idx_from[3];
+    
+    // compute index range and centering
+    if(is_odd(p)) {
+      idx = (int) round(x[0]*one_h);
+      idx_from[0] = idx - p_half;
+      t0[0] = x[0]*one_h - idx_from[0];
+
+      idx = (int) round(x[1]*one_h);
+      idx_from[1] = idx - p_half;
+      t0[1] = x[1]*one_h - idx_from[1];
+
+      idx = (int) round((x[2]-(a+h/2))*one_h);
+      idx_from[2] = idx - p_half;
+      t0[2] = (x[2]-(a+h/2))*one_h - idx_from[2];
+    }
+    else {
+      idx = (int) floor(x[0]*one_h);
+      idx_from[0] = idx - (p_half-1);
+      t0[0] = x[0]*one_h-idx_from[0];
+
+      idx = (int) floor(x[1]*one_h);
+      idx_from[1] = idx - (p_half-1);
+      t0[1] = x[1]*one_h-idx_from[1];
+      
+      idx = (int) floor((x[2]-(a+h/2))*one_h);
+      idx_from[2] = idx - (p_half-1);
+      t0[2] = (x[2]-(a+h/2))*one_h - idx_from[2];
+    }
+
+    // compute second factor
+    for(int i=0; i<p; i++) {
+      z2_0[i] = kaiser(t0[0]-i,ow2,beta);
+      z2_1[i] = kaiser(t0[1]-i,ow2,beta);
+      z2_2[i] = kaiser(t0[2]-i,ow2,beta);
+    }
+
+
+    
+    // save some flops by multiplying one vector with q
+    for(int i=0; i<p; i++)
+      z2_0[i] *= q;
+    
+    return __IDX3_RMAJ(idx_from[0]+p_half,
+                       idx_from[1]+p_half,
+                       idx_from[2],
+                       params->npdims[1], params->npdims[2]);
+}
+#endif
+
+/* IMPORTANT: By definition and for convenient z and y directions
+   are free and x is periodic. This is different from the implementation 
+   with the Gaussian window, compare kaiser_expansion_1p and fgg_expansion_1p. 
+ */
+#ifdef ONE_PERIODIC
+static
+int kaiser_expansion_1p(const double x[3], const double q,
+			const SE_FGG_params* params,
+			double z2_0[P_MAX],
+			double z2_1[P_MAX],
+			double z2_2[P_MAX])
+{
+    // unpack params
+    const int p = params->P;
+    const int p_half = params->P_half;
+    const double h = params->h;
+    const double one_h = 1/h;
+    const double w = params->P/2.;
+    const double ow2  =1./(w*w);
+    const double beta = params->beta;
+    const double a = params->a;
+    const double b = params->b;
+    double t0[3];
+
+    int idx;
+    int idx_from[3];
+
+    // compute index range and centering
+    if(is_odd(p)) {
+      idx = (int) round(x[0]*one_h);
+      idx_from[0] = idx - p_half;
+      t0[0] = x[0]*one_h - idx_from[0];
+
+      idx = (int) round((x[1]-(a+h/2))*one_h);
+      idx_from[1] = idx - p_half;
+      t0[1] = (x[1]-(a+h/2))*one_h - idx_from[1];     
+
+      idx = (int) round((x[2]-(b+h/2))*one_h);
+      idx_from[2] = idx - p_half;
+      t0[2] = (x[2]-(b+h/2))*one_h - idx_from[2];
+    }
+    else {
+      idx = (int) floor(x[0]*one_h);
+      idx_from[0] = idx - (p_half-1);
+      t0[0] = x[0]*one_h-idx_from[0];
+
+      idx = (int) floor((x[1]-(a+h/2))*one_h);
+      idx_from[1] = idx - (p_half-1);
+      t0[1] = (x[1]-(a+h/2))*one_h - idx_from[1];
+      
+      idx = (int) floor((x[2]-(b+h/2))*one_h);
+      idx_from[2] = idx - (p_half-1);
+      t0[2] = (x[2]-(b+h/2))*one_h - idx_from[2];
+      
+    }
+
+    // compute second factor
+    for(int i=0; i<p; i++) {
+      z2_0[i] = kaiser(t0[0]-i,ow2,beta);
+      z2_1[i] = kaiser(t0[1]-i,ow2,beta);
+      z2_2[i] = kaiser(t0[2]-i,ow2,beta);
+    }
+
+    // save some flops by multiplying one vector with q
+    for(int i=0; i<p; i++)
+      z2_0[i] *= q;
+    
+    return __IDX3_RMAJ(idx_from[0]+p_half,
+                       idx_from[1],
+                       idx_from[2],
+                       params->npdims[1], params->npdims[2]);
+}
+#endif
 
 // -----------------------------------------------------------------------------
 void SE_FKG_expand_all(SE_FGG_work* work, 
@@ -124,13 +266,68 @@ void SE_FKG_expand_all(SE_FGG_work* work,
       // compute index and expansion vectors
       xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
       
-      *(work->idx+n) = kaiser_expansion_3p(xn,1,params, 
-					   work->zx+n*P, 
-					   work->zy+n*P, 
-					   work->zz+n*P);
+      *(work->idx+n) = __FKG_EXPA(xn,1,params, 
+				  work->zx+n*P, 
+				  work->zy+n*P, 
+				  work->zz+n*P);
     }
 }
 
+// -----------------------------------------------------------------------------
+// We need this since periodicity is defined in x direction with kaiser window
+// unlike Gaussian window which is in z.
+// FIXME: We need to modify SE1P with Gaussian!
+void SE1P_FKG_wrap_fcn(double* restrict H_per, 
+		       const SE_FGG_work* work, 
+		       const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+    // can not openMP here, race to += on H_per beacuse indices wrap around
+    for(int i=0; i<params->npdims[0]; i++)
+      {
+	widx= vmod(i-p_half,params->dims[0]);
+	for(int j=0; j<params->npdims[1]; j++)
+	  {
+	    for(int k=0; k<params->npdims[2]; k++)
+	      {
+		idx = __IDX3_CMAJ(widx, j, k, 
+				  params->dims[0], params->dims[1]);
+		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
+						   params->npdims[1],
+						   params->npdims[2]) ];
+	      }
+	  }
+      }
+}
+
+void SE1P_FKG_extend_fcn(SE_FGG_work* work, const double* H_per, 
+			 const SE_FGG_params* params)
+{
+    int idx;
+    int widx;
+    const int p_half = half(params->P);
+
+#ifdef _OPENMP
+#pragma omp for // work-share over OpenMP threads here
+#endif
+    for(int i=0; i<params->npdims[0]; i++)
+      {
+	widx = vmod(i-p_half,params->dims[0]);
+	for(int j=0; j<params->npdims[1]; j++)
+	  {
+	    for(int k=0; k<params->npdims[2]; k++)
+	      {
+		idx = __IDX3_CMAJ(widx, j, k, 
+				  params->dims[0], params->dims[1]);
+		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
+		  = H_per[idx];
+	      }
+	  }
+      }
+}
 
 // -----------------------------------------------------------------------------
 void SE_FKG_int(double* restrict phi,  
@@ -161,7 +358,7 @@ void SE_FKG_int(double* restrict phi,
     for(int m=0; m<N; m++) {
       xm[0] = st->x[m]; xm[1] = st->x[m+N]; xm[2] = st->x[m+2*N];
       
-      idx = kaiser_expansion_3p(xm, 1, params, z2_0, z2_1, z2_2);
+      idx = __FKG_EXPA(xm, 1, params, z2_0, z2_1, z2_2);
       
       phi_m = 0;
       
@@ -929,7 +1126,7 @@ void SE_FKG_grid(SE_FGG_work* work, const SE_state* st,
       xn[0] = st->x[n]; xn[1] = st->x[n+N]; xn[2] = st->x[n+2*N];
       qn = st->q[n];
       
-      idx0 = kaiser_expansion_3p(xn, qn, params, zx0, zy0, zz0);
+      idx0 = __FKG_EXPA(xn, qn, params, zx0, zy0, zz0);
 
       for(i = 0; i<p; i++) {
 	  for(j = 0; j<p; j++) {
