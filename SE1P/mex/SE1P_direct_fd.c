@@ -22,7 +22,7 @@ void unpack_opt(ewald_opts* opt, const mxArray* mx_opt)
       mexErrMsgTxt("xi cannot be zero");
     double* box =  mxGetPr(mxGetField(mx_opt,0,"box"));
 
-    opt->box[2] = box[2];
+    opt->box[0] = box[0];
 
     // layers: mandatory for ewald sums that are truncated 
     const mxArray* mx_layers = mxGetField(mx_opt,0,"layers");
@@ -48,11 +48,8 @@ void SE1P_direct_fd(double* restrict force,
 {
   const double xi   = opt.xi;
   double xi2        = xi*xi;
-  double TwoPiOverL = 2.*PI/opt.box[2];
-  //  int rep;
-  /* get ready for gsl integration*/
-   /* gsl_integration_workspace * w  */
-   /*   = gsl_integration_workspace_alloc (STACK_SIZE); */
+  double TwoPiOverL = 2.*PI/opt.box[0];
+
 #ifdef _OPENMP
 #pragma omp parallel for
 #endif
@@ -64,32 +61,30 @@ void SE1P_direct_fd(double* restrict force,
       for(int n = 0; n<N; n++)
 	{
 	  double rvec[] = {xm[0]-x[n],xm[1]-x[n+N], xm[2]-x[n+2*N]};
-	  double rho2 = rvec[0]*rvec[0] + rvec[1]*rvec[1];
+	  double rho2 = rvec[1]*rvec[1] + rvec[2]*rvec[2];
 	  double b   = rho2*xi2;
 	  double qn  = q[n];
-	  for(int j2 = -opt.layers; j2<=opt.layers; j2++)
+	  for(int j0 = -opt.layers; j0<=opt.layers; j0++)
 	    {
-	      if(j2 == 0)
+	      if(j0 == 0)
 		continue;
 	      
-	      double k3  = TwoPiOverL*j2;
-	      double k3z = -k3*rvec[2];
+	      double k  = TwoPiOverL*j0;
+	      double kr = -k*rvec[0];
 	      
-	      double a   = k3*k3/(4.*xi2);
-	      double K0  = computeINCBK0(a,b,1);
-	      /* double K0  = IncompBesselK0_Simpson(1e-15, &rep, a,b,1); */
-	      // double K0  = call_gsl_bessel_integrator(a,b,w,1);
-	      f[0] += 2.*qn*xi2*cos(k3z)*rvec[0]*K0;
-	      f[1] += 2.*qn*xi2*cos(k3z)*rvec[1]*K0;
+	      double a   = k*k/(4.*xi2);
+	      double K0;
 	      K0  = computeINCBK0(a,b,0);
-	      //K0  = IncompBesselK0_Simpson(1e-15, &rep, a,b,0);
-	      //K0  = call_gsl_bessel_integrator(a,b,w,0);
-	      f[2] += -qn*k3*sin(k3z)*K0;
+	      f[0] += -qn*k*sin(kr)*K0;
+
+	      K0 = computeINCBK0(a,b,1);
+	      f[1] += 2.*qn*xi2*cos(kr)*rvec[1]*K0;
+	      f[2] += 2.*qn*xi2*cos(kr)*rvec[2]*K0;
 	    }
 	}
-      force[m       ] = -f[0]/(opt.box[2]);
-      force[m+  nidx] = -f[1]/(opt.box[2]);
-      force[m+2*nidx] = -f[2]/(opt.box[2]);
+      force[m       ] = -f[0]/(opt.box[0]);
+      force[m+  nidx] = -f[1]/(opt.box[0]);
+      force[m+2*nidx] = -f[2]/(opt.box[0]);
     }
 
     /* gsl_integration_workspace_free (w); */
@@ -105,7 +100,7 @@ void SE1P_direct_fd(double* restrict phi,
   double p;
   const double xi   = opt.xi;
   double xi2        = xi*xi;
-  double TwoPiOverL = 2.*PI/opt.box[2];
+  double TwoPiOverL = 2.*PI/opt.box[0];
   //  int rep;
 
 #ifdef _OPENMP
@@ -117,26 +112,25 @@ void SE1P_direct_fd(double* restrict phi,
 		      x[idx[m]+N  ],
 		      x[idx[m]+2*N]};
       p = 0;
-      for(int j2 = 1; j2<=opt.layers; j2++) {
-	double k3  = TwoPiOverL*j2;
+      for(int j0 = 1; j0<=opt.layers; j0++) {
+	double k  = TwoPiOverL*j0;
 	
-	double a   = k3*k3/(4.*xi2);
+	double a   = k*k/(4.*xi2);
 	for(int n = 0; n<N; n++) {
-	  double z   = xm[2]-x[n+2*N];
-	  double rho2= ( (xm[0]-x[n  ])*(xm[0]-x[n  ])+
-			 (xm[1]-x[n+N])*(xm[1]-x[n+N]) );
+	  double r   = xm[0]-x[n];
+	  double rho2= ( (xm[1]-x[n+N  ])*(xm[1]-x[n+N  ])+
+			 (xm[2]-x[n+2*N])*(xm[2]-x[n+2*N]) );
 	  double b   = rho2*xi2;
 	  double qn  = q[n];
 
-	  //	      K0  = IncompBesselK0_Simpson(1e-15 ,&rep, a, b,0);
 	  double K0 = computeK0(a,b);
-	  double k3z = -k3*z;
-	  p += 2*qn*cos(k3z)*K0;
+	  double kr = -k*r;
+	  p += 2*qn*cos(kr)*K0;
 	  
 	  
 	}
       }
-      phi[m] = p/(opt.box[2]);
+      phi[m] = p/(opt.box[0]);
     }
 }
 #endif

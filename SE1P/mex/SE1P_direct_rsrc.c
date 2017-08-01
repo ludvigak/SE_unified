@@ -19,7 +19,7 @@ void unpack_opt(ewald_opts* opt, const mxArray* mx_opt)
     opt->xi = mxGetScalar(mxGetField(mx_opt,0,"xi"));
     double* box =  mxGetPr(mxGetField(mx_opt,0,"box"));
 
-    opt->box[2] = box[2];
+    opt->box[0] = box[0];
 
     // layers: mandatory for ewald sums that are truncated 
     const mxArray* mx_layers = mxGetField(mx_opt,0,"layers");
@@ -64,12 +64,12 @@ void SE1P_direct_real_rc(double* restrict force,
 	  double rvec[] = {xm[0]-x[n], xm[1]-x[n+N], xm[2]-x[n+2*N]};
 	  double qn = q[n];
 
-	  for(int p2 = -opt.layers; p2<=opt.layers; p2++)
+	  for(int p0 = -opt.layers; p0<=opt.layers; p0++)
 	    {
-	      if(idx[m] == n && p2 == 0)
+	      if(idx[m] == n && p0 == 0)
 		continue;
 
-	      double rvp[] = {rvec[0], rvec[1],rvec[2]+p2*opt.box[2]};
+	      double rvp[] = {rvec[0]+p0*opt.box[0],rvec[1],rvec[2]};
 	      double r = sqrt(rvp[0]*rvp[0]+rvp[1]*rvp[1]+rvp[2]*rvp[2]);
 	      double r2 = r*r;
 
@@ -81,7 +81,7 @@ void SE1P_direct_real_rc(double* restrict force,
 	      f[2] += c*rvp[2];
 	    }
 	}
-      force[m    ] = -f[0];
+      force[m       ] = -f[0];
       force[m+  nidx] = -f[1];
       force[m+2*nidx] = -f[2];
     }
@@ -107,18 +107,18 @@ void SE1P_direct_real_rc(double* restrict phi,
 	    
 	    double qn = q[n];
 
-	    for(int p2 = -opt.layers; p2<=opt.layers; p2++)
+	    for(int p0 = -opt.layers; p0<=opt.layers; p0++)
 	      {
-		if(idx[m] == n && p2 == 0)
+		if(idx[m] == n && p0 == 0)
 		  continue;
 		
-		double r = sqrt(rvec[0]*rvec[0]+
+		double r = sqrt((rvec[0]+p0*opt.box[0])*
+				(rvec[0]+p0*opt.box[0])+
 				rvec[1]*rvec[1]+
-				(rvec[2]+p2*opt.box[2])*
-				(rvec[2]+p2*opt.box[2]));
+				rvec[2]*rvec[2]
+				);
 		if(r < opt.rc)
 		  p += qn*erfc(opt.xi*r)/r;
-		/* printf("c:   %10f%10f%2d%2d%10f\n",qn,q[idx[m]],idx[m],n,erfc(opt.xi*r)/r); */
 	      }
 	}
 	phi[m] += p;

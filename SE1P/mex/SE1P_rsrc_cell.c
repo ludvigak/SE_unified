@@ -210,7 +210,7 @@ mexFunction( int nlhs, mxArray *plhs[],
 		    // periodic wrap
 		    for (int j=-p; j<=p; j++)
 		    {
-		      double pshift[] = {0,0,j*box[2]};
+		      double pshift[] = {j*box[0],0,0};
 		      for(int i=0; i<3; i++)
 			rvec[i] = xs[i] - x[idx_t*3 + i] - pshift[i];
 		      double r2 = norm2(rvec);

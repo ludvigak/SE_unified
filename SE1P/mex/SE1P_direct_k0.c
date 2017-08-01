@@ -23,7 +23,7 @@ void unpack_opt(ewald_opts* opt, const mxArray* mx_opt)
     
     double* box =  mxGetPr(mxGetField(mx_opt,0,"box"));
 
-    opt->box[2] = box[2];
+    opt->box[0] = box[0];
 }
 
 // MATLAB (one-based, doubles) to C (zero-based, integers) index translation
@@ -40,26 +40,27 @@ void SE1P_direct_k0(double* restrict force,
 		    const double* restrict q, int N,
 		    const ewald_opts opt)
 {
-  double rho2,xm[2];
+  double rho2,xm[3];
   const double xi = opt.xi;
     
   for(int m=0; m<nidx; m++)
     {
-      double force_x=0, force_y=0;
+      double force_y=0, force_z=0;
       xm[0] = x[idx[m]    ];
       xm[1] = x[idx[m]+N  ];
+      xm[2] = x[idx[m]+2*N];
       for(int n=0; n<N; n++)
         {
-	  rho2 = ( (xm[0]-x[n  ])*(xm[0]-x[n  ]) +
-		   (xm[1]-x[n+N])*(xm[1]-x[n+N]) );
+	  rho2 = ( (xm[1]-x[n+N  ])*(xm[1]-x[n+N  ]) +
+		   (xm[2]-x[n+2*N])*(xm[2]-x[n+2*N]) );
 	  if(rho2==0)
  	     continue;
-	  force_x += q[n]*2.*(xm[0]-x[n]  )/rho2*(1-exp(-rho2*xi*xi));
-	  force_y += q[n]*2.*(xm[1]-x[n+N])/rho2*(1-exp(-rho2*xi*xi));
+	  force_y += q[n]*2.*(xm[1]-x[n+N]  )/rho2*(1-exp(-rho2*xi*xi));
+	  force_z += q[n]*2.*(xm[2]-x[n+2*N])/rho2*(1-exp(-rho2*xi*xi));
         }
-      force[m       ] = -force_x/opt.box[2];
-      force[m+  nidx] = -force_y/opt.box[2];
-      force[m+2*nidx] = 0;
+      force[m       ] = 0;
+      force[m+  nidx] = -force_y/opt.box[0];
+      force[m+2*nidx] = -force_z/opt.box[0];
     }  
 }
 #else
@@ -78,17 +79,18 @@ void SE1P_direct_k0(double* restrict phi,
 #endif    
     for(int m=0; m<nidx; m++) {
       p=0;
-      double xm[2] = {x[idx[m]    ],
-		      x[idx[m]+N  ]};
+      double xm[3] = {x[idx[m]    ],
+		      x[idx[m]+N  ],
+		      x[idx[m]+2*N]};
       for(int n=0; n<N; n++) {
-	double rho2 = ( (xm[0]-x[n  ])*(xm[0]-x[n  ]) +
-			(xm[1]-x[n+N])*(xm[1]-x[n+N]) );
+	double rho2 = ( (xm[1]-x[n+N  ])*(xm[1]-x[n+N  ]) +
+			(xm[2]-x[n+2*N])*(xm[2]-x[n+2*N]) );
 	if(rho2>34)
 	  p += -q[n]*(log(rho2*xi*xi)+egamma);
 	else if(rho2>__DBL_EPSILON__)
 	  p += -q[n]*(gsl_sf_expint_E1(rho2*xi*xi)+log(rho2*xi*xi)+egamma);
       }
-      phi[m] = p/opt.box[2];
+      phi[m] = p/opt.box[0];
     }
 }
 #endif

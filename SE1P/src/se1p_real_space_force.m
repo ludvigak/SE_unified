@@ -28,7 +28,7 @@ if (MATLAB)
                 source = 1:N;
             end
             xsPv = x(source,:);
-            xsPv(:,3) = xsPv(:,3) + p*opt.box(3);
+            xsPv(:,1) = xsPv(:,1) + p*opt.box(1);
             rvec = bsxfun(@minus, x(target, :), xsPv);
             dist = sqrt(sum(rvec.^2, 2));
             u1   = -c*exp(-(xi^2*dist.^2));
