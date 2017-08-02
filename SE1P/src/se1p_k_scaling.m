@@ -31,7 +31,7 @@ Z0 = Znum.*Green;
 
 % Finite limit at k3=0.
 Z0(1,1) = R^2/4-R*log(R)*R/2;
-whos
+
 if(opt.sg==opt.s0 && opt.sl==opt.s0)
     Z(opt.k0mod,:,:) = Z0; 
     G = Z.*G;

@@ -226,6 +226,25 @@ matlab_add_mex(
 )
 target_link_libraries(SE_fg_int_extended_split_mex_1p fgg_1p)
 
+# MEX functions 3P FORCE
+matlab_add_mex(
+  NAME SE_fgg_expand_all_force_mex
+  SRC mex/SE_fgg_expand_all_force_mex.c  SE_fgg.c SE_fgg_MEX_params.c
+)
+target_link_libraries(SE_fgg_expand_all_force_mex fgg_force)
+
+matlab_add_mex(
+  NAME SE_fg_int_force_mex
+  SRC mex/SE_fg_int_force_mex.c
+)
+target_link_libraries(SE_fg_int_force_mex fgg_force)
+
+matlab_add_mex(
+  NAME SE_fg_int_split_force_mex
+  SRC mex/SE_fg_int_split_force_mex.c
+)
+target_link_libraries(SE_fg_int_split_force_mex fgg_force)
+
 # MEX functions 1P FORCE
 matlab_add_mex(
   NAME SE_fgg_expand_all_force_mex_1p
@@ -253,7 +272,7 @@ add_library(
   fkg
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
-target_compile_definitions(fkg PUBLIC THREE_PERIODIC)
+target_compile_definitions(fkg PUBLIC THREE_PERIODIC KAISER)
 
 ## FGG MEX libraries
 
@@ -262,7 +281,7 @@ add_library(
   fkg_2p
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
-target_compile_definitions(fkg_2p PUBLIC TWO_PERIODIC)
+target_compile_definitions(fkg_2p PUBLIC TWO_PERIODIC KAISER)
 
 ## FGG MEX libraries
 
@@ -272,7 +291,7 @@ add_library(
   fkg_1p
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
-target_compile_definitions(fkg_1p PUBLIC ONE_PERIODIC)
+target_compile_definitions(fkg_1p PUBLIC ONE_PERIODIC KAISER)
 
 
 #  KAISER MEX functions 3P

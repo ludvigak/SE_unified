@@ -26,7 +26,7 @@ if( isfield(opt,'m'))
 else 
     m = 0.9*sqrt(pi*P); 
 end;
-w = h*(P-1)/2;
+w = h*P/2;
 
 if isfield(opt, 'xi')
     opt.eta = (2*w*opt.xi/m)^2;
