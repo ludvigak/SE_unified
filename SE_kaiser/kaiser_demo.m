@@ -1,5 +1,3 @@
-clf
-
 rng(1)
 box = [1 1 1];   % domain
 N = 1000;         % number of charged particles
@@ -27,6 +25,6 @@ ref = SE3P_direct_fd_mex(idx,x,q,opt);
 rms = @(x) sqrt(sum(x.^2)/numel(x));
 
 opt.P = 16;
-[u time]= spectral_ewald_kaiser(1:N,x,q,opt);
+[u time]= se3p_fourier_space_kaiser(1:N,x,q,opt);
 
 e_rms   = rms(u(idx)-ref)/rms(ref)
