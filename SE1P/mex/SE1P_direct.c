@@ -70,9 +70,9 @@ void SE1P_direct(double* restrict force,
 	      f[2] += c*rvp[2];
 	    }
 	}
-      force[idx[m]    ] = -f[0];
-      force[idx[m]+  N] = -f[1];
-      force[idx[m]+2*N] = -f[2];
+      force[m       ] = -f[0];
+      force[m+  nidx] = -f[1];
+      force[m+2*nidx] = -f[2];
     }
 }
 #else
@@ -105,7 +105,7 @@ void SE1P_direct(double* restrict phi,
 	    p += qn/r;
 	  }
       }
-      phi[idx[m]] = p;
+      phi[m] = p;
     }
 }
 #endif

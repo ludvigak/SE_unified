@@ -81,9 +81,9 @@ void SE1P_direct_real_rc(double* restrict force,
 	      f[2] += c*rvp[2];
 	    }
 	}
-      force[idx[m]    ] = -f[0];
-      force[idx[m]+  N] = -f[1];
-      force[idx[m]+2*N] = -f[2];
+      force[m       ] = -f[0];
+      force[m+  nidx] = -f[1];
+      force[m+2*nidx] = -f[2];
     }
 }
 #else
@@ -121,7 +121,7 @@ void SE1P_direct_real_rc(double* restrict phi,
 		/* printf("c:   %10f%10f%2d%2d%10f\n",qn,q[idx[m]],idx[m],n,erfc(opt.xi*r)/r); */
 	      }
 	}
-	phi[idx[m]] += p;
+	phi[m] += p;
     }    
 }
 #endif

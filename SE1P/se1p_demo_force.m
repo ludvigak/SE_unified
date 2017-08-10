@@ -18,22 +18,22 @@ opt.sl = 4;
 opt.nl = 4;
 opt.s0 = 2.5;
 
-
 %% Ewald
 disp('One periodic Ewald...')
 [uf tfourier]= se1p_fourier_space_force(x, f, opt);
 [ur treal]= se1p_real_space_force(1:N,x, f, opt,true);
-uk = se1p_k0_direct_force(1:N,x,f,opt,true);
 ue = uf+ur;
 
 %% Direct
 disp('Direct sum...')
-[u tdirect]= se1p_direct_force(1:N, x, f, opt,true);
-opt.P=32;
-[u1 tfourier]= se1p_fourier_space_direct_force(1:N,x, f, opt, false);
-[u2 treal]= se1p_real_space_force(1:N,x, f, opt,true);
-u3 = se1p_k0_direct_force(1:N,x,f,opt,true);
+% 1/r decays very slowly. Do not use the se1p_direct unless you
+% know what is happening
+%[u tdirect]= se1p_direct_force(idx, x, f, opt,true);
+u1 = SE1P_direct_rsrc_force_mex(1:N,x,f,opt);
+u2 = SE1P_direct_fd_force_mex(1:N,x,f,opt);
+u3 = SE1P_direct_k0_force_mex(1:N,x,f,opt);
 u = u1+u2+u3;
+
 rms_error = rms(u(:)-ue(:)) / rms(u(:))
 
 % fprintf('fourier-sp time\t real-sp time\t total time\t direct time\n');
