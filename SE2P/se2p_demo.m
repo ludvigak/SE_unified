@@ -7,7 +7,7 @@ N = 20;
 L = 1;
 box = [1 1 1];
 [x, f] = vector_system(N, box);
-M0 = 20; % Set M0 to an even number, the rest is auto
+M0 = 28; % Set M0 to an even number, the rest is auto
 
 opt.M = M0*box(1);
 opt.xi = pi*M0 / 12;
@@ -17,6 +17,7 @@ opt.box = box;
 opt.layers = 20;
 opt.s = 4;
 opt.s0= 2;
+opt.n = 3;
 
 % % compute FD Ewald sum
 ref  = SE2P_direct_fd_mex(1:N,x,f,opt);

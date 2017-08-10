@@ -1,4 +1,4 @@
-function [G, Gr, G0, varargout] = se2p_k_scaling(G,Gr,G0,opt)
+function [G, Gr, G0] = se2p_k_scaling(G,Gr,G0,opt)
 
 R = opt.R; eta = opt.eta; xi = opt.xi;
 
@@ -15,18 +15,16 @@ Z = Znum./ksq;
 Z(zidx1,zidx2,1) = 0;
 
 % scale zero mode
-kappa = k_vectors(opt.Mz, opt.Lz, opt.s0);
-[K1, K2, KAPPA] = ndgrid(k1,k2,kappa);
-ksq = K1.^2 + K2.^2 + KAPPA.^2;
+kappa = k_vectors(opt.Mz, opt.Lz, opt.s0)';
+ksq = k1(zidx1)^2 + k2(zidx2)^2 + kappa.^2;
+kmod  = sqrt(ksq);
 Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 
-kmod  = sqrt(ksq(zidx1,zidx2,:));
 Green=-1./kmod.^2.*(R*kmod.*sin(R*kmod)+cos(R*kmod)-1);
-Z0 = Znum(zidx1,zidx2,:).*Green;
+Z0 = Znum.*Green;
 
 % % Finite limit at k3=0.
-Z0(zidx1,zidx2,1) = R^2/2;
-
+Z0(1) = R^2/2;
 
 % scale the local pad
 if(numel(opt.local_pad)>0)
