@@ -21,7 +21,7 @@ opt.s0 = 2.5;
 %% Ewald
 disp('One periodic Ewald...')
 [uf tfourier]= se1p_fourier_space_force(x, f, opt);
-[ur treal]= se1p_real_space_force(1:N,x, f, opt,true);
+[ur treal]= se1p_real_space_force(1:N,x, f, opt,false);
 ue = uf+ur;
 
 %% Direct

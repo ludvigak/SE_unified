@@ -34,7 +34,11 @@ if (MATLAB)
             u1   = -c*exp(-(xi^2*dist.^2));
             u2   = -erfc(xi*dist)./dist;
             u0   = f(source).*(u1+u2)./dist.^2;
-            if(dist<rc)
+
+	    I = (dist<rc);
+	    rvec = rvec(I,:);
+	    u0 = u0(I);
+	    if ~isempty(rvec)
                 u(nt,:) = u(nt,:) + sum(bsxfun(@times,u0,rvec),1);
             end
         end
