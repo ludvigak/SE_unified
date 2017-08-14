@@ -2,33 +2,32 @@ function [u varargout]= se1p_real_space(idx, x, f, opt,varargin)
 
 xi = opt.xi;
 
-if nargin==6
-    MATLAB = varargin{1};
-    rc     = varargin{2};
-elseif nargin ==6
-    MATLAB = varargin{1};
-else
-    rc = inf;
-    MATLAB = false;
-end
+MATLAB = varargin{1};
+rc = opt.rc;
 
 N = size(x, 1);
+
 time = tic;
+
 if (MATLAB)
     u = zeros(numel(idx), 1);
     for target = idx
         for p=-opt.layers:opt.layers
-            if p==0
+            if p==0 
                 source = [1:target-1 target+1:N];
             else
                 source = 1:N;
             end
-            xsPv = x(source,:);
-            xsPv(:,3) = xsPv(:,3) + p*opt.box(3);
-            rvec = bsxfun(@minus, x(target, :), xsPv);
-            dist = sqrt(sum(rvec.^2, 2));
-            if(dist<rc)
-                u(target) = u(target) + sum(f(source) .* erfc(xi*dist)./dist);
+            rvec = bsxfun(@minus, x(target,:),x(source,:));
+            xsPv = rvec;
+            xsPv(:,1) = xsPv(:,1) + p*opt.box(1);
+            dist = sqrt(sum(xsPv.^2,2));
+
+            I = (dist<rc);
+            dist = dist(I);
+            q = f(source(I));
+            if ~isempty(dist)
+                u(target) = u(target) + sum(q .* erfc(xi*dist)./dist);
             end
         end
     end

@@ -117,6 +117,7 @@ void SE1P_direct_real_rc(double* restrict phi,
 				rvec[1]*rvec[1]+
 				rvec[2]*rvec[2]
 				);
+		
 		if(r < opt.rc)
 		  p += qn*erfc(opt.xi*r)/r;
 	      }
