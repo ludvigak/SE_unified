@@ -26,7 +26,7 @@ function [x,xr,x0] = fftnd2p(x,opt)
 
 
 Fxy = fft2(x ,opt.M, opt.M);	  % 2D fft in x and y
-x   = fft(Fxy,opt.Mz,3);                   % 1D fft with no padding in z
+x   = fft(Fxy, opt.Mz ,3);                   % 1D fft with no padding in z
 xr  = fft(Fxy(opt.local_pad,opt.local_pad,:),round(opt.Mz*opt.s),3);% 1D fft with padding in z
 
 F=Fxy(1,1,:);F=F(:);

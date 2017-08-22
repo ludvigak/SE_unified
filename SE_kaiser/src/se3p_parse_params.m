@@ -1,4 +1,4 @@
-function opt = parse_params(opt)
+function opt = se3p_parse_params(opt)
 assert(isfield(opt,'M'));
 assert(isfield(opt,'P'));
 assert(isfield(opt,'box'));

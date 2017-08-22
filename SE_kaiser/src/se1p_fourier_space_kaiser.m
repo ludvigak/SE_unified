@@ -1,4 +1,4 @@
-function [phi walltime] = se1p_fourier_space_kaiser(eval_idx,x,q,opt)
+function [phi varargout] = se1p_fourier_space_kaiser(eval_idx,x,q,opt)
 
 fkg = true;
 
@@ -56,3 +56,8 @@ walltime.ifft = toc(ifft_t);
 int_t=tic;
 phi = 4 * pi *int_fcn(F);
 walltime.int = toc(int_t);
+
+if nargout==2
+    walltime.total = sum(struct2array(walltime));
+    varargout{1} = walltime;
+end

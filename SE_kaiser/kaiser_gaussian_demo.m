@@ -23,13 +23,11 @@ opt.beta = 1.4*pi*.98^2;
 % charge-neutral system
 [x q] = vector_system(N,box);
 
-idx = 1:min(N,10);
+idx = 1:min(N,50);
 % compute FD Ewald sum
 ref1p = SE1P_direct_fd_mex(idx,x,q,opt) + SE1P_direct_k0_mex(idx,x,q,opt);
 ref2p = SE2P_direct_fd_mex(idx,x,q,opt) + SE2P_direct_k0_mex(idx,x,q,opt);
 ref3p = SE3P_direct_fd_mex(idx,x,q,opt);
-
-rms = @(x) sqrt(sum(x.^2)/numel(x));
 
 opt.P = 14;
 opt.M = M0*box;

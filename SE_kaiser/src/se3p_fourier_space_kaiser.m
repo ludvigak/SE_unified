@@ -1,4 +1,4 @@
-function [phi walltime] = se3p_fourier_space_kaiser(eval_idx,x,q,opt)
+function [phi varargout] = se3p_fourier_space_kaiser(eval_idx,x,q,opt)
 
 fkg = true;
 
@@ -14,8 +14,8 @@ if(fkg)
     pre_t = tic;
     S = se3p_precomp_kaiser(x,opt.xi,opt);
     grid_fcn = @(f) SE_fg_grid_split_kaiser_mex(x(S.perm,:),f(S.perm),opt,...
-                                                S.zx,S.zy,S.zz, ...
-                                                S.idx);
+					       S.zx,S.zy,S.zz, ...
+					       S.idx);
     walltime.pre = toc(pre_t);
     % Integrator
     SI = S;
@@ -58,3 +58,8 @@ phi = int_fcn(H);
 walltime.int = toc(int_t);
 
 phi  = 4*pi*phi;
+
+if nargout==2
+    walltime.total = sum(struct2array(walltime));
+    varargout{1} = walltime;
+end

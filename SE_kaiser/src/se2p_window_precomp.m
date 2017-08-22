@@ -35,7 +35,7 @@ function pre = se2p_window_precomp(opt)
     [f1 f2 f3] = ndgrid(F2(n),F2(n),Fz2);
     Fr = f1.*f2.*f3;
     pre.Fr = 1./Fr;
-    %pre.Fr(:,:,round(s*Mz)/2+1) = 0;
+    %    pre.Fr(:,:,round(s*Mz)/2+1) = 0;
     
     
     % zero mode with s0 upsampling
@@ -47,7 +47,7 @@ function pre = se2p_window_precomp(opt)
     F0 = f1*f2*f3;
     pre.F0 = 1./F0;
 
-%pre.F0(round(s0*Mz)/2+1)=0;
+%pre.F0(round(s0*Mz/2)+1)=0;
 
 function z= kaiser(x,beta,w)
 
