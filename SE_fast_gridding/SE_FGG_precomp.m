@@ -5,7 +5,7 @@ function [SE_static walltime]  = SE_FGG_precomp(x,xi,opt)
 verb = false;
 
 % get parameters
-opt=parse_params(opt);
+
 x = recenter_points(x, opt.box);
 
 [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);

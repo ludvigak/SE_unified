@@ -354,7 +354,6 @@ void SE1P_FGG_wrap_fcn(double* restrict H_per,
     }
 }
 
-
 // -----------------------------------------------------------------------------
 // Extend periodic function larger box
 // INPUT IN FORTRAN/MATLAB-STYLE COLUMN MAJOR LAYOUT!

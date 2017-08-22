@@ -40,7 +40,6 @@ target_compile_definitions(fgg_thrd_2p PUBLIC TWO_PERIODIC FGG_THRD)
 ## FGG MEX libraries
 
 # 1D
-
 add_library(
   fgg_1p
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
@@ -286,13 +285,11 @@ target_compile_definitions(fkg_2p PUBLIC TWO_PERIODIC KAISER)
 ## FGG MEX libraries
 
 # 1D
-
 add_library(
   fkg_1p
   SE_fgg.c SE_fgg.h SE_fgg_MEX_params.c
 )
 target_compile_definitions(fkg_1p PUBLIC ONE_PERIODIC KAISER)
-
 
 #  KAISER MEX functions 3P
 matlab_add_mex(

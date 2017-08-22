@@ -112,4 +112,34 @@ void SE_FGG_MEX_params(SE_FGG_params* params, const mxArray* OPT, int N)
     params->npdims[2] = params->dims[2];
 
 #endif
+
+#ifdef ZERO_PERIODIC
+    const double* m    = (double*) get_arg(OPT,"M");
+    const double* p    = (double*) get_arg(OPT,"P");
+    const double* box  = (double*) get_arg(OPT,"box");
+    const double* a    = (double*) get_arg(OPT,"a"); /* xyz-dir offset.*/
+#ifndef KAISER
+    const double* c    = (double*) get_arg(OPT,"c");
+    params->c = *c;
+    params->d = pow(params->c/PI,1.5);    
+#else
+    const double* beta = (double*) get_arg(OPT,"beta");
+    params->beta = *beta;
+#endif
+
+    params->N = N;
+    params->P = (int) *p;
+    params->P_half=half( (int) *p );
+    params->h = box[0]/m[0];
+    params->a = a[0]; // FIXME: we assume the same offset in each direction!
+
+    params->dims[0] = (int) m[0];
+    params->dims[1] = (int) m[1];
+    params->dims[2] = (int) m[2];
+
+    params->npdims[0] = params->dims[0];
+    params->npdims[1] = params->dims[1];
+    params->npdims[2] = params->dims[2];
+
+#endif    
 }

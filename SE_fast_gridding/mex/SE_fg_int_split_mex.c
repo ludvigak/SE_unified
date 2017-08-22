@@ -60,7 +60,7 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #endif
 #ifdef ONE_PERIODIC
 	SE1P_FGG_extend_fcn(&work, H_per, &params);
-#endif	
+#endif
 
 #ifdef __AVX__	
 	SE_FGG_int_split_AVX_dispatch(phi, &work, &params);

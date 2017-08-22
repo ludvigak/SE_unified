@@ -12,6 +12,7 @@ fse_opt = setup_fse(opt);
 x = bsxfun(@plus, x, fse_opt.delta);
 opt.box = fse_opt.extended_box; % Work with box extended for Gaussian support
 opt.M = fse_opt.extended_M;
+
 opt = parse_params(opt);
 fsize = size(f);
 N = fsize(1);
