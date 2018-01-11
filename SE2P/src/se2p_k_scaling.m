@@ -23,7 +23,7 @@ Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 Green=-1./ksq.*(R*kmod.*sin(R*kmod)+cos(R*kmod)-1);
 % Finite limit at k3=0.
 Z0 = Znum.*Green;
-Z0(1)=R^2/2;
+Z0(1)=R^2/4*(1-2*log(R));
 
 
 % scale the local pad
