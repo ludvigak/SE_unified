@@ -37,10 +37,16 @@ function pre = se2p_window_precomp(opt)
     pre.Fr = 1./Fr;
     %    pre.Fr(:,:,round(s*Mz)/2+1) = 0;
     
-    
     % zero mode with s0 upsampling
     x = 0:h:s0*Lz-h;
     f = kaiser((x-s0*Lz/2)/h,beta,w)*h;
+
+    % n = opt.padded_M(1);
+    % N = opt.oversampled_M(1);
+    % start = round( (N-n)/2 );
+    % f = f(start + (1:n));
+    
+    
     Fz=fft(f',round(s0*Mz));
     Fz2=Fz.^2;
     f1 = F2(1);f2=F2(1);f3=Fz2;

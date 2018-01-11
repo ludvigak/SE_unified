@@ -4,7 +4,7 @@ fkg = true;
 
 verb = true;
 % initialize time array
-walltime = struct('pre',0,'grid',0,'fft',0,'ifft',0,'scale',0,'int',0,'prefft',0);
+walltime = struct('pre',0,'grid',0,'fft',0,'scale',0,'int',0,'prefft',0);
 
 % parameters and constants
 se_opt = se2p_parse_params(opt);
@@ -49,7 +49,7 @@ walltime.scale = toc(scale_t);
 % inverse shift and inverse transform
 ifft_t=tic;
 F = ifftnd2p(G,Gr,G0,se_opt);
-walltime.ifft = toc(ifft_t);
+walltime.fft = walltime.fft + toc(ifft_t);
 
 % spread and integrate
 

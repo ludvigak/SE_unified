@@ -10,7 +10,7 @@ function pre = se3p_window_precomp(opt)
     
     x = 0:h:L-h;
     f = kaiser((x-L/2)/h,beta,w)*h;
-    
+
     F=fft(f);
     [F1 F2 F3] = ndgrid(F.^2);
     F = F1.*F2.*F3;

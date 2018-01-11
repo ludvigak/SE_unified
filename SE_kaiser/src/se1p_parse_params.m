@@ -25,10 +25,10 @@ popt.Ly = popt.box(2)+2*popt.w;
 popt.Lz = popt.box(3)+2*popt.w;
 
 % Even grids if even grids are in the z direction
-if(mod(popt.My,2)==0)
+if(mod(popt.My,2)~=0)
     popt.My = 2*ceil(popt.My/2);
 end
-if(mod(popt.Mz,2)==0)
+if(mod(popt.Mz,2)~=0)
     popt.Mz = 2*ceil(popt.Mz/2);
 end
     
@@ -47,10 +47,11 @@ if( isfield(opt,'n')),
 else 
     popt.n=max(ceil(popt.M/2),1); 
 end;
+
 if(isfield(opt,'beta'))
-    popt.beta=opt.beta*popt.p_half; 
+    popt.beta=opt.beta*popt.P; 
 else 
-    popt.beta=4.74*popt.p_half; 
+    popt.beta=2.3*popt.P; 
 end
 
 popt.R = sqrt(popt.Ly^2+popt.Lz^2);
@@ -58,6 +59,7 @@ popt.R = sqrt(popt.Ly^2+popt.Lz^2);
 % increase s and such that FFTN has integer size vectors.
 popt.s  = max(ceil(popt.s *popt.My)/popt.My,ceil(popt.s *popt.Mz)/popt.Mz);
 popt.s0 = max(ceil(popt.s0*popt.My)/popt.My,ceil(popt.s0*popt.Mz)/popt.Mz);
+
 
 % local pads
 % FIXME: We assume that the same number of modes in x and y directions

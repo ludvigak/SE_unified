@@ -25,7 +25,7 @@ Green=-1./ksq.*(R*kmod.*sin(R*kmod)+cos(R*kmod)-1);
 
 % Finite limit at k1=k2=0.
 Z0 = Znum.*Green.*pre.F0;
-Z0(1)=R^2/2;
+Z0(1)=R^2/4*(1-2*log(R));
 
 % scale the local pad
 if(numel(opt.local_pad)>0)

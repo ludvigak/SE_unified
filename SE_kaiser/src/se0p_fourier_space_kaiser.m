@@ -10,6 +10,7 @@ assert(isfield(opt, 's'), 'oversampling rate must be given in opt struct')
 % Setup vars, modify opt
 fse_opt = se0p_parse_params(opt);
 
+
 % precompute free-space kernel
 pre_t = tic;
 pre_kernel = se0p_kernel_precomp(fse_opt);
@@ -52,18 +53,18 @@ walltime.grid = walltime.grid + toc(grid_t);
 
 % transform and shift, let FFT do padding
 fft_t = tic;
-H = fftn(H, fse_opt.padded_M);
+H = fftshift(fftn(H, fse_opt.padded_M));
 walltime.fft = walltime.fft + toc(fft_t);
 
 % scale
 scale_t = tic;
-G = se0p_k_scaling_kaiser(H, fse_opt, pre_kernel, pre_window);
+G = se0p_k_scaling_kaiser(H, fse_opt, pre_window, pre_kernel);
 walltime.scale = toc(scale_t);
 
 
 % inverse shift and inverse transform
 fft_t = tic;
-G = ifftn( G);
+G = ifftn( ifftshift(G));
 walltime.fft = walltime.fft + toc(fft_t);
 
 % Option 1: Truncate grid before integration

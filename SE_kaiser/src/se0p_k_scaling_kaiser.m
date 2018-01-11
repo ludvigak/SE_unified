@@ -1,4 +1,4 @@
-function G = se0p_k_scaling_kaiser(H, fse_opt, pre_kernel, pre_window)
+function G = se0p_k_scaling_kaiser(H, fse_opt, pre_window, pre_kernel)
 
 % k-vectors
 [k1 k2 k3] = k_vectors(fse_opt.padded_M, fse_opt.padded_box);
@@ -27,12 +27,12 @@ elseif mod(M-1,2)==0
 else error('k-vectors not computed');
 end
 
-k = fftshift(k);
-idx = 1;
-if(abs(k(idx))>eps)
-    k = circshift(k,1);
-end
+% k = fftshift(k);
+% idx = 1;
+% if(abs(k(idx))>eps)
+%     k = circshift(k,1);
+% end
 
-assert(abs(k(idx))<eps)
+% assert(abs(k(idx))<eps)
 
 

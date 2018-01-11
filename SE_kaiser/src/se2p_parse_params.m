@@ -15,11 +15,11 @@ popt.h = popt.L/popt.M;
 popt.w = popt.h*popt.P/2;
 popt.p_half = (mod(opt.P,2)==0)*opt.P/2+(mod(opt.P,2)~=0)*(opt.P-1)/2;
 
-popt.Mz = ceil(popt.box(3)/popt.h)+popt.P;
+popt.Mz = ceil(popt.box(3)/popt.h)+popt.P+6;
 popt.Lz = popt.box(3)+2*popt.w;
 
 % Even grids if even grids are in the z direction
-if(mod(popt.M,2)==0)
+if(mod(popt.Mz,2)~=0)
     popt.Mz = 2*ceil(popt.Mz/2);
 end
 popt.Lz = popt.h*popt.Mz;
@@ -28,7 +28,7 @@ popt.Lz = popt.h*popt.Mz;
 assert(abs(popt.Lz/popt.Mz-popt.h)<eps)
 
 % sampling factor (oversampling)
-if( isfield(opt,'s')), popt.s = opt.s; else popt.s=1; end;
+if( isfield(opt,'s')), popt.s = opt.s; else popt.s=2; end;
 if( isfield(opt,'s0')), popt.s0 = opt.s0; else popt.s0=2; end;
 if( isfield(opt,'n')),
     popt.n = min(opt.n,ceil(popt.M/2));
@@ -36,9 +36,9 @@ else
     popt.n=max(ceil(popt.M/2),1); 
 end;
 if(isfield(opt,'beta'))
-    popt.beta=opt.beta*popt.p_half; 
+    popt.beta=opt.beta*popt.P; 
 else 
-    popt.beta=4.74*popt.p_half; 
+    popt.beta=2.3*popt.P; 
 end
 
 popt.R = popt.Lz;

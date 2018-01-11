@@ -19,7 +19,7 @@ function pre = se0p_window_precomp(opt)
     F2= 1./F.^2;
     [F1 F2 F3] = ndgrid(F2, F2, F2);
     F = F1.*F2.*F3;
-    pre.F = F;
+    pre.F = fftshift(F);
 
 function z= kaiser(x,beta,w)
 

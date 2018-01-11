@@ -16,7 +16,14 @@ xi = opt.xi;
 fse_opt.L = opt.box(1);
 fse_opt.h = h;
 fse_opt.p_half = (mod(fse_opt.P,2)==0)*fse_opt.P/2+(mod(fse_opt.P,2)~=0)*(fse_opt.P-1)/2;
-fse_opt.beta = opt.beta*fse_opt.p_half;
+fse_opt.p_half = fse_opt.P/2;
+
+if(isfield(opt,'beta'))
+    fse_opt.beta=opt.beta*P; 
+else 
+    fse_opt.beta=2.5*P; 
+end
+
 fse_opt.oversampling = opt.s;
 delta = h*P/2;
 
@@ -28,6 +35,8 @@ else
 end
 
 delta = h*deltaM/2;
+% should cover the gaussian factor
+delta = max(delta, sqrt(opt.beta*2)/xi);
 
 fse_opt.extended_box = inner_box + 2*delta;
 fse_opt.extended_M = inner_M + deltaM;
@@ -41,16 +50,15 @@ if EVEN_GRIDS
 else
     overM = ceil(fse_opt.oversampling * fse_opt.extended_M);
 end
-overM = ceil(fse_opt.oversampling * fse_opt.extended_M);
 actual_oversampling = overM / fse_opt.extended_M;
 
-fse_opt.oversampled_M = overM; 
+fse_opt.oversampled_M = overM;
 fse_opt.oversampled_box = fse_opt.extended_box * actual_oversampling;
 
 fse_opt.R = norm(fse_opt.extended_box);
 fse_opt.delta = delta;
 
-%if isfield(opt, 'oversample_all') && opt.oversample_all == true;
-fse_opt.padded_M = fse_opt.oversampled_M;
-fse_opt.padded_box = fse_opt.oversampled_box;
-%end
+if isfield(opt, 'oversample_all') && opt.oversample_all == true;
+    fse_opt.padded_M = fse_opt.oversampled_M;
+    fse_opt.padded_box = fse_opt.oversampled_box;
+end

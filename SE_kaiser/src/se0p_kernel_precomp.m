@@ -38,10 +38,10 @@ elseif mod(M-1,2)==0
 else error('k-vectors not computed');
 end
 
-k = fftshift(k);
-idx = 1;
-if(abs(k(idx))>eps)
-    k = circshift(k,1);
-end
+% k = fftshift(k);
+% idx = 1;
+% if(abs(k(idx))>eps)
+%     k = circshift(k,1);
+% end
 
-assert(abs(k(idx))<eps)
+% assert(abs(k(idx))<eps)
