@@ -7,6 +7,7 @@ The package provides a Matlab implementation of the :doc:`Spectral Ewald <math>`
 - :mod:`SE`:          3-periodic Laplace (electrostatics)
 - :mod:`SE2P`:        2-periodic Laplace (electrostatics)
 - :mod:`SE1P`:        1-periodic Laplace (electrostatics)
+- :mod:`SE0P`:        0-periodic Laplace-Stokeslet-Stresslet-Rotlet (electrostatics and viscous flow)
 - :mod:`SE_Stokes`:    3-periodic Stokeslet (viscous flow)
 - :mod:`SE2P_Stokes`:  2-periodic Stokeslet (viscous flow)	
 - :mod:`SE_Stresslet`: 3-periodic Stresslet (viscous flow)
@@ -102,7 +103,7 @@ Additional files
 The package also contains:
 
 * ``util``: Common functions
-* ``SE_fast_gridding``: C implementation of fast Gaussian gridding (below)
+* ``SE_fast_gridding``: C implementation of fast Gaussian gridding and fast Kaiser gridding
 * ``SE_direct``: C-code for direct Ewald sums for Laplace 2P/3P
 * ``SE_Stokes_direct``: C-code for direct Ewald sums for Stokes 2P/P3
 * ``SE_leftovers``: Spectral Ewald, fast real-space and k=0 codes for Laplace and

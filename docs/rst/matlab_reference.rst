@@ -32,6 +32,22 @@ Ewald summation for the 1-periodic electrostatic potential.
 .. automodule:: SE1P
    :members:      
 
+SE0P
+----
+
+Ewald summation for the free-space electrostatic (stokeslet, stresslet, rotlet) potential.
+
+.. automodule:: SE0P
+   :members:
+
+SE_kaiser
+----
+
+Ewald summation for the electrostatic potential with arbitrary periodicity using Barnett-Magland kernel.
+
+.. automodule:: SE_kaiser
+   :members:
+
 SE2P_Stokes
 -----------
 Ewald summation for the 2-periodic stokeslet potential.
@@ -42,7 +58,7 @@ Ewald summation for the 2-periodic stokeslet potential.
 SE_fast_gridding
 ----------------
 
-Routines for fast gaussian gridding (FGG), which is central to Spectral Ewald.
+Routines for fast gaussian gridding (FGG) and fast Kaiser gridding (FKG), which is central to Spectral Ewald.
 
 .. automodule:: SE_fast_gridding
    :members:
