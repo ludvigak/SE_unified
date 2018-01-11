@@ -4,7 +4,7 @@
 
 This is a Matlab package that implements the Spectral Ewald (SE) fast Ewald summation
 method for several different kernels related to electrostatics and Stokes flow in periodic
-domains.
+and free-space domains.
 
 ## Documentation
 
