@@ -27,8 +27,7 @@ disp('Free-space Ewald...')
 tic
 uf = laplace_fourier_space(x, f, opt, pre,'force');
 ur = laplace_real_space_force(x, f, opt);
-us = -f*opt.xi *2/sqrt(pi)*0;
-ue = uf+ur+us;
+ue = uf+ur;
 toc
 % Direct
 disp('Direct sum...')

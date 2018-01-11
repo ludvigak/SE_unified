@@ -4,7 +4,7 @@ clear all,  close all
 
 rng(1)
 N = 20;
-L = 4;
+L = 2;
 box = [L L L];
 [x, f] = vector_system(N, box);
 M0 = 20;		  % Set M0 to an even number, the rest is auto
