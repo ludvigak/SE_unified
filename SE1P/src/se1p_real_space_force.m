@@ -28,17 +28,17 @@ if (MATLAB)
                 source = 1:N;
             end
             xsPv = x(source,:);
-            xsPv(:,3) = xsPv(:,3) + p*opt.box(3);
+            xsPv(:,1) = xsPv(:,1) + p*opt.box(1);
             rvec = bsxfun(@minus, x(target, :), xsPv);
             dist = sqrt(sum(rvec.^2, 2));
             u1   = -c*exp(-(xi^2*dist.^2));
             u2   = -erfc(xi*dist)./dist;
             u0   = f(source).*(u1+u2)./dist.^2;
 
-	    I = (dist<rc);
+	    I = dist<rc;
 	    rvec = rvec(I,:);
 	    u0 = u0(I);
-	    if ~isempty(rvec)
+	    if ~isempty(u0)
                 u(nt,:) = u(nt,:) + sum(bsxfun(@times,u0,rvec),1);
             end
         end
@@ -46,7 +46,7 @@ if (MATLAB)
         nt = nt + 1;
     end
 else
-    %   u = SE1P_direct_real_force_mex(idx,x,f,opt);
+%u = SE1P_direct_real_force_mex(idx,x,f,opt);
     u = SE1P_direct_rsrc_force_mex(idx,x,f,opt);
 end
 walltime = toc(time);

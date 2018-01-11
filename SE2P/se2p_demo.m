@@ -4,20 +4,21 @@ clear all,  close all
 
 rng(1)
 N = 20;
-L = 1;
-box = [1 1 1];
+L = 2;
+box = [L L L];
 [x, f] = vector_system(N, box);
-M0 = 28; % Set M0 to an even number, the rest is auto
+
+M0 = 20;		  % Set M0 to an even number, the rest is auto
 
 opt.M = M0*box(1);
 opt.xi = pi*M0 / 12;
 opt.P = 32;
 opt.rc = 6 / opt.xi;
 opt.box = box;
-opt.layers = 20;
-opt.s = 4;
-opt.s0= 2;
-opt.n = 3;
+opt.layers = 40;
+opt.s = 4;			% upsamling rate on local pad
+opt.n=8;			% local pad
+opt.s0= 2;			% upsampling rate of zero mode
 
 % % compute FD Ewald sum
 ref  = SE2P_direct_fd_mex(1:N,x,f,opt);

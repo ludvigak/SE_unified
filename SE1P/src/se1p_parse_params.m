@@ -9,7 +9,7 @@ assert(isfield(opt,'box'))
 popt = opt;
 
 % step size
-popt.L = opt.box(3);
+popt.L = opt.box(1);
 popt.h = popt.L/popt.M;
 
 % Gaussian
@@ -23,20 +23,24 @@ popt.c = 2*popt.xi^2/eta;
 % end
 
 popt.w = popt.h*popt.P/2;
-popt.Mx = ceil(popt.box(1)/popt.h)+popt.P;
 popt.My = ceil(popt.box(2)/popt.h)+popt.P;
-popt.Lx = popt.box(1)+2*popt.w;
+popt.Mz = ceil(popt.box(3)/popt.h)+popt.P;
 popt.Ly = popt.box(2)+2*popt.w;
+popt.Lz = popt.box(3)+2*popt.w;
 
 % Even grids if even grids are in the z direction
-if(mod(popt.M,2)==0)
-    popt.Mx = 2*ceil(popt.Mx/2);
+if(mod(popt.My,2)==0)
     popt.My = 2*ceil(popt.My/2);
 end
+if(mod(popt.Mz,2)==0)
+    popt.Mz = 2*ceil(popt.Mz/2);
+end    
+popt.Ly = popt.h*popt.My;
+popt.Lz = popt.h*popt.Mz;
 
 % h should be the same in all directions
-assert((popt.Lx/popt.Mx-popt.h)<eps)
-assert((popt.Ly/popt.My-popt.h)<eps)
+assert(abs(popt.Ly/popt.My-popt.h)<eps)
+assert(abs(popt.Lz/popt.Mz-popt.h)<eps)
 
 % sampling factor (oversampling)
 if( isfield(opt,'sg')), popt.sg = opt.sg; else popt.sg=1; end;
@@ -47,11 +51,11 @@ if( ~isfield(opt,'k0mod')), popt.k0mod = 1; end% just to define something.
 
 %overM = ceil(popt.sg * popt.Mx/2)*2;
 %popt.sg = overM / popt.Mx;
-popt.R = sqrt(popt.Lx^2+popt.Ly^2);
+popt.R = sqrt(popt.Ly^2+popt.Lz^2);
 
 % increase sl and s0 such that FFTN has integer size vectors.
-popt.sl = max(ceil(popt.sl*popt.Mx)/popt.Mx,ceil(popt.sl*popt.My)/popt.My);
-popt.s0 = max(ceil(popt.s0*popt.Mx)/popt.Mx,ceil(popt.s0*popt.My)/popt.My);
+popt.sl = max(ceil(popt.sl*popt.My)/popt.My,ceil(popt.sl*popt.Mz)/popt.Mz);
+popt.s0 = max(ceil(popt.s0*popt.My)/popt.My,ceil(popt.s0*popt.Mz)/popt.Mz);
 
 
 % % find local pad modes to apply higher over sampling factor.
@@ -75,8 +79,8 @@ end
 
 % collect
 popt.PH = popt.P/2;
-wbox = [-popt.w  -popt.w+popt.Lx;-popt.w  -popt.w+popt.Ly; 0 popt.L];
-popt.free_offset = wbox(1:2,1);
+wbox = [0 popt.L; -popt.w  -popt.w+popt.Ly;-popt.w  -popt.w+popt.Lz];
+popt.free_offset = wbox(2:3,1);
 popt.nl = ceil(numel(popt.local_pad)/2);
 popt.eta = (2*popt.w*popt.xi/popt.m)^2;
 popt.c = 2*popt.xi^2/popt.eta;

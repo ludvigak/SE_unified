@@ -12,6 +12,7 @@ fse_opt = setup_fse(opt);
 x = bsxfun(@plus, x, fse_opt.delta);
 opt.box = fse_opt.extended_box; % Work with box extended for Gaussian support
 opt.M = fse_opt.extended_M;
+
 opt = parse_params(opt);
 fsize = size(f);
 N = fsize(1);
@@ -23,7 +24,7 @@ pre_t = tic;
 S = SE_FGG_precomp(x,opt.xi,opt);
 walltime.pre = toc(pre_t);
 grid_fcn = @(f) SE_fg_grid_split_thrd_mex(x(S.perm,:),f(S.perm),opt,S.zs,S.zx,S.zy,S.zz, ...
-                                          S.idx);
+					 S.idx);
 % Integrator
 SI = S;
 iperm = @(u) u(SI.iperm,:);
@@ -32,6 +33,7 @@ int_fcn = @(F) iperm(SE_fg_int_split_mex(0,F,opt,SI.zs,SI.zx,SI.zy,SI.zz,SI.idx)
 % === Uncomment for direct code
 %grid_fcn = @(f) SE_fg_grid_mex(x,f,opt);
 %int_fcn = @(f) SE_fg_int_mex(x,f,opt);
+
 
 % grid + FFT
 H = cell([dim_in, 1]);

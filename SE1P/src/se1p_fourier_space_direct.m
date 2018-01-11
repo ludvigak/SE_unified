@@ -3,26 +3,26 @@ function u = se1p_fourier_space_direct(idx,x,f,opt)
     N = numel(f);
     xi   = opt.xi;
     xi2        = xi*xi;
-    TwoPiOverL = 2.*pi/opt.box(3);
+    TwoPiOverL = 2.*pi/opt.box(1);
     for target = idx        
         xt =  x(target,:);
         u_t = 0;
         for source = 1:N
-            z = xt(3)-x(source,3);
-            rho2 = norm(xt(1:2)-x(source,1:2))^2;
+            X = xt(1)-x(source,1);
+            rho2 = norm(xt(2:3)-x(source,2:3))^2;
             b   = rho2*xi2;
             fn  = f(source);
             for p=1:opt.layers
-                k3  = TwoPiOverL*p;
-                a   = k3*k3/(4.*xi2);
+                k  = TwoPiOverL*p;
+                a   = k*k/(4.*xi2);
 
                 K0 = computeK0(a,b);
 
-                k3z = -k3*z;
-                u_t = u_t + 2*fn*cos(k3z)*K0;
+                kX = -k*X;
+                u_t = u_t + 2*fn*cos(kX)*K0;
             end
         end
-        u(target) = u_t/(opt.box(3));
+        u(target) = u_t/(opt.box(1));
     end
 end
 

@@ -26,10 +26,10 @@ eta = (2*w*xi/m)^2;
 c = 2*xi^2/eta;
 fgg_opt.c = c; fgg_opt.M=M; fgg_opt.P=P; fgg_opt.box=opt.box;
 
-cprintf(verb, '[ SE ] Grid: [%d %d %d]\tGaussian: {P = %d, w=%.2f, m=%d}\n',...
-    M, P, w, m)
-cprintf(verb, '[ SE ] Gridding method: %s {eta=%.2f, c=%.2f}\n', ...
-    grid_method, eta, c)
+%cprintf(verb, '[ SE ] Grid: [%d %d %d]\tGaussian: {P = %d, w=%.2f, m=%d}\n',...
+%    M, P, w, m)
+%cprintf(verb, '[ SE ] Gridding method: %s {eta=%.2f, c=%.2f}\n', ...
+%    grid_method, eta, c)
 
 % sorting by closest grid index
 assert(length(eval_idx)==length(q))

@@ -20,7 +20,7 @@ if (MATLAB)
             end
             rvec = bsxfun(@minus, x(target,:),x(source,:));
             xsPv = rvec;
-            xsPv(:,3) = xsPv(:,3) + p*opt.box(3);
+            xsPv(:,1) = xsPv(:,1) + p*opt.box(1);
             dist = sqrt(sum(xsPv.^2,2));
 
             I = (dist<rc);

@@ -12,7 +12,6 @@ idx = 1;
 
 for j=1:length(xi)
     opt.xi = xi(j);
-    opt.rc = 1;
     phi1 = SE1P_direct_real_mex(idx,x,f,opt);
     phi2 = SE1P_direct_fd_mex(idx,x,f,opt);
     phi3 = SE1P_direct_k0_mex(idx,x,f,opt);

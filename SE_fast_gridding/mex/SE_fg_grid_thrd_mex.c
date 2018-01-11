@@ -111,6 +111,10 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 #ifdef ONE_PERIODIC
     SE1P_FGG_wrap_fcn(H_per, &work, &params);
 #endif   
+
+#ifdef ZERO_PERIODIC
+    SE0P_FGG_cpFromwork(H_per, &work, &params);
+#endif
     
     // done
     SE_FGG_free_workspace(&work);

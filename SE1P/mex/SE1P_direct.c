@@ -18,7 +18,7 @@ void unpack_opt(ewald_opts* opt, const mxArray* mx_opt)
     // mandatory options -- will trigger core dump if missing
     double* box =  mxGetPr(mxGetField(mx_opt,0,"box"));
 
-    opt->box[2] = box[2];
+    opt->box[0] = box[0];
 
     // layers: mandatory for ewald sums that are truncated 
     const mxArray* mx_layers = mxGetField(mx_opt,0,"layers");
@@ -55,12 +55,12 @@ void SE1P_direct(double* restrict force,
 	  double rvec[] = {xm[0]-x[n], xm[1]-x[n+N], xm[2]-x[n+2*N]};
 	  double qn = q[n];
 
-	  for(int p2 = -opt.layers; p2<=opt.layers; p2++)
+	  for(int p0 = -opt.layers; p0<=opt.layers; p0++)
 	    {
-	      if(idx[m] == n && p2 == 0)
+	      if(idx[m] == n && p0 == 0)
 		continue;
 
-	      double rvp[] = {rvec[0], rvec[1],rvec[2]+p2*opt.box[2]};
+	      double rvp[] = {rvec[0]+p0*opt.box[0], rvec[1], rvec[2]};
 	      double r = sqrt(rvp[0]*rvp[0]+rvp[1]*rvp[1]+rvp[2]*rvp[2]);
 	      double r3 = r*r*r;
 	      
@@ -90,16 +90,16 @@ void SE1P_direct(double* restrict phi,
     {
       p=0; 
       double xm[] = {x[idx[m]],x[idx[m]+N],x[idx[m]+2*N]};
-      for(int p2 = -opt.layers; p2<=opt.layers; p2++) {
+      for(int p0 = -opt.layers; p0<=opt.layers; p0++) {
 	for(int n=0; n<N; n++)
 	  {
 	    double rvec[] = {xm[0]-x[n], xm[1]-x[n+N], xm[2]-x[n+2*N]};
 	    double qn = q[n];
 	    
-	    if(idx[m] == n && p2 == 0)
+	    if(idx[m] == n && p0 == 0)
 	      continue;
 	    
-	    double rvp[] = {rvec[0], rvec[1],rvec[2]+p2*opt.box[2]};
+	    double rvp[] = {rvec[0]+p0*opt.box[0], rvec[1], rvec[2]};
 	    double r = sqrt(rvp[0]*rvp[0]+rvp[1]*rvp[1]+rvp[2]*rvp[2]);
 	    
 	    p += qn/r;

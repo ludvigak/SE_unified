@@ -86,12 +86,15 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     double k[3];
     double k2, z, p;
     double c = 4*PI/(opt.box[0]*opt.box[1]*opt.box[2]);
+    double fac[3] = {2.*PI/opt.box[0], 2.*PI/opt.box[1], 2.*PI/opt.box[2]};
+    double a = 1.0/(4*opt.xi*opt.xi);
 #ifdef _OPENMP
 #pragma omp parallel for private(k,k2,z,p)
 #endif
     for(int m=0; m<num_eval; m++)
     {
 	p = 0;
+	double xm[3] = {x[idx[m]],x[idx[m]+N],x[idx[m]+2*N]};
 	for(int j0 = -opt.layers; j0<=opt.layers; j0++)
 	    for(int j1 = -opt.layers; j1<=opt.layers; j1++)
 		for(int j2 = -opt.layers; j2<=opt.layers; j2++)
@@ -99,21 +102,21 @@ void mexFunction(int nlhs,       mxArray *plhs[],
 		    if(j0 == 0 && j1 == 0 && j2==0)
 			continue;
 
-		    k[0] = 2*PI*j0/opt.box[0];
-		    k[1] = 2*PI*j1/opt.box[1];
-		    k[2] = 2*PI*j2/opt.box[2];
+		    k[0] = fac[0]*j0;
+		    k[1] = fac[1]*j1;
+		    k[2] = fac[2]*j2;
 		    k2 = k[0]*k[0] + k[1]*k[1] + k[2]*k[2];
 	
 		    z=0;
 		    for(int n = 0; n<N; n++) {
-		      double tmp = -(k[0]*(x[idx[m]    ]-x[n]    )+
-				     k[1]*(x[idx[m]+N  ]-x[n+N]  )+
-				     k[2]*(x[idx[m]+2*N]-x[n+2*N])
+		      double tmp = -(k[0]*(xm[0]-x[n]    )+
+				     k[1]*(xm[1]-x[n+N]  )+
+				     k[2]*(xm[2]-x[n+2*N])
 				     );
 		      z += q[n]*cos(tmp);
 		    }
 	
-		    p += z*exp(-k2/(4*opt.xi*opt.xi))/k2;
+		    p += z*exp(-a*k2)/k2;
 		}
 	phi[m] += c*p;
     }    

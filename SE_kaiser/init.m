@@ -1,0 +1,5 @@
+addpath('src')
+addpath('tests')
+addpath('../util')
+addpath('../bin')
+addpath('../SE_fast_gridding')

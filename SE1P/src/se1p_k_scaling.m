@@ -3,36 +3,37 @@ function [G, Gres, G0, varargout] = se1p_k_scaling(G,Gres,G0,opt)
 R = opt.R; eta = opt.eta; xi = opt.xi;
 
 % k-vectors
-kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.sg);
-kappa_2   = k_vectors(opt.My, opt.Ly, opt.sg);
 [k, zidx] = k_vectors(opt.M,  opt.L,  1); % z direction is periodic;no oversampling
-[KAPPA1, KAPPA2, K] = ndgrid(kappa_1,kappa_2,k);
+kappa_1   = k_vectors(opt.My, opt.Ly, opt.sg);
+kappa_2   = k_vectors(opt.Mz, opt.Lz, opt.sg);
+[K, KAPPA1, KAPPA2] = ndgrid(k,kappa_1,kappa_2);
 
 % scale the whole domain
-k2 =  KAPPA1.^2 + KAPPA2.^2 + K.^2;
-Znum = exp(-(1-eta)/(4*xi^2)*k2);
-Z = Znum./k2;
-Z(1,1,1) = 0;
+ksq =  K.^2 + KAPPA1.^2 + KAPPA2.^2;
+Znum = exp(-(1-eta)/(4*xi^2)*ksq);
+Z = Znum./ksq;
+Z(zidx,1,1) = 0;
 
 scale_t = tic;
 if(opt.sg~=opt.s0)
-    kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.s0);
-    kappa_2   = k_vectors(opt.My, opt.Ly, opt.s0);
-    [KAPPA1, KAPPA2, K] = ndgrid(kappa_1,kappa_2,k);
-    k2 =  KAPPA1.^2 + KAPPA2.^2 + K.^2;
-    Znum = exp(-(1-eta)/(4*xi^2)*k2);
+    kappa_1   = k_vectors(opt.My, opt.Ly, opt.s0);
+    kappa_2   = k_vectors(opt.Mz, opt.Lz, opt.s0);
+    [K, KAPPA1, KAPPA2] = ndgrid(k,kappa_1,kappa_2);
+    ksq =  K.^2 + KAPPA1.^2 + KAPPA2.^2;
+    ksq = squeeze(ksq(opt.k0mod,:,:));
+    Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 end
 walltime = toc(scale_t);
 
-kmod  = sqrt(k2(:,:,opt.k0mod));
-Green=(1-besselj(0,R*kmod))./k2(:,:,zidx)-R*log(R)*besselj(1,R*kmod)./kmod;
-Z0 = Znum(:,:,opt.k0mod).*Green;
+kmod  = sqrt(ksq);
+Green=(1-besselj(0,R*kmod))./ksq-R*log(R)*besselj(1,R*kmod)./kmod;
+Z0 = Znum.*Green;
 
 % Finite limit at k3=0.
 Z0(1,1) = R^2/4-R*log(R)*R/2;
 
 if(opt.sg==opt.s0 && opt.sl==opt.s0)
-    Z(:,:,opt.k0mod) = Z0; 
+    Z(opt.k0mod,:,:) = Z0; 
     G = Z.*G;
     return
 elseif(opt.sg~=opt.s0)
@@ -42,15 +43,15 @@ end
    
 if(opt.sg~=opt.sl && numel(opt.local_pad)>0)
     % local pad scaling
-    kappa_1   = k_vectors(opt.Mx, opt.Lx, opt.sl);
-    kappa_2   = k_vectors(opt.My, opt.Ly, opt.sl);
+    kappa_1   = k_vectors(opt.My, opt.Ly, opt.sl);
+    kappa_2   = k_vectors(opt.Mz, opt.Lz, opt.sl);
     
-    [KAPPA1, KAPPA2, K] = ndgrid(kappa_1,kappa_2,k(opt.local_pad));
-    k2 = KAPPA1.^2 + KAPPA2.^2 + K.^2;
-    Znum = exp(-(1-eta)/(4*xi^2)*k2);
+    [K, KAPPA1, KAPPA2] = ndgrid(k(opt.local_pad),kappa_1,kappa_2);
+    ksq = K.^2 + KAPPA1.^2 + KAPPA2.^2;
+    Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 
     scale_t = tic;
-    Zres = Znum./k2; 
+    Zres = Znum./ksq; 
     Zres(isinf(Zres)==1)=0;
     Gres = Gres.*Zres;
     walltime = walltime + toc(scale_t);

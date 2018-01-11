@@ -6,22 +6,12 @@
 #include "fgg_thrd.h"
 #include "fgg_thrd.c"
 
+#include "SE_fkg.c"
+
 // Dag Lindbo, dag@kth.se
 
 // =============================================================================
 // Internal routines ===========================================================
-
-// -----------------------------------------------------------------------------
-// vector index mod, e.g. for double x[6], x[7] --(vmod(7,6))--> x[1] 
-static inline int vmod(int i, int N)
-{
-    if(i>=0)
-	return i%N;
-
-    int k = -i/N;
-    i = i + (k+1)*N;
-    return i % N;
-}
 
 // -----------------------------------------------------------------------------
 static double randnum(double min, double L)
@@ -149,7 +139,7 @@ void SE_FGG_allocate_workspace(SE_FGG_work* work, const SE_FGG_params* params,
     
     if(allocate_fgg_expa)
     {
-	numel = (params->N)*(params->P);
+        numel = (params->N)*(params->P);
 	work->zx = (double*) SE_FGG_MALLOC(numel*sizeof(double));
 	work->zy = (double*) SE_FGG_MALLOC(numel*sizeof(double));
 	work->zz = (double*) SE_FGG_MALLOC(numel*sizeof(double));
@@ -349,12 +339,12 @@ void SE1P_FGG_wrap_fcn(double* restrict H_per,
     // can not openMP here, race to += on H_per beacuse indices wrap around
     for(int i=0; i<params->npdims[0]; i++)
     {
+      widx= vmod(i-p_half,params->dims[0]);
 	for(int j=0; j<params->npdims[1]; j++)
 	{
 	    for(int k=0; k<params->npdims[2]; k++)
 	    {
-		widx= vmod(k-p_half,params->dims[2]);
-		idx = __IDX3_CMAJ(i, j, widx, 
+		idx = __IDX3_CMAJ(widx, j, k, 
 				  params->dims[0], params->dims[1]);
 		H_per[idx] += work->H[ __IDX3_RMAJ(i,j,k,
 						   params->npdims[1],
@@ -363,7 +353,6 @@ void SE1P_FGG_wrap_fcn(double* restrict H_per,
 	}
     }
 }
-
 
 // -----------------------------------------------------------------------------
 // Extend periodic function larger box
@@ -441,12 +430,12 @@ void SE1P_FGG_extend_fcn(SE_FGG_work* work, const double* H_per,
 #endif
     for(int i=0; i<params->npdims[0]; i++)
     {
+      widx = vmod(i-p_half,params->dims[0]);
 	for(int j=0; j<params->npdims[1]; j++)
 	{
 	    for(int k=0; k<params->npdims[2]; k++)
 	    {
-		widx = vmod(k-p_half,params->dims[2]);
-		idx = __IDX3_CMAJ(i, j, widx, 
+		idx = __IDX3_CMAJ(widx, j, k, 
 				  params->dims[0], params->dims[1]);
 		work->H[__IDX3_RMAJ(i,j,k,params->npdims[1],params->npdims[2])]
 		    = H_per[idx];
@@ -740,8 +729,9 @@ int fgg_index_2p(const double x[3],
 		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
-
 #endif
+
+
 // -----------------------------------------------------------------------------
 #ifdef ONE_PERIODIC
 static 
@@ -909,8 +899,7 @@ void SE_FGG_expand_all(SE_FGG_work* work,
     }
 }
 
-
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------
 // vanilla grid gather
 void SE_FGG_int(double* restrict phi,  
 		const SE_FGG_work* work, 

@@ -71,7 +71,6 @@ void mexFunction(int nlhs,       mxArray *plhs[],
     SE1P_FGG_wrap_fcn(H_per, &work, &params);
 #endif        
 
-
     // done
     SE_FGG_free_workspace(&work);
 }

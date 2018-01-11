@@ -31,6 +31,16 @@ else()
   message("GSL found.")
 endif()
 
+# Assuming gcc for now
+if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
+  # using GCC
+  # -ffast-math is for some reason not working with gcc
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -O3 -march=native -fopenmp")
+elseif ("${CMAKE_C_COMPILER_ID}" STREQUAL "Intel")
+  link_directories(/NOBACKUP/davoudss/intel/lib/intel64/)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -std=c99 -Wall -fast -O3 -march=native -openmp")
+endif()
+
 find_package(MKL)
 if(MKL_FOUND)
   include_directories(
@@ -51,7 +61,6 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -Wall -O3 -ipo -fast -std=c99 -march=native -openmp")
 endif()
- 
 
 # Add modules with MEX to be built
 add_subdirectory("${PROJECT_SOURCE_DIR}/SE_direct")

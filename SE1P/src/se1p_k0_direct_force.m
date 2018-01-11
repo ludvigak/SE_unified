@@ -11,10 +11,10 @@ if(MATLAB)
     nt = 1;
     u = zeros(numel(idx),3);
     for target = idx
-        xt =  x(target,1:2);
+        xt =  x(target,2:3);
         u_t = zeros(1,2);
         for source = 1:N
-            dist = xt-x(source,1:2);
+            dist = xt-x(source,2:3);
             rho2 = norm(dist)^2;
             if(rho2==0)
                 continue;
@@ -24,7 +24,7 @@ if(MATLAB)
             end
         end
         
-        u(nt,:) = -[u_t 0]/opt.box(3);
+        u(nt,:) = -[0 u_t]/opt.box(1);
         nt = nt + 1;
     end
 else

@@ -1,30 +1,34 @@
-% 2P Spectral Ewald, basic accuracy/convergence computation
+% 2P Spectral Ewald, timing comparison with and without adaptive FFT and
+% different upsampling rates. 
+
+% TOL = 1e-12
 
 clear all,  close all
 
 rng(1)
-N = 200000;
-L = 1;
-box = 8*[1 1 1];
+N = 400000;
+L = 8;
+box = [L L L];
 [x, f] = vector_system(N, box);
-M0 = 14; % Set M0 to an even number, the rest is auto
+M0 = 20; % Set M0 to an even number, the rest is auto
 
 opt.M = M0*box(1);
 opt.xi = pi*M0 / 12;
-opt.P = 32;
-opt.rc = 6 / opt.xi;
+opt.P = 24;
 opt.box = box;
-opt.layers = 50;
 opt.s = 4;
-opt.n=58;
-opt.s0= 2;
+opt.s0= 4;
+% opt.n= NOT defined and therefore is set to the maximum possible value.
 
 % compute reference
 [ref t_full]= se2p_fourier_space(x,f,opt);
 
 % compute solution with double precision
 opt.P = 24;
-opt.n=48;
+opt.s=4;
+opt.s0=2;
+opt.n=22;
+
 [u t_opt]= se2p_fourier_space(x,f,opt);
 
 t_opt_upsampling = t_opt.total;

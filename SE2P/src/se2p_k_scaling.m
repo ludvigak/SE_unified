@@ -16,15 +16,15 @@ Z(zidx1,zidx2,1) = 0;
 
 % scale zero mode
 kappa = k_vectors(opt.Mz, opt.Lz, opt.s0)';
-ksq = k1(zidx1)^2 + k2(zidx2)^2 + kappa.^2;
+
+ksq = k1(zidx1).^2 + k2(zidx2).^2 + kappa.^2;
 kmod  = sqrt(ksq);
+
 Znum = exp(-(1-eta)/(4*xi^2)*ksq);
-
-Green=-1./kmod.^2.*(R*kmod.*sin(R*kmod)+cos(R*kmod)-1);
+Green=-1./ksq.*(R*kmod.*sin(R*kmod)+cos(R*kmod)-1);
+% Finite limit at k3=0.
 Z0 = Znum.*Green;
-
-% % Finite limit at k3=0.
-Z0(1) = R^2/2;
+Z0(1)=R^2/4*(1-2*log(R));
 
 % scale the local pad
 if(numel(opt.local_pad)>0)
@@ -36,9 +36,11 @@ if(numel(opt.local_pad)>0)
     Znum = exp(-(1-eta)/(4*xi^2)*ksq);
 
     Zr = Znum./ksq;
-    Zr(isinf(Zr)==1)=0;
+    % FIXME: The elements corresponding to the zero mode are inf!
+    % This should be fine since we overwrite them later on.
+    % Zr(isinf(Zr)==1)=0;
+    
 end
-
 G0 = Z0.*G0;
 Gr = Zr.*Gr;
 G  = Z.*G;

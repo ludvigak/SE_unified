@@ -1,11 +1,11 @@
-function SE_static  = SE_FGG_precomp(x,xi,opt)
+function [SE_static walltime]  = SE_FGG_precomp(x,xi,opt)
 % SPECTRAL EWALD 3P, pre-computation of FGG vectors
 % Fast Ewald method for electrostatic potential calculation, k-space part.
 
 verb = false;
 
 % get parameters
-opt=parse_params(opt);
+
 x = recenter_points(x, opt.box);
 
 [zx zy zz idx] = SE_fgg_expand_all_mex(x,opt);
@@ -15,7 +15,9 @@ x = x(s,:);
 zx = zx(:,s);
 zy = zy(:,s);
 zz = zz(:,s);
+t=tic;
 zs = SE_fgg_base_gaussian_mex(opt);
+walltime=toc(t);
 
 SE_static.zs=zs;
 SE_static.zx=zx;

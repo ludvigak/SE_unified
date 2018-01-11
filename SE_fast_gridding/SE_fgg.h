@@ -91,6 +91,8 @@
 #endif
 #else
 #define __DISPATCHER_MSG(s) {}
+/* #define __DISPATCHER_MSG(s) _Pragma("omp master") \ */
+/*     __PRINTF(s) */
 #endif
 
 static inline int is_odd(int p)
@@ -109,6 +111,18 @@ static inline int isnot_div_by_4(int p)
 static inline int half(int p)
 {
     return (is_odd(p) ? (p-1)/2 : p/2);
+}
+
+// -----------------------------------------------------------------------------
+// vector index mod, e.g. for double x[6], x[7] --(vmod(7,6))--> x[1] 
+static inline int vmod(int i, int N)
+{
+    if(i>=0)
+	return i%N;
+
+    int k = -i/N;
+    i = i + (k+1)*N;
+    return i % N;
 }
 
 // Temporary, or auxillary arrays
@@ -143,9 +157,14 @@ typedef struct
     double c;
     double d;
     double h;
-    double a;   // z-dir offset in 2P and x-dir offset in 1P
-    double b;   // y-dir offset in 1P
 
+    // z-dir offset in 2P (both windows) and 1P with Gaussian window.
+    // y-dir offset in 1P with Kaiser window.
+    double a;
+    // y-dir offset in 1P with Gaussian window and
+    // z-dir offset in 1P with Kaiser window.
+    double b;
+    double beta;
 } SE_FGG_params;
 
 typedef struct
@@ -161,6 +180,9 @@ typedef struct
     double* phi;
 
 } SE_state;
+
+
+
 
 // Fill parameter struct
 void SE_FGG_pack_params(SE_FGG_params*, int, int, int, int, int, 

@@ -126,33 +126,33 @@ int fgg_expansion_1p_force(const double x[3], const double q,
     // compute index range and centering
     if(is_odd(p))
     {
-	idx = (int) round((x[0]-(a+h/2))/h);
+      	idx = (int) round(x[0]/h);
 	idx_from[0] = idx - p_half;
-	t0[0] = x[0] - (idx*h + (a+h/2));
-
-	idx = (int) round((x[1]-(b+h/2))/h);
+	t0[0] = x[0]-h*idx;
+	
+	idx = (int) round((x[1]-(a+h/2))/h);
 	idx_from[1] = idx - p_half;
-	t0[1] = x[1] - (idx*h + (b+h/2));
+	t0[1] = x[1] - (idx*h + (a+h/2));
 
-	idx = (int) round(x[2]/h);
+	idx = (int) round((x[2]-(b+h/2))/h);
 	idx_from[2] = idx - p_half;
-	t0[2] = x[2]-h*idx;
+	t0[2] = x[2] - (idx*h + (b+h/2));
 
 	p_from = -p_half;
     }
     else
     {
-	idx = (int) floor((x[0]-(a+h/2))/h);
+      	idx = (int) floor(x[0]/h);
 	idx_from[0] = idx - (p_half-1);
-	t0[0] = x[0] - (idx*h + (a+h/2));
-
-	idx = (int) floor((x[1]-(b+h/2))/h);
+	t0[0] = x[0]-h*idx;
+	
+	idx = (int) floor((x[1]-(a+h/2))/h);
 	idx_from[1] = idx - (p_half-1);
-	t0[1] = x[1] - (idx*h + (b+h/2));
+	t0[1] = x[1] - (idx*h + (a+h/2));
 
-	idx = (int) floor(x[2]/h);
+	idx = (int) floor((x[2]-(b+h/2))/h);
 	idx_from[2] = idx - (p_half-1);
-	t0[2] = x[2]-h*idx;
+	t0[2] = x[2] - (idx*h + (b+h/2));
 
 	p_from = -p_half + 1;
     }
@@ -209,9 +209,9 @@ int fgg_expansion_1p_force(const double x[3], const double q,
 	z2_0[i] *= z3;
     }
 
-    return __IDX3_RMAJ(idx_from[0], 
+    return __IDX3_RMAJ(idx_from[0]+p_half, 
 		       idx_from[1], 
-		       idx_from[2]+p_half, 
+		       idx_from[2], 
 		       params->npdims[1], params->npdims[2]);
 }
 #endif // end Periodicty
