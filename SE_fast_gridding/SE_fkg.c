@@ -1381,10 +1381,10 @@ void SE_FKG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
 		    // if zs does not have 16-byte alignment, this will core.
 		    // PLATFORM AND COMPILER DEPENDENT (FIXME)
 #ifdef AVX_FMA
-		    rH0 = _mm_add_pd(rZZ0,rC,rH0);
-		    rH1 = _mm_add_pd(rZZ1,rC,rH1);
-		    rH2 = _mm_add_pd(rZZ2,rC,rH2);
-		    rH3 = _mm_add_pd(rZZ3,rC,rH3);
+		    rH0 = _mm_fmadd_pd(rZZ0,rC,rH0);
+		    rH1 = _mm_fmadd_pd(rZZ1,rC,rH1);
+		    rH2 = _mm_fmadd_pd(rZZ2,rC,rH2);
+		    rH3 = _mm_fmadd_pd(rZZ3,rC,rH3);
 #else		    
 		    rH0 = _mm_add_pd(rH0,_mm_mul_pd(rZZ0,rC));
 		    rH1 = _mm_add_pd(rH1,_mm_mul_pd(rZZ1,rC));
@@ -1403,10 +1403,10 @@ void SE_FKG_grid_split_SSE_P16(SE_FGG_work* work, const SE_state* st,
                     rH3  = _mm_loadu_pd( H+idx + 14);
 
 #ifdef AVX_FMA
-		    rH0 = _mm_add_pd(rZZ4,rC,rH0);
-		    rH1 = _mm_add_pd(rZZ5,rC,rH1);
-		    rH2 = _mm_add_pd(rZZ6,rC,rH2);
-		    rH3 = _mm_add_pd(rZZ7,rC,rH3);
+		    rH0 = _mm_fmadd_pd(rZZ4,rC,rH0);
+		    rH1 = _mm_fmadd_pd(rZZ5,rC,rH1);
+		    rH2 = _mm_fmadd_pd(rZZ6,rC,rH2);
+		    rH3 = _mm_fmadd_pd(rZZ7,rC,rH3);
 #else
 		    rH0 = _mm_add_pd(rH0,_mm_mul_pd(rZZ4,rC));
 		    rH1 = _mm_add_pd(rH1,_mm_mul_pd(rZZ5,rC));
