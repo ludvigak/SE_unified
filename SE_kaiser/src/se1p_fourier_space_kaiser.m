@@ -54,7 +54,7 @@ walltime.fft = walltime.fft + toc(ifft_t);
 % spread and integrate
 
 int_t=tic;
-phi = 4 * pi *int_fcn(F);
+phi = 4 * pi *int_fcn(real(F));
 walltime.int = toc(int_t);
 
 if nargout==2

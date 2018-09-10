@@ -54,7 +54,7 @@ F = ifftnd(G,Gr,G0,se_opt);
 walltime.fft = walltime.fft + toc(fft_t);
 
 int_t = tic;
-u = 4*pi*int_fcn(F);
+u = 4*pi*int_fcn(real(F));
 walltime.int = walltime.int + toc(int_t);
 
 if nargout==2

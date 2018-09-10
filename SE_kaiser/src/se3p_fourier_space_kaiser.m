@@ -52,9 +52,8 @@ H = ifftn( H );
 walltime.fft = walltime.fft + toc(ifft_t);
 
 % spread and integrate
-                                
 int_t=tic;
-phi = int_fcn(H);
+phi = int_fcn(real(H));
 walltime.int = toc(int_t);
 
 phi  = 4*pi*phi;
